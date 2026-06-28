@@ -1061,37 +1061,39 @@ function MigrationModal({currentUser,onDone}){
 
   async function migrate(){
     setMigrating(true);
+    // Build one big multi-path update — single round-trip to Firebase
+    const batch={};
+    const uid=currentUser.uid;
+    const now=Date.now();
     for(const prop of oldProps){
-      const meta={...prop,ownerId:currentUser.uid,ownerName:currentUser.displayName||currentUser.email,updatedAt:Date.now()};
-      await dbSet(`projects/${prop.id}/meta`,meta);
-      await dbSet(`projects/${prop.id}/members/${currentUser.uid}`,{
-        name:currentUser.displayName||currentUser.email,email:currentUser.email,role:'owner',addedAt:Date.now()
-      });
+      batch[`projects/${prop.id}/meta`]={...prop,ownerId:uid,ownerName:currentUser.displayName||currentUser.email,updatedAt:now};
+      batch[`projects/${prop.id}/members/${uid}`]={name:currentUser.displayName||currentUser.email,email:currentUser.email,role:'owner',addedAt:now};
+      batch[`userProjects/${uid}/${prop.id}`]=true;
       const data=JSON.parse(localStorage.getItem(`flip_data_${prop.id}`)||'{}');
       if(Object.keys(data).length){
         const lightweight={};
+        const photos={};
         CATEGORIES.forEach(cat=>{
           if(!data[cat.id])return;
           lightweight[cat.id]={};
+          photos[cat.id]={};
           Object.entries(data[cat.id]).forEach(([k,v])=>{
             lightweight[cat.id][k]={status:v.status,notes:v.notes,updatedAt:v.updatedAt,updatedBy:v.updatedBy};
-          });
-          // Copy photos to new photo cache
-          const cache=loadPhotoCache(prop.id);
-          Object.entries(data[cat.id]).forEach(([k,v])=>{
             if(v.photosBefore?.length||v.photosVision?.length){
-              cache[`${cat.id}__${k}__before`]=v.photosBefore||[];
-              cache[`${cat.id}__${k}__vision`]=v.photosVision||[];
+              photos[cat.id][k]={before:v.photosBefore||[],vision:v.photosVision||[]};
             }
           });
-          savePhotoCache(prop.id,cache);
         });
-        if(data._summary){lightweight._summary={overview:data._summary.overview,priorities:data._summary.priorities,budget:data._summary.budget,timeline:data._summary.timeline};}
-        await dbUpdate(`projects/${prop.id}/data`,lightweight);
+        if(data._summary){
+          lightweight._summary={overview:data._summary.overview,priorities:data._summary.priorities,budget:data._summary.budget,timeline:data._summary.timeline};
+        }
+        batch[`projects/${prop.id}/data`]=lightweight;
+        if(Object.keys(photos).some(c=>Object.keys(photos[c]).length)){
+          batch[`projects/${prop.id}/photos`]=photos;
+        }
       }
-      await dbSet(`userProjects/${currentUser.uid}/${prop.id}`,true);
     }
-    // Clear old storage
+    await getDb().ref('/').update(batch);
     localStorage.removeItem('flip_properties');
     oldProps.forEach(p=>localStorage.removeItem(`flip_data_${p.id}`));
     setMigrating(false);setDone(true);
