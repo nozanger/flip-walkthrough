@@ -107,6 +107,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .update-stamp { font-size: 11px; color: #aaa; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
 .update-stamp strong { color: #888; }
 
+/* ── Item Card (swipe walkthrough) ── */
+.item-card-wrap { display:flex; flex-direction:column; height:100%; padding:0; }
+.item-card-nav { display:flex; align-items:center; gap:10px; padding:10px 16px 6px; }
+.item-nav-btn { width:40px; height:40px; border-radius:50%; border:2px solid #dde; background:white; font-size:22px; line-height:1; color:#0f3460; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.item-nav-btn:disabled { opacity:.25; cursor:default; }
+.item-nav-btn:not(:disabled):active { background:#e8f0fb; }
+.item-card-info { flex:1; text-align:center; }
+.item-card-title { font-size:18px; font-weight:800; color:#1a1a2e; display:block; line-height:1.2; }
+.item-card-count { font-size:12px; color:#888; font-weight:600; }
+.item-progress-bar { height:4px; background:#eee; margin:0 16px 12px; border-radius:2px; }
+.item-progress-fill { height:100%; background:#0f3460; border-radius:2px; transition:width .3s; }
+.item-card-body { flex:1; overflow-y:auto; padding:0 16px 16px; }
+.item-status-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.item-status-btn { padding:16px 8px; border-radius:14px; border:2px solid #dde; background:#f8f9fa; font-size:16px; font-weight:700; cursor:pointer; transition:all .15s; color:#444; }
+.item-status-btn.sel-keep { background:#d4edda; border-color:#28a745; color:#155724; }
+.item-status-btn.sel-replace { background:#f8d7da; border-color:#dc3545; color:#721c24; }
+.item-dots-row { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; padding:10px 16px 6px; }
+.item-dot { width:10px; height:10px; border-radius:50%; background:#dde; cursor:pointer; transition:all .15s; flex-shrink:0; }
+.item-dot.active { background:#0f3460; transform:scale(1.3); }
+.item-dot.filled { background:#aac4e8; }
 .mic-btn { width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; background: #f0f2f5; color: #444; transition: all .2s; }
 .mic-btn:hover { background: #e0e4eb; }
 .mic-btn.recording { background: #dc3545; color: white; animation: pulse 1s infinite; }
@@ -720,6 +740,75 @@ function AccordionList({propId,cat,data,mergedRef,updateItem,setLightbox,usernam
       onChange={(itemId,val)=>updateItem(cat.id,itemId,val)}
       onView={src=>setLightbox(src)}/>
   ));
+}
+
+function ItemCardView({propId,cat,data,mergedRef,updateItem,setLightbox,username,onPrevCat,onNextCat}){
+  const[idx,setIdx]=React.useState(0);
+  React.useEffect(()=>{setIdx(0);},[cat.id]);
+  const items=cat.items;
+  const item=items[idx];
+  const d=(data[cat.id]||{})[item.id]||{};
+  const startX=React.useRef(null);
+  const startY=React.useRef(null);
+
+  function onChange(itemId,val){updateItem(cat.id,itemId,val);}
+  function go(n){
+    const next=idx+n;
+    if(next<0){onPrevCat&&onPrevCat();}
+    else if(next>=items.length){onNextCat&&onNextCat();}
+    else setIdx(next);
+  }
+
+  function onTouchStart(e){startX.current=e.touches[0].clientX;startY.current=e.touches[0].clientY;}
+  function onTouchEnd(e){
+    if(startX.current===null)return;
+    const dx=e.changedTouches[0].clientX-startX.current;
+    const dy=Math.abs(e.changedTouches[0].clientY-startY.current);
+    startX.current=null;startY.current=null;
+    if(dy>40)return; // vertical scroll — ignore
+    if(Math.abs(dx)>50)dx<0?go(1):go(-1);
+  }
+
+  return(
+    <div className="item-card-wrap">
+      <div className="item-card-nav">
+        <button className="item-nav-btn" onClick={()=>go(-1)}>‹</button>
+        <div className="item-card-info">
+          <span className="item-card-title">{item.label}</span>
+          <span className="item-card-count">{idx+1} of {items.length}</span>
+        </div>
+        <button className="item-nav-btn" onClick={()=>go(1)}>›</button>
+      </div>
+      <div className="item-progress-bar"><div className="item-progress-fill" style={{width:`${((idx+1)/items.length)*100}%`}}/></div>
+      <div className="item-card-body" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="item-status-row">
+          {STATUSES.map(s=>(
+            <button key={s.id} className={`item-status-btn${d.status===s.id?' sel-'+s.cls:''}`}
+              onClick={()=>onChange(item.id,{...d,status:d.status===s.id?null:s.id})}>{s.label}</button>
+          ))}
+        </div>
+        <VoiceTextarea value={d.notes} onChange={v=>onChange(item.id,{...d,notes:v})} placeholder="Describe what you see…" minHeight={80}/>
+        <div className="photos-row" style={{marginTop:12}}>
+          <PhotoSlot label="📸 Before" photos={d.photosBefore||[]}
+            onAdd={src=>{const cur=(mergedRef.current[cat.id]||{})[item.id]||{};onChange(item.id,{...cur,photosBefore:[...(cur.photosBefore||[]),src]});}}
+            onAddBatch={srcs=>{const cur=(mergedRef.current[cat.id]||{})[item.id]||{};onChange(item.id,{...cur,photosBefore:[...(cur.photosBefore||[]),...srcs]});}}
+            onRemove={i=>{const cur=(mergedRef.current[cat.id]||{})[item.id]||{};onChange(item.id,{...cur,photosBefore:(cur.photosBefore||[]).filter((_,j)=>j!==i)});}}
+            onView={setLightbox}/>
+          <PhotoSlot label="✨ Vision" photos={d.photosVision||[]}
+            onAdd={src=>{const cur=(mergedRef.current[cat.id]||{})[item.id]||{};onChange(item.id,{...cur,photosVision:[...(cur.photosVision||[]),src]});}}
+            onAddBatch={srcs=>{const cur=(mergedRef.current[cat.id]||{})[item.id]||{};onChange(item.id,{...cur,photosVision:[...(cur.photosVision||[]),...srcs]});}}
+            onRemove={i=>{const cur=(mergedRef.current[cat.id]||{})[item.id]||{};onChange(item.id,{...cur,photosVision:(cur.photosVision||[]).filter((_,j)=>j!==i)});}}
+            onView={setLightbox}/>
+        </div>
+      </div>
+      <div className="item-dots-row">
+        {items.map((it,i)=>{
+          const filled=!!((data[cat.id]||{})[it.id]?.status||(data[cat.id]||{})[it.id]?.notes);
+          return <div key={it.id} className={`item-dot${i===idx?' active':''}${filled&&i!==idx?' filled':''}`} onClick={()=>setIdx(i)} title={it.label}/>;
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Swipeable({children,onLeft,onRight}){
@@ -1861,11 +1950,13 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner}/>}
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
       {activeTab>=0&&cat&&(
-        <Swipeable onLeft={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))} onRight={()=>setActiveTab(t=>t<=0?TAB_SUMMARY:t-1)}>
-          <div className="content">
-            <AccordionList propId={prop.id} cat={cat} data={data} mergedRef={mergedRef} username={username} updateItem={updateItem} setLightbox={setLightbox}/>
-          </div>
-        </Swipeable>
+        <div className="content" style={{padding:0,display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+          <ItemCardView
+            propId={prop.id} cat={cat} data={data} mergedRef={mergedRef}
+            username={username} updateItem={updateItem} setLightbox={setLightbox}
+            onPrevCat={()=>setActiveTab(t=>t<=0?TAB_SUMMARY:t-1)}
+            onNextCat={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))}/>
+        </div>
       )}
 
       {showShare&&<ShareModal prop={{...prop,sqft}} data={data} onClose={()=>setShowShare(false)}/>}
