@@ -235,6 +235,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .task-title-input.done { text-decoration:line-through; color:#aaa; }
 .task-title-input:focus { background:#f4f7fb; border-radius:4px; padding:1px 4px; margin:-1px -4px; }
 .task-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.task-done-check { width:22px; height:22px; border-radius:50%; border:2px solid #ccc; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; margin-top:2px; color:white; background:white; transition:all .15s; }
+.task-done-check.checked { background:#28a745; border-color:#28a745; }
 .task-assignee { font-size:11px; background:#e8f0fb; color:#0f3460; border-radius:20px; padding:2px 8px; font-weight:700; }
 .task-tag { font-size:11px; background:#fff3cd; color:#856404; border-radius:20px; padding:2px 8px; font-weight:700; }
 .task-date { font-size:11px; color:#aaa; }
@@ -1438,9 +1440,8 @@ function TasksPage({propId,currentUser,members,inline}){
 
   async function deleteTask(id){await dbRemove(`projects/${propId}/tasks/${id}`);}
 
-  function cycleStatus(task){
-    const next={todo:'inprogress',inprogress:'done',done:'todo'};
-    updateTask(task.id,{status:next[task.status]||'todo'});
+  function toggleDone(task){
+    updateTask(task.id,{status:task.status==='done'?'todo':'done'});
   }
 
   function toggleTag(task,name){
@@ -1449,16 +1450,31 @@ function TasksPage({propId,currentUser,members,inline}){
     updateTask(task.id,{tagged});
   }
 
-  const FILTERS=[{id:'all',label:'All'},{id:'todo',label:'To Do'},{id:'inprogress',label:'In Progress'},{id:'done',label:'Done'}];
-  const STATUS_ICON={todo:'',inprogress:'⏳',done:'✓'};
+  async function addTaskPhoto(taskId,file){
+    const src=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=async ev=>{try{res(await compressImage(ev.target.result));}catch(err){rej(err);}};
+      r.onerror=rej;
+      r.readAsDataURL(file);
+    });
+    const cur=tasks[taskId]||{};
+    await updateTask(taskId,{photos:[...(cur.photos||[]),src]});
+  }
+
+  async function removeTaskPhoto(taskId,idx){
+    const cur=tasks[taskId]||{};
+    await updateTask(taskId,{photos:(cur.photos||[]).filter((_,i)=>i!==idx)});
+  }
+
+  const FILTERS=[{id:'all',label:'All'},{id:'todo',label:'To Do'},{id:'done',label:'Done'}];
   const memberList=Object.values(members||{}).sort((a,b)=>a.name.localeCompare(b.name));
   const memberNames=memberList.map(m=>m.name);
 
   const list=Object.values(tasks)
     .filter(t=>filter==='all'||t.status===filter)
-    .sort((a,b)=>{const o={todo:0,inprogress:1,done:2};return(o[a.status]??0)-(o[b.status]??0)||(a.createdAt-b.createdAt);});
+    .sort((a,b)=>{const o={todo:0,done:1};return(o[a.status]??0)-(o[b.status]??0)||(a.createdAt-b.createdAt);});
 
-  const counts={todo:0,inprogress:0,done:0};
+  const counts={todo:0,done:0};
   Object.values(tasks).forEach(t=>{if(counts[t.status]!==undefined)counts[t.status]++;});
 
   const inner=(
@@ -1480,12 +1496,13 @@ function TasksPage({propId,currentUser,members,inline}){
       {list.map(task=>{
         const isOpen=!!expanded[task.id];
         const tagged=Object.keys(task.tagged||{});
+        const photos=task.photos||[];
         return(
           <div key={task.id} className={`task-card status-${task.status}`}>
             <div className="task-card-top" onClick={()=>setExpanded(e=>({...e,[task.id]:!e[task.id]}))}>
-              <button className={`task-status-btn ${task.status}`} onClick={e=>{e.stopPropagation();cycleStatus(task);}}>
-                {STATUS_ICON[task.status]}
-              </button>
+              <div className={`task-done-check${task.status==='done'?' checked':''}`} onClick={e=>{e.stopPropagation();toggleDone(task);}}>
+                {task.status==='done'&&'✓'}
+              </div>
               <div style={{flex:1}}>
                 <input
                   className={`task-title-input${task.status==='done'?' done':''}`}
@@ -1497,6 +1514,7 @@ function TasksPage({propId,currentUser,members,inline}){
                 <div className="task-meta">
                   {task.assignedTo&&<span className="task-assignee">👤 {task.assignedTo}</span>}
                   {tagged.map(n=><span key={n} className="task-tag">@{n}</span>)}
+                  {photos.length>0&&<span style={{fontSize:11,color:'#888'}}>📷 {photos.length}</span>}
                   {task.updatedBy&&<span className="task-date">{timeAgo(task.updatedAt)}</span>}
                 </div>
               </div>
@@ -1506,6 +1524,17 @@ function TasksPage({propId,currentUser,members,inline}){
               <div className="task-body">
                 <textarea className="task-notes-input" placeholder="Add notes…" value={task.notes||''}
                   onChange={e=>updateTask(task.id,{notes:e.target.value})}/>
+                {photos.length>0&&(
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:8}}>
+                    {photos.map((src,i)=>(
+                      <div key={i} style={{position:'relative'}}>
+                        <img src={src} style={{width:80,height:80,objectFit:'cover',borderRadius:8,border:'1px solid #eee'}}/>
+                        <button onClick={()=>removeTaskPhoto(task.id,i)}
+                          style={{position:'absolute',top:-6,right:-6,background:'#dc3545',color:'white',border:'none',borderRadius:'50%',width:18,height:18,fontSize:10,cursor:'pointer',lineHeight:'18px',padding:0}}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="task-actions">
                   <select className="task-assign-select" value={task.assignedTo||''}
                     onChange={e=>updateTask(task.id,{assignedTo:e.target.value})}>
@@ -1513,6 +1542,11 @@ function TasksPage({propId,currentUser,members,inline}){
                     {memberNames.map(n=><option key={n} value={n}>{n}</option>)}
                     {task.assignedTo&&!memberNames.includes(task.assignedTo)&&<option value={task.assignedTo}>{task.assignedTo}</option>}
                   </select>
+                  <label style={{cursor:'pointer',padding:'6px 10px',background:'#f4f7fb',borderRadius:8,fontSize:13,border:'1px solid #dde'}}>
+                    📷
+                    <input type="file" accept="image/*" multiple style={{display:'none'}}
+                      onChange={e=>{Array.from(e.target.files).forEach(f=>addTaskPhoto(task.id,f));e.target.value='';}}/>
+                  </label>
                   <button className="task-delete-btn" onClick={()=>deleteTask(task.id)}>🗑</button>
                 </div>
                 {memberList.length>0&&(
@@ -1531,6 +1565,13 @@ function TasksPage({propId,currentUser,members,inline}){
                     </div>
                   </div>
                 )}
+                <button
+                  onClick={()=>toggleDone(task)}
+                  style={{marginTop:12,width:'100%',padding:'10px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:14,
+                    background:task.status==='done'?'#f4f7fb':'#0f3460',
+                    color:task.status==='done'?'#888':'white'}}>
+                  {task.status==='done'?'↩ Mark Undone':'✓ Mark as Done'}
+                </button>
               </div>
             )}
           </div>
