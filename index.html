@@ -202,6 +202,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .progress-track { background: #f0f0f0; border-radius: 100px; height: 8px; }
 .progress-fill { background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; height: 8px; transition: width .4s; }
 
+/* ── Project stage ── */
+.stage-bar { display:flex; gap:6px; padding:8px 12px 4px; overflow-x:auto; }
+.stage-pill { border:2px solid #dde; border-radius:20px; padding:5px 13px; font-size:12px; font-weight:700; cursor:pointer; background:white; color:#666; white-space:nowrap; transition:all .15s; }
+.stage-pill.active-walkthrough { background:#e8f0fb; border-color:#0f3460; color:#0f3460; }
+.stage-pill.active-contract { background:#fff3cd; border-color:#d4a017; color:#856404; }
+.stage-pill.active-renovation { background:#f8d7da; border-color:#dc3545; color:#721c24; }
+.stage-badge { display:inline-block; font-size:10px; font-weight:800; border-radius:20px; padding:2px 8px; margin-top:4px; }
+.stage-badge.walkthrough { background:#e8f0fb; color:#0f3460; }
+.stage-badge.contract { background:#fff3cd; color:#856404; }
+.stage-badge.renovation { background:#f8d7da; color:#721c24; }
 /* ── Tasks ── */
 .tasks-page { padding: 12px; }
 .tasks-add-row { display:flex; gap:8px; margin-bottom:14px; }
@@ -1940,6 +1950,7 @@ function PropertyList({currentUser,onOpen}){
                 <div className="prop-info">
                   <div className="prop-address">{prop.address}</div>
                   <div className="prop-meta">{prop.sqft?prop.sqft+' sq ft  ·  ':''}{prop.date?new Date(prop.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}</div>
+                  <span className={`stage-badge ${prop.stage||'walkthrough'}`}>{prop.stage==='contract'?'📝 Under Contract':prop.stage==='renovation'?'🔨 Renovation':'🔍 Walkthrough'}</span>
                   <div className="prop-progress">
                     <div className="prop-progress-bar"><div className="prop-progress-fill" style={{width:'0%'}}/></div>
                     <span className="prop-progress-label">tap to view</span>
@@ -1977,10 +1988,11 @@ function PropertyList({currentUser,onOpen}){
 
 // ── WalkthroughView ──────────────────────────────────────────────────
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3;
+  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3,TAB_MGMT=-4;
   const[activeTab,setActiveTab]=React.useState(TAB_SUMMARY);
   const[data,setData]=React.useState({});
   const[members,setMembers]=React.useState({});
+  const[stage,setStage]=React.useState(prop.stage||'walkthrough');
   const[sqft,setSqft]=React.useState(prop.sqft||'');
   const[curBed,setCurBed]=React.useState(prop.curBed||'');
   const[curBath,setCurBath]=React.useState(prop.curBath||'');
@@ -2089,6 +2101,12 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
     ]);
   }
 
+  async function saveStage(s){
+    setStage(s);
+    await dbUpdate(`projects/${prop.id}/meta`,{stage:s});
+    onPropUpdate({...prop,stage:s});
+  }
+
   async function savePropFields(){
     const updated={...prop,sqft,curBed,curBath,futBed,futBath,updatedAt:Date.now()};
     await dbUpdate(`projects/${prop.id}/meta`,{sqft,curBed,curBath,futBed,futBath,updatedAt:Date.now()});
@@ -2130,6 +2148,11 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className="sqft-field"><label>Bed</label><input type="number" min="0" placeholder="4" value={futBed} onChange={e=>setFutBed(e.target.value)} onBlur={savePropFields}/></div>
           <div className="sqft-field"><label>Bath</label><input type="number" min="0" placeholder="2" value={futBath} onChange={e=>setFutBath(e.target.value)} onBlur={savePropFields}/></div>
         </div>
+        <div className="stage-bar">
+          {[{id:'walkthrough',label:'🔍 Walkthrough'},{id:'contract',label:'📝 Under Contract'},{id:'renovation',label:'🔨 Renovation'}].map(s=>(
+            <button key={s.id} className={`stage-pill${stage===s.id?' active-'+s.id:''}`} onClick={()=>saveStage(s.id)}>{s.label}</button>
+          ))}
+        </div>
         <div className="sync-bar">
           <div className={`sync-dot${syncStatus==='syncing'?' syncing':''}`}/>
           {syncStatus==='syncing'?'Syncing…':'All changes saved · Live sync on'}
@@ -2154,6 +2177,11 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
             ✅ Tasks
           </div>
+          {(stage==='contract'||stage==='renovation')&&(
+            <div className={`tab${activeTab===TAB_MGMT?' active':''}`} onClick={()=>setActiveTab(TAB_MGMT)}>
+              🏗 Project
+            </div>
+          )}
         </div>
       </div>
 
@@ -2169,6 +2197,16 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner} members={members}/>}
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
       {activeTab===TAB_TASKS&&<TasksPage propId={prop.id} currentUser={currentUser} members={members}/>}
+      {activeTab===TAB_MGMT&&(
+        <div className="content">
+          <div style={{padding:'12px 0 4px'}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#888',letterSpacing:'.5px',marginBottom:8}}>
+              {stage==='contract'?'📝 Under Contract — Project Management':'🔨 Ongoing Renovation — Project Management'}
+            </div>
+          </div>
+          <TasksPage propId={prop.id} currentUser={currentUser} members={members}/>
+        </div>
+      )}
       {activeTab>=0&&cat&&(
         <div className="content" style={{padding:0,display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
           <ItemCardView
