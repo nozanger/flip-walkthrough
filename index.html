@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zanco — Flip Walkthrough</title>
+<title>Zanco — Scope of Work</title>
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -793,7 +793,7 @@ function LoginPage({onSwitch,inviteInfo}){
         <div className="auth-logo">
           <img src="icon.png" alt="Zanco"/>
           <h1>Zanco</h1>
-          <p>Flip Walkthrough</p>
+          <p>Scope of Work</p>
         </div>
         {inviteInfo&&<div className="invite-banner"><h3>🏠 You've been invited!</h3><p>Sign in to join <strong>{inviteInfo.projectAddress}</strong> — invited by {inviteInfo.createdByName}.</p></div>}
         {err&&<div className="auth-error">{err}</div>}
@@ -828,7 +828,7 @@ function SignupPage({onSwitch,inviteInfo}){
         <div className="auth-logo">
           <img src="icon.png" alt="Zanco"/>
           <h1>Create Account</h1>
-          <p>Flip Walkthrough by Zanco</p>
+          <p>Scope of Work by Zanco</p>
         </div>
         {inviteInfo&&<div className="invite-banner"><h3>🏠 You've been invited!</h3><p>Create an account to join <strong>{inviteInfo.projectAddress}</strong>.</p></div>}
         {err&&<div className="auth-error">{err}</div>}
@@ -901,7 +901,7 @@ function InviteModal({prop,properties,currentUser,onClose}){
     const p=value.trim();if(!p||!activeProp)return;
     const token=await generateInvite();
     const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
-    const msg=`${senderName} invited you as ${role} to the Flip Walkthrough for ${activeProp.address}. Tap to join: ${link}`;
+    const msg=`${senderName} invited you as ${role} to the Scope of Work for ${activeProp.address}. Tap to join: ${link}`;
     window.open(`sms:${p}${navigator.platform.includes('iPhone')?'&':'?'}body=${encodeURIComponent(msg)}`,'_self');
     setSent(s=>[...s,{type:'sms',to:p}]);setValue('');
   }
@@ -911,7 +911,7 @@ function InviteModal({prop,properties,currentUser,onClose}){
     const token=await generateInvite();
     const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
     const subject=`You've been invited to join ${activeProp.address} on Zanco`;
-    const body=`Hi,\n\n${senderName} has invited you as ${role} to the Flip Walkthrough for ${activeProp.address}.\n\nTap the link below to create your account and join the project:\n${link}\n\nSee you on Zanco!`;
+    const body=`Hi,\n\n${senderName} has invited you as ${role} to the Scope of Work for ${activeProp.address}.\n\nTap the link below to create your account and join the project:\n${link}\n\nSee you on Zanco!`;
     window.open(`mailto:${e}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_self');
     setSent(s=>[...s,{type:'email',to:e}]);setValue('');
   }
@@ -1160,7 +1160,7 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
     if(assignedMembers.length>0&&!notified){
       const emails=assignedMembers.map(m=>m.email).join(',');
       const subject=`You've been assigned to ${prop.address} on Zanco`;
-      const body=`Hi,\n\nYou've been assigned to a new Flip Walkthrough project: ${prop.address}.\n\nLog in to Zanco to view it: ${window.location.origin}${window.location.pathname}\n\nSee you on Zanco!`;
+      const body=`Hi,\n\nYou've been assigned to a new Scope of Work project: ${prop.address}.\n\nLog in to Zanco to view it: ${window.location.origin}${window.location.pathname}\n\nSee you on Zanco!`;
       window.open(`mailto:${emails}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_self');
       setNotified(true);
     }
@@ -1365,7 +1365,7 @@ function PropertyList({currentUser,onOpen}){
     <div className="list-page">
       <div className="list-header">
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <h1>🏚 Flip Walkthrough</h1>
+          <h1>🏚 Scope of Work</h1>
           <button className="btn-header-sm" onClick={signOut}>Sign Out</button>
         </div>
         <p>Welcome back, {currentUser.displayName||currentUser.email}</p>
