@@ -244,10 +244,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-remove-member:hover { color: #dc3545; }
 
 /* Invite modal */
-.phone-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.phone-row input { flex: 1; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 13px; font-size: 15px; font-family: inherit; color: #1a1a2e; }
-.phone-row input:focus { outline: none; border-color: #0f3460; }
-.phone-row .btn-sms { background: #0f3460; color: white; border: none; border-radius: 10px; padding: 11px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.invite-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.invite-input-row input { flex: 1; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 13px; font-size: 15px; font-family: inherit; color: #1a1a2e; }
+.invite-input-row input:focus { outline: none; border-color: #0f3460; }
+.invite-send-btns { display: flex; gap: 6px; margin-bottom: 10px; }
+.btn-sms { flex: 1; background: #0f3460; color: white; border: none; border-radius: 10px; padding: 11px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-email-inv { flex: 1; background: #e2b04a; color: #1a1a2e; border: none; border-radius: 10px; padding: 11px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.invite-tabs { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
+.invite-tab { flex: 1; background: none; border: none; padding: 10px; font-size: 13px; font-weight: 600; color: #888; cursor: pointer; }
+.invite-tab.active { background: #0f3460; color: white; }
 .invite-sent { background: #f0f8f0; border: 1px solid #c3e6cb; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #155724; margin-bottom: 6px; }
 
 /* Sync bar */
@@ -772,31 +777,70 @@ function SetupPage({onDone}){
 
 // ── Invite Modal ─────────────────────────────────────────────────────
 function InviteModal({prop,currentUser,onClose}){
-  const[phone,setPhone]=React.useState('');
+  const[tab,setTab]=React.useState('sms');
+  const[value,setValue]=React.useState('');
   const[sent,setSent]=React.useState([]);
-  async function sendInvite(){
-    const p=phone.trim();if(!p)return;
+  const senderName=currentUser.displayName||currentUser.email;
+
+  async function generateInvite(){
     const token=uid();
     await dbSet(`invites/${token}`,{
       projectId:prop.id, projectAddress:prop.address,
-      createdBy:currentUser.uid, createdByName:currentUser.displayName||currentUser.email,
-      phone:p, createdAt:Date.now()
+      createdBy:currentUser.uid, createdByName:senderName,
+      createdAt:Date.now()
     });
-    const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
-    const msg=`${currentUser.displayName||'Someone'} invited you to the Flip Walkthrough for ${prop.address}. Tap to join: ${link}`;
-    window.open(`sms:${p}${navigator.platform.includes('iPhone')?'&':'?'}body=${encodeURIComponent(msg)}`,'_self');
-    setSent(s=>[...s,p]);setPhone('');
+    return token;
   }
+
+  async function sendSMS(){
+    const p=value.trim();if(!p)return;
+    const token=await generateInvite();
+    const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
+    const msg=`${senderName} invited you to the Flip Walkthrough for ${prop.address}. Tap to join: ${link}`;
+    window.open(`sms:${p}${navigator.platform.includes('iPhone')?'&':'?'}body=${encodeURIComponent(msg)}`,'_self');
+    setSent(s=>[...s,{type:'sms',to:p}]);setValue('');
+  }
+
+  async function sendEmail(){
+    const e=value.trim();if(!e)return;
+    const token=await generateInvite();
+    const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
+    const subject=`You've been invited to join ${prop.address} on Zanco`;
+    const body=`Hi,\n\n${senderName} has invited you to collaborate on the Flip Walkthrough for ${prop.address}.\n\nTap the link below to create your account and join the project:\n${link}\n\nSee you on Zanco!`;
+    window.open(`mailto:${e}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_self');
+    setSent(s=>[...s,{type:'email',to:e}]);setValue('');
+  }
+
   return(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
-        <h2>📲 Invite Team Member</h2>
-        <p>Enter a phone number. We'll open your Messages app with a pre-written invite link — just hit Send.</p>
-        <div className="phone-row">
-          <input type="tel" placeholder="+1 (555) 000-0000" value={phone} onChange={e=>setPhone(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendInvite()}/>
-          <button className="btn-sms" onClick={sendInvite}>Send via SMS →</button>
+        <h2>Invite Team Member</h2>
+        <div className="invite-tabs">
+          <button className={`invite-tab${tab==='sms'?' active':''}`} onClick={()=>{setTab('sms');setValue('');}}>📲 SMS</button>
+          <button className={`invite-tab${tab==='email'?' active':''}`} onClick={()=>{setTab('email');setValue('');}}>✉️ Email</button>
         </div>
-        {sent.map((p,i)=><div key={i} className="invite-sent">✅ Invite sent to {p}</div>)}
+        {tab==='sms'?(
+          <>
+            <p>Opens your Messages app with the invite pre-written — just hit Send.</p>
+            <div className="invite-input-row">
+              <input type="tel" placeholder="+1 (555) 000-0000" value={value} onChange={e=>setValue(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendSMS()}/>
+              <button className="btn-sms" onClick={sendSMS}>Send →</button>
+            </div>
+          </>
+        ):(
+          <>
+            <p>Opens your Mail app with the invite pre-written — just hit Send.</p>
+            <div className="invite-input-row">
+              <input type="email" placeholder="teammate@example.com" value={value} onChange={e=>setValue(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendEmail()}/>
+              <button className="btn-email-inv" onClick={sendEmail}>Send →</button>
+            </div>
+          </>
+        )}
+        {sent.map((s,i)=>(
+          <div key={i} className="invite-sent">
+            {s.type==='sms'?'📲':'✉️'} Invite sent to {s.to}
+          </div>
+        ))}
         <div className="modal-btns" style={{marginTop:16}}>
           <button className="btn-secondary" onClick={onClose}>Done</button>
         </div>
