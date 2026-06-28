@@ -231,6 +231,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .task-status-btn.done { border-color:#28a745; background:#28a745; color:white; }
 .task-title { flex:1; font-size:15px; font-weight:600; color:#1a1a2e; line-height:1.4; }
 .task-title.done { text-decoration:line-through; color:#aaa; }
+.task-title-input { width:100%; font-size:15px; font-weight:600; color:#1a1a2e; line-height:1.4; border:none; outline:none; background:transparent; padding:0; font-family:inherit; }
+.task-title-input.done { text-decoration:line-through; color:#aaa; }
+.task-title-input:focus { background:#f4f7fb; border-radius:4px; padding:1px 4px; margin:-1px -4px; }
 .task-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
 .task-assignee { font-size:11px; background:#e8f0fb; color:#0f3460; border-radius:20px; padding:2px 8px; font-weight:700; }
 .task-tag { font-size:11px; background:#fff3cd; color:#856404; border-radius:20px; padding:2px 8px; font-weight:700; }
@@ -1484,7 +1487,13 @@ function TasksPage({propId,currentUser,members,inline}){
                 {STATUS_ICON[task.status]}
               </button>
               <div style={{flex:1}}>
-                <div className={`task-title${task.status==='done'?' done':''}`}>{task.title}</div>
+                <input
+                  className={`task-title-input${task.status==='done'?' done':''}`}
+                  value={task.title}
+                  onClick={e=>e.stopPropagation()}
+                  onChange={e=>updateTask(task.id,{title:e.target.value})}
+                  placeholder="Task title…"
+                />
                 <div className="task-meta">
                   {task.assignedTo&&<span className="task-assignee">👤 {task.assignedTo}</span>}
                   {tagged.map(n=><span key={n} className="task-tag">@{n}</span>)}
