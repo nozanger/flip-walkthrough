@@ -548,8 +548,9 @@ function VoiceTextarea({value,onChange,placeholder,minHeight=100}){
 // ── PhotoSlot ────────────────────────────────────────────────────────
 function PhotoSlot({label,photos,onAdd,onAddBatch,onRemove,onView}){
   const[idx,setIdx]=React.useState(0);
-  const[uploading,setUploading]=React.useState(null); // null or {done,total}
-  const cameraRef=React.useRef();const libraryRef=React.useRef();const multiRef=React.useRef();
+  const[uploading,setUploading]=React.useState(null);
+  const fileRef=React.useRef();
+  const camRef=React.useRef();
   const startX=React.useRef(null);
   const has=photos&&photos.length>0;
   const safeIdx=has?Math.min(idx,photos.length-1):0;
@@ -573,8 +574,9 @@ function PhotoSlot({label,photos,onAdd,onAddBatch,onRemove,onView}){
     }
     e.target.value='';
     setUploading(null);
-    if(onAddBatch) onAddBatch(results);
-    else results.forEach(src=>onAdd(src));
+    if(results.length===1){onAdd(results[0]);}
+    else if(onAddBatch){onAddBatch(results);}
+    else{results.forEach(src=>onAdd(src));}
   }
 
   function onTouchStart(e){startX.current=e.touches[0].clientX;}
@@ -585,28 +587,28 @@ function PhotoSlot({label,photos,onAdd,onAddBatch,onRemove,onView}){
     else if(dx>40)setIdx(i=>Math.max(i-1,0));
     startX.current=null;
   }
+
   return(
     <div className="photo-slot">
       <div className="photo-slot-label">
         <span>{label}</span>
         <div className="add-btns">
-          <button className="add-btn gold" onClick={()=>cameraRef.current.click()}>📷</button>
-          <button className="add-btn" onClick={()=>libraryRef.current.click()}>+ 1</button>
-          <button className="add-btn" onClick={()=>multiRef.current.click()}>+ Multi</button>
+          <button className="add-btn gold" onClick={()=>camRef.current.click()}>📷</button>
+          <button className="add-btn" onClick={()=>fileRef.current.click()}>＋ Add</button>
         </div>
       </div>
       {uploading&&(
         <div style={{background:'#f0f4ff',borderRadius:10,padding:'10px 14px',marginBottom:8,fontSize:13,color:'#0f3460',textAlign:'center'}}>
-          ⏳ Processing {uploading.done} of {uploading.total} photo{uploading.total>1?'s':''}…
+          ⏳ Processing {uploading.done}/{uploading.total} photo{uploading.total>1?'s':''}…
         </div>
       )}
-      {!has&&!uploading?(
+      {!has&&!uploading&&(
         <div className="photo-empty">
-          <div className="photo-empty-third" onClick={()=>cameraRef.current.click()}><span className="photo-empty-icon">📷</span><span className="photo-empty-text">Camera</span></div>
-          <div className="photo-empty-third" onClick={()=>libraryRef.current.click()}><span className="photo-empty-icon">🖼️</span><span className="photo-empty-text">1 Photo</span></div>
-          <div className="photo-empty-third" onClick={()=>multiRef.current.click()}><span className="photo-empty-icon">📚</span><span className="photo-empty-text">Multiple</span></div>
+          <div className="photo-empty-half" onClick={()=>camRef.current.click()}><span className="photo-empty-icon">📷</span><span className="photo-empty-text">Camera</span></div>
+          <div className="photo-empty-half" onClick={()=>fileRef.current.click()}><span className="photo-empty-icon">🖼️</span><span className="photo-empty-text">Add Photos</span></div>
         </div>
-      ):has?(
+      )}
+      {has&&(
         <div>
           <div className="photo-carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <img className="carousel-img" src={photos[safeIdx]} alt="" onClick={()=>onView(photos[safeIdx])}/>
@@ -623,10 +625,10 @@ function PhotoSlot({label,photos,onAdd,onAddBatch,onRemove,onView}){
             <button className="carousel-del" onClick={()=>{onRemove(safeIdx);setIdx(i=>Math.max(0,i-1));}}>🗑</button>
           </div>
         </div>
-      ):null}
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={handleFiles}/>
-      <input ref={libraryRef} type="file" accept="image/*" className="photo-input" onChange={handleFiles}/>
-      <input ref={multiRef} type="file" accept="image/*" multiple className="photo-input" onChange={handleFiles}/>
+      )}
+      {/* Single input with multiple — iOS lets you pick multiple from Photos app */}
+      <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={handleFiles}/>
+      <input ref={fileRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleFiles}/>
     </div>
   );
 }
