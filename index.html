@@ -1903,11 +1903,17 @@ function App(){
     if(!firebaseReady){setAuthUser(null);return;}
     const unsub=getAuth().onAuthStateChanged(async user=>{
       if(user&&inviteToken&&inviteInfo){
+        const memberName=user.displayName||user.email;
+        const memberRole=inviteInfo.role||'Member';
         // Process invite: add user to project
         await dbSet(`projects/${inviteInfo.projectId}/members/${user.uid}`,{
-          name:user.displayName||user.email,email:user.email,role:'member',addedAt:Date.now()
+          name:memberName,email:user.email,role:memberRole,addedAt:Date.now()
         });
         await dbSet(`userProjects/${user.uid}/${inviteInfo.projectId}`,true);
+        // Save to owner's roster so they appear in future project assignments
+        await dbSet(`roster/${inviteInfo.createdBy}/${user.uid}`,{
+          id:user.uid,name:memberName,email:user.email,role:memberRole,addedAt:Date.now()
+        });
         // Clear token from URL
         const url=new URL(window.location);url.searchParams.delete('join');window.history.replaceState({},'',url);
         setInviteInfo(null);
