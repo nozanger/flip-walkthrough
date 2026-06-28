@@ -202,6 +202,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .progress-track { background: #f0f0f0; border-radius: 100px; height: 8px; }
 .progress-fill { background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; height: 8px; transition: width .4s; }
 
+/* ── Tasks ── */
+.tasks-page { padding: 12px; }
+.tasks-add-row { display:flex; gap:8px; margin-bottom:14px; }
+.tasks-add-input { flex:1; border:2px solid #dde; border-radius:10px; padding:12px 14px; font-size:15px; outline:none; }
+.tasks-add-input:focus { border-color:#0f3460; }
+.tasks-add-btn { background:#0f3460; color:white; border:none; border-radius:10px; padding:12px 18px; font-size:18px; font-weight:700; cursor:pointer; flex-shrink:0; }
+.tasks-filters { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; padding-bottom:2px; }
+.task-filter { border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; background:#f0f2f5; color:#666; white-space:nowrap; }
+.task-filter.active { background:#0f3460; color:white; }
+.task-card { background:white; border-radius:12px; border:2px solid #eee; margin-bottom:10px; overflow:hidden; transition:border-color .15s; }
+.task-card.status-done { border-color:#d4edda; background:#f9fffe; }
+.task-card.status-inprogress { border-color:#fff3cd; background:#fffdf0; }
+.task-card-top { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; cursor:pointer; }
+.task-status-btn { width:26px; height:26px; border-radius:50%; border:2px solid #ddd; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; margin-top:1px; transition:all .15s; }
+.task-status-btn.todo { border-color:#ddd; }
+.task-status-btn.inprogress { border-color:#d4a017; background:#fff3cd; }
+.task-status-btn.done { border-color:#28a745; background:#28a745; color:white; }
+.task-title { flex:1; font-size:15px; font-weight:600; color:#1a1a2e; line-height:1.4; }
+.task-title.done { text-decoration:line-through; color:#aaa; }
+.task-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.task-assignee { font-size:11px; background:#e8f0fb; color:#0f3460; border-radius:20px; padding:2px 8px; font-weight:700; }
+.task-date { font-size:11px; color:#aaa; }
+.task-body { padding:0 14px 12px 50px; }
+.task-notes-input { width:100%; border:1.5px solid #eee; border-radius:8px; padding:8px 10px; font-size:13px; resize:none; outline:none; min-height:60px; font-family:inherit; }
+.task-notes-input:focus { border-color:#0f3460; }
+.task-actions { display:flex; gap:8px; margin-top:8px; align-items:center; }
+.task-assign-select { flex:1; border:1.5px solid #eee; border-radius:8px; padding:7px 10px; font-size:13px; outline:none; background:white; }
+.task-delete-btn { background:none; border:none; color:#ddd; font-size:18px; cursor:pointer; padding:4px; }
+.task-delete-btn:hover { color:#dc3545; }
+.tasks-empty { text-align:center; padding:40px 20px; color:#aaa; font-size:14px; }
 .summary-page { padding: 12px; }
 .summary-card { background: white; border-radius: 12px; padding: 18px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .summary-card h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
@@ -1370,6 +1400,100 @@ function InviteModal({prop,properties,currentUser,onClose}){
 }
 
 // ── ParticipantsPage ─────────────────────────────────────────────────
+// ── TasksPage ─────────────────────────────────────────────────────────
+function TasksPage({propId,currentUser,members}){
+  const[tasks,setTasks]=React.useState({});
+  const[newTitle,setNewTitle]=React.useState('');
+  const[filter,setFilter]=React.useState('all');
+  const[expanded,setExpanded]=React.useState({});
+  const username=currentUser.displayName||currentUser.email;
+
+  React.useEffect(()=>dbListen(`projects/${propId}/tasks`,t=>setTasks(t||{})),[propId]);
+
+  async function addTask(){
+    const title=newTitle.trim();if(!title)return;
+    const id=uid();
+    await dbSet(`projects/${propId}/tasks/${id}`,{id,title,status:'todo',notes:'',assignedTo:'',createdBy:username,createdAt:Date.now(),updatedAt:Date.now()});
+    setNewTitle('');
+  }
+
+  async function updateTask(id,patch){
+    await dbUpdate(`projects/${propId}/tasks/${id}`,{...patch,updatedAt:Date.now(),updatedBy:username});
+  }
+
+  async function deleteTask(id){await dbRemove(`projects/${propId}/tasks/${id}`);}
+
+  function cycleStatus(task){
+    const next={todo:'inprogress',inprogress:'done',done:'todo'};
+    updateTask(task.id,{status:next[task.status]||'todo'});
+  }
+
+  const FILTERS=[{id:'all',label:'All'},{id:'todo',label:'To Do'},{id:'inprogress',label:'In Progress'},{id:'done',label:'Done'}];
+  const STATUS_ICON={todo:'',inprogress:'⏳',done:'✓'};
+  const memberNames=Object.values(members||{}).map(m=>m.name).sort();
+
+  const list=Object.values(tasks)
+    .filter(t=>filter==='all'||t.status===filter)
+    .sort((a,b)=>{const o={todo:0,inprogress:1,done:2};return(o[a.status]??0)-(o[b.status]??0)||(a.createdAt-b.createdAt);});
+
+  const counts={todo:0,inprogress:0,done:0};
+  Object.values(tasks).forEach(t=>{if(counts[t.status]!==undefined)counts[t.status]++;});
+
+  return(
+    <div className="tasks-page">
+      <div className="tasks-add-row">
+        <input className="tasks-add-input" placeholder="Add a task…" value={newTitle}
+          onChange={e=>setNewTitle(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&addTask()}/>
+        <button className="tasks-add-btn" onClick={addTask}>+</button>
+      </div>
+      <div className="tasks-filters">
+        {FILTERS.map(f=>(
+          <button key={f.id} className={`task-filter${filter===f.id?' active':''}`} onClick={()=>setFilter(f.id)}>
+            {f.label}{f.id!=='all'&&counts[f.id]>0?` (${counts[f.id]})`:f.id==='all'?` (${Object.keys(tasks).length})`:''}
+          </button>
+        ))}
+      </div>
+      {list.length===0&&<div className="tasks-empty">{Object.keys(tasks).length===0?'No tasks yet — add one above.':'No tasks in this filter.'}</div>}
+      {list.map(task=>{
+        const isOpen=!!expanded[task.id];
+        return(
+          <div key={task.id} className={`task-card status-${task.status}`}>
+            <div className="task-card-top" onClick={()=>setExpanded(e=>({...e,[task.id]:!e[task.id]}))}>
+              <button className={`task-status-btn ${task.status}`} onClick={e=>{e.stopPropagation();cycleStatus(task);}}>
+                {STATUS_ICON[task.status]}
+              </button>
+              <div style={{flex:1}}>
+                <div className={`task-title${task.status==='done'?' done':''}`}>{task.title}</div>
+                <div className="task-meta">
+                  {task.assignedTo&&<span className="task-assignee">👤 {task.assignedTo}</span>}
+                  {task.updatedBy&&<span className="task-date">Updated by {task.updatedBy} · {timeAgo(task.updatedAt)}</span>}
+                </div>
+              </div>
+              <span style={{fontSize:12,color:'#ccc',marginLeft:4}}>{isOpen?'▴':'▾'}</span>
+            </div>
+            {isOpen&&(
+              <div className="task-body">
+                <textarea className="task-notes-input" placeholder="Add notes…" value={task.notes||''}
+                  onChange={e=>updateTask(task.id,{notes:e.target.value})}/>
+                <div className="task-actions">
+                  <select className="task-assign-select" value={task.assignedTo||''}
+                    onChange={e=>updateTask(task.id,{assignedTo:e.target.value})}>
+                    <option value="">Unassigned</option>
+                    {memberNames.map(n=><option key={n} value={n}>{n}</option>)}
+                    {task.assignedTo&&!memberNames.includes(task.assignedTo)&&<option value={task.assignedTo}>{task.assignedTo}</option>}
+                  </select>
+                  <button className="task-delete-btn" onClick={()=>deleteTask(task.id)}>🗑</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ParticipantsPage({prop,data,currentUser,isOwner}){
   const[members,setMembers]=React.useState({});
   const[showInvite,setShowInvite]=React.useState(false);
@@ -1818,9 +1942,10 @@ function PropertyList({currentUser,onOpen}){
 
 // ── WalkthroughView ──────────────────────────────────────────────────
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_SUMMARY=-1,TAB_TEAM=-2;
+  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3;
   const[activeTab,setActiveTab]=React.useState(TAB_SUMMARY);
   const[data,setData]=React.useState({});
+  const[members,setMembers]=React.useState({});
   const[sqft,setSqft]=React.useState(prop.sqft||'');
   const[curBed,setCurBed]=React.useState(prop.curBed||'');
   const[curBath,setCurBath]=React.useState(prop.curBath||'');
@@ -1867,7 +1992,8 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       mergedRef.current=buildMerged(dataRef.current,photosRef.current);
       setData(mergedRef.current);
     });
-    return ()=>{unsubData();unsubPhotos();};
+    const unsubMembers=dbListen(`projects/${prop.id}/members`,remote=>setMembers(remote||{}));
+    return ()=>{unsubData();unsubPhotos();unsubMembers();};
   },[prop.id]);
 
   async function updateItem(catId,itemId,value){
@@ -1990,6 +2116,9 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
             👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
+          <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
+            ✅ Tasks
+          </div>
         </div>
       </div>
 
@@ -2004,6 +2133,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
 
       {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner}/>}
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
+      {activeTab===TAB_TASKS&&<TasksPage propId={prop.id} currentUser={currentUser} members={members}/>}
       {activeTab>=0&&cat&&(
         <div className="content" style={{padding:0,display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
           <ItemCardView
