@@ -235,6 +235,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .task-title-input.done { text-decoration:line-through; color:#aaa; }
 .task-title-input:focus { background:#f4f7fb; border-radius:4px; padding:1px 4px; margin:-1px -4px; }
 .task-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.task-toast { display:flex; align-items:center; justify-content:space-between; background:#1a1a2e; color:white; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:14px; font-weight:600; animation:fadeIn .2s ease; }
+.task-toast-undo { background:white; color:#1a1a2e; border:none; border-radius:6px; padding:4px 12px; font-size:13px; font-weight:700; cursor:pointer; }
 .task-done-check { width:22px; height:22px; border-radius:50%; border:2px solid #ccc; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; margin-top:2px; color:white; background:white; transition:all .15s; }
 .task-done-check.checked { background:#28a745; border-color:#28a745; }
 .task-assignee { font-size:11px; background:#e8f0fb; color:#0f3460; border-radius:20px; padding:2px 8px; font-weight:700; }
@@ -1423,6 +1425,8 @@ function TasksPage({propId,currentUser,members,inline}){
   const[newTitle,setNewTitle]=React.useState('');
   const[filter,setFilter]=React.useState('all');
   const[expanded,setExpanded]=React.useState({});
+  const[toast,setToast]=React.useState(null);
+  const toastTimer=React.useRef(null);
   const username=currentUser.displayName||currentUser.email;
 
   React.useEffect(()=>dbListen(`projects/${propId}/tasks`,t=>setTasks(t||{})),[propId]);
@@ -1441,7 +1445,23 @@ function TasksPage({propId,currentUser,members,inline}){
   async function deleteTask(id){await dbRemove(`projects/${propId}/tasks/${id}`);}
 
   function toggleDone(task){
-    updateTask(task.id,{status:task.status==='done'?'todo':'done'});
+    const wasDone=task.status==='done';
+    updateTask(task.id,{status:wasDone?'todo':'done'});
+    if(!wasDone){
+      clearTimeout(toastTimer.current);
+      setToast(task.id);
+      toastTimer.current=setTimeout(()=>setToast(null),4000);
+    } else {
+      setToast(null);
+    }
+  }
+
+  function undoToast(){
+    if(!toast)return;
+    const task=tasks[toast];
+    if(task)updateTask(task.id,{status:'todo'});
+    clearTimeout(toastTimer.current);
+    setToast(null);
   }
 
   function toggleTag(task,name){
@@ -1479,6 +1499,12 @@ function TasksPage({propId,currentUser,members,inline}){
 
   const inner=(
     <>
+      {toast&&(
+        <div className="task-toast">
+          ✓ Marked as done
+          <button onClick={undoToast} className="task-toast-undo">Undo</button>
+        </div>
+      )}
       <div className="tasks-add-row">
         <input className="tasks-add-input" placeholder="Add a task…" value={newTitle}
           onChange={e=>setNewTitle(e.target.value)}
