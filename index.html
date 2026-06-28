@@ -267,6 +267,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .invite-tabs { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
 .invite-tab { flex: 1; background: none; border: none; padding: 10px; font-size: 13px; font-weight: 600; color: #888; cursor: pointer; }
 .invite-tab.active { background: #0f3460; color: white; }
+.role-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.role-pill { background: #f0f0f0; border: 1.5px solid transparent; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: #555; cursor: pointer; transition: all .15s; }
+.role-pill.active { background: #e8f0fb; border-color: #0f3460; color: #0f3460; }
+.project-select { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #1a1a2e; background: white; margin-bottom: 12px; }
 .invite-sent { background: #f0f8f0; border: 1px solid #c3e6cb; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #155724; margin-bottom: 6px; }
 
 /* Sync bar */
@@ -852,37 +856,45 @@ function SetupPage({onDone}){
 }
 
 // ── Invite Modal ─────────────────────────────────────────────────────
-function InviteModal({prop,currentUser,onClose}){
+const INVITE_ROLES=['Member','GC','Realtor','Lender'];
+
+function InviteModal({prop,properties,currentUser,onClose}){
   const[tab,setTab]=React.useState('sms');
   const[value,setValue]=React.useState('');
+  const[role,setRole]=React.useState('Member');
+  const[selectedPropId,setSelectedPropId]=React.useState(prop?.id||(properties?.[0]?.id||''));
   const[sent,setSent]=React.useState([]);
   const senderName=currentUser.displayName||currentUser.email;
 
+  // resolve the active project object
+  const activeProp=prop||(properties||[]).find(p=>p.id===selectedPropId)||null;
+
   async function generateInvite(){
+    if(!activeProp)return null;
     const token=uid();
     await dbSet(`invites/${token}`,{
-      projectId:prop.id, projectAddress:prop.address,
+      projectId:activeProp.id, projectAddress:activeProp.address,
       createdBy:currentUser.uid, createdByName:senderName,
-      createdAt:Date.now()
+      role, createdAt:Date.now()
     });
     return token;
   }
 
   async function sendSMS(){
-    const p=value.trim();if(!p)return;
+    const p=value.trim();if(!p||!activeProp)return;
     const token=await generateInvite();
     const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
-    const msg=`${senderName} invited you to the Flip Walkthrough for ${prop.address}. Tap to join: ${link}`;
+    const msg=`${senderName} invited you as ${role} to the Flip Walkthrough for ${activeProp.address}. Tap to join: ${link}`;
     window.open(`sms:${p}${navigator.platform.includes('iPhone')?'&':'?'}body=${encodeURIComponent(msg)}`,'_self');
     setSent(s=>[...s,{type:'sms',to:p}]);setValue('');
   }
 
   async function sendEmail(){
-    const e=value.trim();if(!e)return;
+    const e=value.trim();if(!e||!activeProp)return;
     const token=await generateInvite();
     const link=`${window.location.origin}${window.location.pathname}?join=${token}`;
-    const subject=`You've been invited to join ${prop.address} on Zanco`;
-    const body=`Hi,\n\n${senderName} has invited you to collaborate on the Flip Walkthrough for ${prop.address}.\n\nTap the link below to create your account and join the project:\n${link}\n\nSee you on Zanco!`;
+    const subject=`You've been invited to join ${activeProp.address} on Zanco`;
+    const body=`Hi,\n\n${senderName} has invited you as ${role} to the Flip Walkthrough for ${activeProp.address}.\n\nTap the link below to create your account and join the project:\n${link}\n\nSee you on Zanco!`;
     window.open(`mailto:${e}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_self');
     setSent(s=>[...s,{type:'email',to:e}]);setValue('');
   }
@@ -891,6 +903,22 @@ function InviteModal({prop,currentUser,onClose}){
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <h2>Invite Team Member</h2>
+
+        {/* Project picker — only shown on home screen (no fixed prop) */}
+        {!prop&&properties&&properties.length>0&&(
+          <select className="project-select" value={selectedPropId} onChange={e=>setSelectedPropId(e.target.value)}>
+            {properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}
+          </select>
+        )}
+
+        {/* Role pills */}
+        <div className="role-pills">
+          {INVITE_ROLES.map(r=>(
+            <button key={r} className={`role-pill${role===r?' active':''}`} onClick={()=>setRole(r)}>{r}</button>
+          ))}
+        </div>
+
+        {/* SMS / Email tabs */}
         <div className="invite-tabs">
           <button className={`invite-tab${tab==='sms'?' active':''}`} onClick={()=>{setTab('sms');setValue('');}}>📲 SMS</button>
           <button className={`invite-tab${tab==='email'?' active':''}`} onClick={()=>{setTab('email');setValue('');}}>✉️ Email</button>
@@ -1130,6 +1158,7 @@ function PropertyList({currentUser,onOpen}){
   const[properties,setProperties]=React.useState([]);
   const[loading,setLoading]=React.useState(true);
   const[showAdd,setShowAdd]=React.useState(false);
+  const[showInvite,setShowInvite]=React.useState(false);
   const[deleteId,setDeleteId]=React.useState(null);
   const[showMigration,setShowMigration]=React.useState(false);
 
@@ -1210,8 +1239,10 @@ function PropertyList({currentUser,onOpen}){
           );
         })}
         <button className="btn-add-prop" onClick={()=>setShowAdd(true)}>＋ Add Property</button>
+        <button className="btn-add-prop" style={{background:'#f4f7fb',color:'#0f3460',border:'1.5px solid #d0dff5',marginTop:10}} onClick={()=>setShowInvite(true)}>👥 Invite Team Member</button>
       </div>
       {showAdd&&<AddPropertyModal onAdd={addProperty} onClose={()=>setShowAdd(false)}/>}
+      {showInvite&&<InviteModal properties={properties} currentUser={currentUser} onClose={()=>setShowInvite(false)}/>}
       {showMigration&&<MigrationModal currentUser={currentUser} onDone={()=>setShowMigration(false)}/>}
       {deleteId&&(
         <div className="modal-overlay" onClick={()=>setDeleteId(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
