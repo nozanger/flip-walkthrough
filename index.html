@@ -1526,7 +1526,7 @@ function TasksPage({propId,currentUser,members,inline}){
         return(
           <div key={task.id} className={`task-card status-${task.status}`}>
             <div className="task-card-top" onClick={()=>setExpanded(e=>({...e,[task.id]:!e[task.id]}))}>
-              <div className={`task-done-check${task.status==='done'?' checked':''}`} onClick={e=>{e.stopPropagation();toggleDone(task);}}>
+              <div className={`task-done-check${task.status==='done'?' checked':''}`}>
                 {task.status==='done'&&'✓'}
               </div>
               <div style={{flex:1}}>
