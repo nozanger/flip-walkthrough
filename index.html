@@ -509,24 +509,27 @@ function useSpeech(onResult){
   const[recording,setRecording]=React.useState(false);
   const[interim,setInterim]=React.useState('');
   const[errMsg,setErrMsg]=React.useState('');
-  const shouldRec=React.useRef(false);
+  const recRef=React.useRef(null);
   const onResultRef=React.useRef(onResult);
   React.useEffect(()=>{onResultRef.current=onResult;});
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const supported=!!SR;
-  function startInstance(){
-    if(!shouldRec.current)return;
+  function start(){
+    if(!supported||recRef.current)return;
+    setErrMsg('');
     try{
-      const rec=new SR();rec.lang='en-US';rec.interimResults=true;rec.maxAlternatives=1;
+      const rec=new SR();
+      rec.lang='en-US';rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=false;
       rec.onresult=e=>{const last=e.results[e.results.length-1];if(last.isFinal){const t=last[0].transcript.trim();if(t)onResultRef.current(t);setInterim('');}else setInterim(last[0].transcript);};
-      rec.onerror=e=>{setInterim('');if(e.error==='not-allowed'||e.error==='service-not-allowed'){setErrMsg('Mic blocked — allow microphone in browser settings.');shouldRec.current=false;setRecording(false);}};
-      rec.onend=()=>{setInterim('');if(shouldRec.current)setTimeout(startInstance,100);else setRecording(false);};
+      rec.onerror=e=>{setInterim('');setErrMsg(e.error==='not-allowed'||e.error==='service-not-allowed'?'Mic blocked — allow microphone in settings.':'Mic error: '+e.error);setRecording(false);recRef.current=null;};
+      rec.onend=()=>{setInterim('');setRecording(false);recRef.current=null;};
       rec.start();
-    }catch(e){setErrMsg('Could not start mic.');shouldRec.current=false;setRecording(false);}
+      recRef.current=rec;
+      setRecording(true);
+    }catch(e){setErrMsg('Could not start mic.');setRecording(false);recRef.current=null;}
   }
-  async function start(){if(!supported)return;setErrMsg('');try{await navigator.mediaDevices.getUserMedia({audio:true});}catch{setErrMsg('Mic access denied.');return;}shouldRec.current=true;setRecording(true);startInstance();}
-  function stop(){shouldRec.current=false;setRecording(false);setInterim('');}
-  React.useEffect(()=>()=>{shouldRec.current=false;},[]);
+  function stop(){if(recRef.current){try{recRef.current.stop();}catch(e){}recRef.current=null;}setRecording(false);setInterim('');}
+  React.useEffect(()=>()=>{if(recRef.current)try{recRef.current.stop();}catch(e){};},[]);
   return{recording,interim,errMsg,toggle:()=>recording?stop():start(),supported};
 }
 
