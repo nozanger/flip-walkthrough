@@ -1072,25 +1072,17 @@ function MigrationModal({currentUser,onDone}){
       const data=JSON.parse(localStorage.getItem(`flip_data_${prop.id}`)||'{}');
       if(Object.keys(data).length){
         const lightweight={};
-        const photos={};
         CATEGORIES.forEach(cat=>{
           if(!data[cat.id])return;
           lightweight[cat.id]={};
-          photos[cat.id]={};
           Object.entries(data[cat.id]).forEach(([k,v])=>{
             lightweight[cat.id][k]={status:v.status,notes:v.notes,updatedAt:v.updatedAt,updatedBy:v.updatedBy};
-            if(v.photosBefore?.length||v.photosVision?.length){
-              photos[cat.id][k]={before:v.photosBefore||[],vision:v.photosVision||[]};
-            }
           });
         });
         if(data._summary){
           lightweight._summary={overview:data._summary.overview,priorities:data._summary.priorities,budget:data._summary.budget,timeline:data._summary.timeline};
         }
         batch[`projects/${prop.id}/data`]=lightweight;
-        if(Object.keys(photos).some(c=>Object.keys(photos[c]).length)){
-          batch[`projects/${prop.id}/photos`]=photos;
-        }
       }
     }
     await getDb().ref('/').update(batch);
@@ -1110,7 +1102,7 @@ function MigrationModal({currentUser,onDone}){
   return(
     <div className="modal-overlay"><div className="modal">
       <h2>📦 Import Existing Data</h2>
-      <p>We found {oldProps.length} {oldProps.length===1?'property':'properties'} saved locally on this device. Import them to your account?</p>
+      <p>We found {oldProps.length} {oldProps.length===1?'property':'properties'} saved locally. We'll import all checklists, notes, and project details instantly. Photos stay on this device only (re-upload from the app to share them with your team).</p>
       {oldProps.map(p=><div key={p.id} className="migration-item">🏠 {p.address}</div>)}
       <div className="modal-btns" style={{marginTop:16}}>
         <button className="btn-primary" onClick={migrate} disabled={migrating}>{migrating?'Importing…':'Import to My Account'}</button>
