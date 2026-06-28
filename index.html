@@ -544,8 +544,9 @@ function VoiceTextarea({value,onChange,placeholder,minHeight=100}){
 }
 
 // ── PhotoSlot ────────────────────────────────────────────────────────
-function PhotoSlot({label,photos,onAdd,onRemove,onView}){
+function PhotoSlot({label,photos,onAdd,onAddBatch,onRemove,onView}){
   const[idx,setIdx]=React.useState(0);
+  const[uploading,setUploading]=React.useState(null); // null or {done,total}
   const cameraRef=React.useRef();const libraryRef=React.useRef();
   const startX=React.useRef(null);
   const has=photos&&photos.length>0;
@@ -554,12 +555,25 @@ function PhotoSlot({label,photos,onAdd,onRemove,onView}){
   React.useEffect(()=>{if(has)setIdx(photos.length-1);},[photos.length]);
 
   async function handleFiles(e){
-    for(const file of Array.from(e.target.files)){
-      const r=new FileReader();
-      await new Promise(res=>{r.onload=async ev=>{onAdd(await compressImage(ev.target.result));res();};r.readAsDataURL(file);});
-    }
+    const files=Array.from(e.target.files);
+    if(!files.length)return;
     e.target.value='';
+    setUploading({done:0,total:files.length});
+    // Process all in parallel
+    const results=await Promise.all(files.map(file=>new Promise(res=>{
+      const r=new FileReader();
+      r.onload=async ev=>{
+        const compressed=await compressImage(ev.target.result);
+        setUploading(u=>u?{...u,done:u.done+1}:null);
+        res(compressed);
+      };
+      r.readAsDataURL(file);
+    })));
+    setUploading(null);
+    if(onAddBatch) onAddBatch(results);
+    else results.forEach(src=>onAdd(src));
   }
+
   function onTouchStart(e){startX.current=e.touches[0].clientX;}
   function onTouchEnd(e){
     if(startX.current===null)return;
@@ -574,15 +588,20 @@ function PhotoSlot({label,photos,onAdd,onRemove,onView}){
         <span>{label}</span>
         <div className="add-btns">
           <button className="add-btn gold" onClick={()=>cameraRef.current.click()}>📷</button>
-          <button className="add-btn" onClick={()=>libraryRef.current.click()}>+ Add</button>
+          <button className="add-btn" onClick={()=>libraryRef.current.click()}>+ Photos</button>
         </div>
       </div>
-      {!has?(
+      {uploading&&(
+        <div style={{background:'#f0f4ff',borderRadius:10,padding:'10px 14px',marginBottom:8,fontSize:13,color:'#0f3460',textAlign:'center'}}>
+          ⏳ Processing {uploading.done} of {uploading.total} photo{uploading.total>1?'s':''}…
+        </div>
+      )}
+      {!has&&!uploading?(
         <div className="photo-empty">
           <div className="photo-empty-half" onClick={()=>cameraRef.current.click()}><span className="photo-empty-icon">📷</span><span className="photo-empty-text">Take Photo</span></div>
-          <div className="photo-empty-half" onClick={()=>libraryRef.current.click()}><span className="photo-empty-icon">🖼️</span><span className="photo-empty-text">Library</span></div>
+          <div className="photo-empty-half" onClick={()=>libraryRef.current.click()}><span className="photo-empty-icon">🖼️</span><span className="photo-empty-text">Add Photos</span></div>
         </div>
-      ):(
+      ):has?(
         <div>
           <div className="photo-carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <img className="carousel-img" src={photos[safeIdx]} alt="" onClick={()=>onView(photos[safeIdx])}/>
@@ -599,7 +618,7 @@ function PhotoSlot({label,photos,onAdd,onRemove,onView}){
             <button className="carousel-del" onClick={()=>{onRemove(safeIdx);setIdx(i=>Math.max(0,i-1));}}>🗑</button>
           </div>
         </div>
-      )}
+      ):null}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={handleFiles}/>
       <input ref={libraryRef} type="file" accept="image/*" multiple className="photo-input" onChange={handleFiles}/>
     </div>
@@ -655,10 +674,12 @@ function SectionCard({propId,item,catId,data,onChange,onView,isOpen,onToggle,use
             <div className="photos-row">
               <PhotoSlot label="📸 Before / Existing" photos={d.photosBefore||[]}
                 onAdd={src=>onChange(item.id,{...d,photosBefore:[...(d.photosBefore||[]),src]})}
+                onAddBatch={srcs=>onChange(item.id,{...d,photosBefore:[...(d.photosBefore||[]),...srcs]})}
                 onRemove={i=>onChange(item.id,{...d,photosBefore:(d.photosBefore||[]).filter((_,idx)=>idx!==i)})}
                 onView={onView}/>
               <PhotoSlot label="✨ Vision / Reference" photos={d.photosVision||[]}
                 onAdd={src=>onChange(item.id,{...d,photosVision:[...(d.photosVision||[]),src]})}
+                onAddBatch={srcs=>onChange(item.id,{...d,photosVision:[...(d.photosVision||[]),...srcs]})}
                 onRemove={i=>onChange(item.id,{...d,photosVision:(d.photosVision||[]).filter((_,idx)=>idx!==i)})}
                 onView={onView}/>
             </div>
@@ -909,6 +930,7 @@ function SummaryPage({summary,onChange,onView,propId,currentUser,onApplyAI,isOwn
         <h3>📸 Property Overview Photos</h3>
         <PhotoSlot label="Overall Property Photos" photos={s.photos||[]}
           onAdd={src=>onChange({...s,photos:[...(s.photos||[]),src]})}
+          onAddBatch={srcs=>onChange({...s,photos:[...(s.photos||[]),...srcs]})}
           onRemove={i=>onChange({...s,photos:(s.photos||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
       </div>
       <div className="summary-card" style={{border:'2px solid #e2b04a'}}>
@@ -916,12 +938,14 @@ function SummaryPage({summary,onChange,onView,propId,currentUser,onApplyAI,isOwn
         <p style={{fontSize:13,color:'#888',marginBottom:12,lineHeight:1.5}}>Upload your AI-generated renderings.</p>
         <PhotoSlot label="AI Renderings" photos={s.aiVision||[]}
           onAdd={src=>onChange({...s,aiVision:[...(s.aiVision||[]),src]})}
+          onAddBatch={srcs=>onChange({...s,aiVision:[...(s.aiVision||[]),...srcs]})}
           onRemove={i=>onChange({...s,aiVision:(s.aiVision||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
       </div>
       <div className="summary-card" style={{border:'2px solid #0f3460'}}>
         <h3 style={{color:'#0f3460'}}>📐 Final Floor Plan Vision</h3>
         <PhotoSlot label="Final Floor Plan" photos={s.floorPlan||[]}
           onAdd={src=>onChange({...s,floorPlan:[...(s.floorPlan||[]),src]})}
+          onAddBatch={srcs=>onChange({...s,floorPlan:[...(s.floorPlan||[]),...srcs]})}
           onRemove={i=>onChange({...s,floorPlan:(s.floorPlan||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
       </div>
       <div className="summary-card" style={{border:'2px solid #6c47b8'}}>
