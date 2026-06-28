@@ -1124,6 +1124,10 @@ function buildReport(prop,data){
   const prioritiesHtml=(sum.priorities||[]).filter(Boolean).map((p,i)=>
     `<tr><td style="width:32px;padding:5px 0"><div style="width:22px;height:22px;border-radius:50%;background:#e2b04a;color:#1a1a2e;font-size:11px;font-weight:800;text-align:center;line-height:22px">${i+1}</div></td><td style="padding:5px 0 5px 10px;font-size:14px;color:#333">${p}</td></tr>`
   ).join('');
+  function photoGrid(arr,label){
+    if(!arr?.length)return'';
+    return`<div style="margin-top:12px"><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${label}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${arr.map(p=>`<img src="${p}" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #eee">`).join('')}</div></div>`;
+  }
   let catSections='';
   CATEGORIES.forEach(cat=>{
     let rows='';
@@ -1132,22 +1136,25 @@ function buildReport(prop,data){
       if(!d.status&&!d.notes&&!d.photosBefore?.length&&!d.photosVision?.length)return;
       const bg=STATUS_COLORS[d.status]||'#f5f5f5';
       const sl=STATUS_LABELS[d.status]||'—';
-      let photos='';
-      if(d.photosBefore?.length||d.photosVision?.length){
-        photos=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">`;
-        if(d.photosBefore?.length)photos+=`<div><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:5px">Before</div><div style="display:flex;gap:4px;flex-wrap:wrap">${d.photosBefore.map(p=>`<img src="${p}" style="width:100px;height:75px;object-fit:cover;border-radius:6px">`).join('')}</div></div>`;
-        if(d.photosVision?.length)photos+=`<div><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:5px">Vision</div><div style="display:flex;gap:4px;flex-wrap:wrap">${d.photosVision.map(p=>`<img src="${p}" style="width:100px;height:75px;object-fit:cover;border-radius:6px">`).join('')}</div></div>`;
-        photos+=`</div>`;
-      }
-      const stamp=d.updatedBy?`<div style="font-size:11px;color:#aaa;margin-top:6px">Updated by <strong>${d.updatedBy}</strong> · ${timeAgo(d.updatedAt)}</div>`:'';
-      rows+=`<div style="break-inside:avoid;margin-bottom:10px;background:white;border-radius:10px;overflow:hidden;border:1px solid #e8e8e8">
+      const photos=(photoGrid(d.photosBefore,'📸 Before / Existing')+photoGrid(d.photosVision,'✨ Vision / Reference'));
+      const stamp=d.updatedBy?`<div style="font-size:11px;color:#aaa;margin-top:8px">Updated by <strong>${d.updatedBy}</strong> · ${timeAgo(d.updatedAt)}</div>`:'';
+      rows+=`<div style="break-inside:avoid;margin-bottom:12px;background:white;border-radius:10px;overflow:hidden;border:1px solid #e8e8e8">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fafafa;border-bottom:1px solid #eee"><span style="font-weight:700;font-size:14px">${item.label}</span><span style="background:${bg};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${sl}</span></div>
-        ${(d.notes||photos)?`<div style="padding:11px 14px">${d.notes?`<p style="font-size:13px;color:#333;line-height:1.6;margin:0 0 ${photos?'8px':'0'}">${d.notes.replace(/\n/g,'<br>')}</p>`:''}${photos}${stamp}</div>`:''}
+        ${(d.notes||photos)?`<div style="padding:12px 14px">${d.notes?`<p style="font-size:13px;color:#333;line-height:1.6;margin:0">${d.notes.replace(/\n/g,'<br>')}</p>`:''}${photos}${stamp}</div>`:''}
       </div>`;
     });
     if(!rows)return;
-    catSections+=`<div style="break-inside:avoid;margin-bottom:26px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:3px solid #e2b04a"><span style="font-size:20px">${cat.icon}</span><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0">${cat.label}</h2></div>${rows}</div>`;
+    catSections+=`<div style="margin-bottom:30px;page-break-inside:avoid"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:3px solid #e2b04a"><span style="font-size:20px">${cat.icon}</span><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0">${cat.label}</h2></div>${rows}</div>`;
   });
+  // Summary photos section
+  let summaryPhotos='';
+  if(sum.photos?.length||sum.aiVision?.length||sum.floorPlan?.length){
+    summaryPhotos=`<div style="margin-bottom:30px"><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0 0 12px;padding-bottom:8px;border-bottom:3px solid #e2b04a">📸 Property Photos</h2>`;
+    if(sum.photos?.length)summaryPhotos+=photoGrid(sum.photos,'Overview Photos');
+    if(sum.aiVision?.length)summaryPhotos+=photoGrid(sum.aiVision,'AI Vision Renderings');
+    if(sum.floorPlan?.length)summaryPhotos+=photoGrid(sum.floorPlan,'Floor Plan');
+    summaryPhotos+=`</div>`;
+  }
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Scope of Work — ${prop.address||'Property'}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#f0f2f5;color:#1a1a2e}.page{max-width:860px;margin:0 auto;padding:24px 20px 60px}@media print{body{background:white}.page{padding:0}.no-print{display:none!important}.cover{page-break-after:always}}</style></head><body><div class="page">
 <div class="no-print" style="text-align:right;margin-bottom:16px"><button onclick="window.print()" style="background:#0f3460;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 Print / Save as PDF</button></div>
 <div class="cover" style="background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white;border-radius:16px;padding:40px;margin-bottom:24px">
@@ -1163,6 +1170,7 @@ function buildReport(prop,data){
 </div>
 ${prioritiesHtml?`<div style="background:white;border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid #e8e8e8"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:12px">Top Priorities</div><table style="width:100%;border-collapse:collapse">${prioritiesHtml}</table></div>`:''}
 <div style="border-top:3px solid #1a1a2e;margin-bottom:28px"></div>
+${summaryPhotos}
 ${catSections||'<p style="color:#888;text-align:center;padding:40px">No items documented yet.</p>'}
 </div></body></html>`;
 }
