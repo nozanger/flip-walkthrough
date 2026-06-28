@@ -15,6 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
@@ -141,6 +142,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .carousel-count { font-size: 11px; color: #aaa; }
 .carousel-del { background: none; border: none; color: #ccc; font-size: 15px; cursor: pointer; padding: 2px; }
 .carousel-del:hover { color: #dc3545; }
+/* Video section */
+.video-upload-btn { width: 100%; border: 2px dashed #ddd; border-radius: 10px; padding: 18px; background: #fafafa; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all .2s; }
+.video-upload-btn:hover { border-color: #0f3460; background: #f4f7fb; }
+.video-upload-btn span:first-child { font-size: 28px; }
+.video-upload-btn span:last-child { font-size: 13px; color: #aaa; }
+.video-progress { background: #f0f0f0; border-radius: 100px; height: 6px; margin: 8px 0; overflow: hidden; }
+.video-progress-fill { height: 6px; background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; transition: width .3s; }
+.video-item { background: #f8f9fa; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+.video-item video { width: 100%; display: block; max-height: 220px; background: #000; }
+.video-item-footer { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; }
+.video-item-meta { font-size: 11px; color: #aaa; }
+.video-del-btn { background: none; border: none; color: #ccc; font-size: 15px; cursor: pointer; }
+.video-del-btn:hover { color: #dc3545; }
 
 .progress-bar-wrap { background: white; margin: 0 12px 10px; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 6px; }
@@ -574,8 +588,61 @@ function Swipeable({children,onLeft,onRight}){
   );
 }
 
+// ── VideoSection ─────────────────────────────────────────────────────
+function VideoSection({propId,videos,onChange,uploadedBy}){
+  const[progress,setProgress]=React.useState(null);
+  const[err,setErr]=React.useState('');
+  const inputRef=React.useRef();
+
+  async function handleFile(e){
+    const file=e.target.files[0];if(!file)return;
+    e.target.value='';
+    if(file.size>200*1024*1024){setErr('Video must be under 200 MB.');return;}
+    setErr('');setProgress(0);
+    try{
+      const storage=firebase.storage();
+      const ref=storage.ref(`projects/${propId}/videos/${uid()}_${file.name}`);
+      const task=ref.put(file);
+      task.on('state_changed',snap=>{
+        setProgress(Math.round(snap.bytesTransferred/snap.totalBytes*100));
+      });
+      await task;
+      const url=await ref.getDownloadURL();
+      const entry={url,name:file.name,uploadedBy,uploadedAt:Date.now()};
+      onChange([...(videos||[]),entry]);
+    }catch(ex){setErr('Upload failed: '+ex.message);}
+    setProgress(null);
+  }
+
+  return(
+    <div>
+      {(videos||[]).map((v,i)=>(
+        <div key={i} className="video-item">
+          <video src={v.url} controls playsInline/>
+          <div className="video-item-footer">
+            <span className="video-item-meta">📹 {v.name} · {v.uploadedBy}</span>
+            <button className="video-del-btn" onClick={()=>onChange((videos||[]).filter((_,idx)=>idx!==i))}>🗑</button>
+          </div>
+        </div>
+      ))}
+      {progress!==null&&(
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:12,color:'#0f3460',marginBottom:4}}>Uploading… {progress}%</div>
+          <div className="video-progress"><div className="video-progress-fill" style={{width:progress+'%'}}/></div>
+        </div>
+      )}
+      {err&&<div style={{fontSize:12,color:'#dc3545',marginBottom:8}}>⚠️ {err}</div>}
+      <div className="video-upload-btn" onClick={()=>inputRef.current.click()}>
+        <span>🎥</span>
+        <span>Tap to upload a walkthrough video</span>
+      </div>
+      <input ref={inputRef} type="file" accept="video/*" style={{display:'none'}} onChange={handleFile}/>
+    </div>
+  );
+}
+
 // ── SummaryPage ──────────────────────────────────────────────────────
-function SummaryPage({summary,onChange,onView}){
+function SummaryPage({summary,onChange,onView,propId,currentUser}){
   const s=summary||{};
   function upd(i,val){const l=[...(s.priorities||[])];l[i]=val;onChange({...s,priorities:l});}
   return(
@@ -623,6 +690,15 @@ function SummaryPage({summary,onChange,onView}){
         <PhotoSlot label="Final Floor Plan" photos={s.floorPlan||[]}
           onAdd={src=>onChange({...s,floorPlan:[...(s.floorPlan||[]),src]})}
           onRemove={i=>onChange({...s,floorPlan:(s.floorPlan||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
+      </div>
+      <div className="summary-card" style={{border:'2px solid #6c47b8'}}>
+        <h3 style={{color:'#6c47b8'}}>🎥 Walkthrough Videos</h3>
+        <p style={{fontSize:13,color:'#888',marginBottom:12,lineHeight:1.5}}>Upload walkthrough videos — all team members can view them.</p>
+        <VideoSection
+          propId={propId}
+          videos={s.videos||[]}
+          uploadedBy={currentUser?.displayName||currentUser?.email||'Unknown'}
+          onChange={vids=>onChange({...s,videos:vids})}/>
       </div>
     </div>
   );
@@ -1175,8 +1251,8 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       });
     });
     const sp=p._summary||{};
-    if(sp.photos?.length||sp.aiVision?.length||sp.floorPlan?.length){
-      merged._summary={...(merged._summary||{}),photos:sp.photos||[],aiVision:sp.aiVision||[],floorPlan:sp.floorPlan||[]};
+    if(sp.photos?.length||sp.aiVision?.length||sp.floorPlan?.length||sp.videos?.length){
+      merged._summary={...(merged._summary||{}),photos:sp.photos||[],aiVision:sp.aiVision||[],floorPlan:sp.floorPlan||[],videos:sp.videos||[]};
     }
     return merged;
   }
@@ -1214,10 +1290,10 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
   async function updateSummary(value){
     const next={...data,_summary:value};
     setData(next);
-    const{photos,aiVision,floorPlan,...noPhotos}=value;
+    const{photos,aiVision,floorPlan,videos,...noPhotos}=value;
     await Promise.all([
       dbUpdate(`projects/${prop.id}/data`,{_summary:{...noPhotos,updatedAt:Date.now()}}),
-      dbUpdate(`projects/${prop.id}/photos`,{_summary:{photos:photos||[],aiVision:aiVision||[],floorPlan:floorPlan||[]}})
+      dbUpdate(`projects/${prop.id}/photos`,{_summary:{photos:photos||[],aiVision:aiVision||[],floorPlan:floorPlan||[],videos:videos||[]}})
     ]);
   }
 
@@ -1294,7 +1370,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
         </div>
       )}
 
-      {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)}/>}
+      {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} currentUser={currentUser}/>}
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
       {activeTab>=0&&cat&&(
         <Swipeable onLeft={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))} onRight={()=>setActiveTab(t=>t<=0?TAB_SUMMARY:t-1)}>
