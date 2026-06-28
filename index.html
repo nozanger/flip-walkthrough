@@ -332,7 +332,7 @@ const FB_DB_URL  = 'https://zanco-e2a3f-default-rtdb.firebaseio.com';
 function initFirebase(apiKey) {
   if (firebase.apps.length) return true;
   try {
-    firebase.initializeApp({ apiKey, authDomain: `${FB_PROJECT}.firebaseapp.com`, databaseURL: FB_DB_URL, projectId: FB_PROJECT });
+    firebase.initializeApp({ apiKey, authDomain: `${FB_PROJECT}.firebaseapp.com`, databaseURL: FB_DB_URL, projectId: FB_PROJECT, storageBucket: `${FB_PROJECT}.firebasestorage.app` });
     return true;
   } catch(e) { return false; }
 }
