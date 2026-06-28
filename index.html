@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flip Walkthrough</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+/* ── Property List ──────────────────────────── */
+.list-page { max-width: 700px; margin: 0 auto; padding: 0 0 80px; }
+.list-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 28px 20px 20px; }
+.list-header h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.list-header p { font-size: 13px; opacity: .6; }
+.list-content { padding: 16px; }
+.prop-card { background: white; border-radius: 14px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.08); cursor: pointer; transition: box-shadow .2s, transform .1s; }
+.prop-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.13); transform: translateY(-1px); }
+.prop-card-body { display: flex; align-items: center; gap: 14px; padding: 16px; }
+.prop-thumb { width: 60px; height: 60px; border-radius: 10px; flex-shrink: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; font-size: 26px; position: relative; }
+.prop-info { flex: 1; min-width: 0; }
+.prop-address { font-size: 15px; font-weight: 700; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prop-meta { font-size: 12px; color: #888; margin-top: 3px; }
+.prop-progress { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.prop-progress-bar { flex: 1; height: 5px; background: #f0f0f0; border-radius: 100px; }
+.prop-progress-fill { height: 5px; background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; }
+.prop-progress-label { font-size: 11px; color: #aaa; white-space: nowrap; }
+.prop-arrow { color: #ccc; font-size: 18px; flex-shrink: 0; }
+.prop-actions { display: flex; border-top: 1px solid #f5f5f5; }
+.prop-action-btn { flex: 1; background: none; border: none; padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; color: #888; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.prop-action-btn:hover { background: #f8f8f8; color: #444; }
+.prop-action-btn.danger:hover { color: #dc3545; background: #fff5f5; }
+.btn-add-prop { width: 100%; background: white; border: 2px dashed #d0d0d0; border-radius: 14px; padding: 18px; font-size: 14px; font-weight: 700; color: #aaa; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all .2s; }
+.btn-add-prop:hover { border-color: #0f3460; color: #0f3460; background: #f4f7fb; }
+.empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state h2 { font-size: 18px; color: #666; margin-bottom: 6px; }
+
+/* Notification dot */
+.notif-dot { width: 9px; height: 9px; border-radius: 50%; background: #ff6b35; display: inline-block; flex-shrink: 0; }
+.notif-badge { background: #ff6b35; color: white; border-radius: 10px; font-size: 10px; font-weight: 800; padding: 1px 6px; margin-left: 4px; display: inline-block; }
+
+/* ── App Header ──────────────────────────────── */
+.app { max-width: 900px; margin: 0 auto; padding: 0 0 80px; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 14px 16px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
+.header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.btn-back { background: rgba(255,255,255,.12); border: none; color: white; border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+.btn-back:hover { background: rgba(255,255,255,.2); }
+.header-title { flex: 1; min-width: 0; }
+.header-title h1 { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-title p { font-size: 11px; opacity: .6; margin-top: 1px; }
+.btn-share { background: #e2b04a; color: #1a1a2e; border: none; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.btn-share:hover { background: #d4a03a; }
+
+/* Info bar */
+.sqft-bar { background: #0f3460; padding: 8px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sqft-field { display: flex; align-items: center; gap: 6px; }
+.sqft-field label { font-size: 10px; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+.sqft-field input { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; padding: 4px 8px; color: white; font-size: 13px; width: 70px; }
+.sqft-field input::placeholder { color: rgba(255,255,255,.3); }
+.sqft-field input:focus { outline: none; border-color: #e2b04a; }
+.sqft-divider { width: 1px; height: 28px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+.sqft-group-label { font-size: 9px; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: .7px; }
+
+/* Tabs */
+.tabs { display: flex; overflow-x: auto; padding: 0 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex-shrink: 0; padding: 10px 14px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.5); cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+.tab.active { color: #e2b04a; border-bottom-color: #e2b04a; }
+.tab:hover:not(.active) { color: rgba(255,255,255,.8); }
+.tab-count { background: rgba(255,255,255,.15); border-radius: 10px; font-size: 10px; padding: 1px 5px; }
+.tab.active .tab-count { background: rgba(226,176,74,.25); color: #e2b04a; }
+
+/* Content */
+.content { padding: 12px 12px 0; }
+
+/* Section card */
+.section-card { background: white; border-radius: 12px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.section-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.section-title { font-size: 15px; font-weight: 700; color: #1a1a2e; flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; }
+.quick-status { display: flex; gap: 5px; flex-shrink: 0; }
+.qs-btn { border: none; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; opacity: .4; transition: opacity .15s, transform .1s; white-space: nowrap; }
+.qs-btn.active { opacity: 1; }
+.qs-btn:active { transform: scale(.93); }
+.qs-keep { background: #d4edda; color: #155724; }
+.qs-replace { background: #f8d7da; color: #721c24; }
+.chevron { transition: transform .2s; font-size: 14px; color: #aaa; flex-shrink: 0; }
+.chevron.open { transform: rotate(180deg); }
+.section-body { border-top: 1px solid #f0f0f0; padding: 16px; }
+
+/* Status */
+.status-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.status-btn { padding: 5px 12px; border-radius: 20px; border: 2px solid #e0e0e0; font-size: 12px; font-weight: 600; cursor: pointer; background: white; transition: all .15s; }
+.status-btn.sel-keep { border-color: #28a745; background: #d4edda; color: #155724; }
+.status-btn.sel-replace { border-color: #dc3545; background: #f8d7da; color: #721c24; }
+
+/* Notes */
+.notes-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+.notes-input { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px; color: #1a1a2e; transition: border-color .15s; }
+.notes-input:focus { outline: none; border-color: #0f3460; }
+.notes-input::placeholder { color: #bbb; }
+.notes-row { display: flex; flex-direction: column; gap: 8px; }
+
+/* Updated-by stamp */
+.update-stamp { font-size: 11px; color: #aaa; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
+.update-stamp strong { color: #888; }
+
+/* Voice */
+.mic-btn { width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; background: #f0f2f5; color: #444; transition: all .2s; }
+.mic-btn:hover { background: #e0e4eb; }
+.mic-btn.recording { background: #dc3545; color: white; animation: pulse 1s infinite; }
+.mic-btn.unsupported { opacity: .35; cursor: not-allowed; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,53,69,.4); } 50% { box-shadow: 0 0 0 10px rgba(220,53,69,0); } }
+.recording-hint { font-size: 12px; color: #dc3545; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.recording-dot { width: 8px; height: 8px; border-radius: 50%; background: #dc3545; animation: blink .8s infinite; flex-shrink: 0; }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.2; } }
+
+/* Photos */
+.photos-section { margin-top: 14px; }
+.photos-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-slot { border: 2px dashed #ddd; border-radius: 10px; overflow: hidden; background: #fafafa; }
+.photo-slot-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #888; padding: 8px 10px 4px; display: flex; align-items: center; justify-content: space-between; }
+.photo-slot-label .add-btns { display: flex; gap: 4px; }
+.add-btn { background: #0f3460; color: white; border: none; border-radius: 5px; font-size: 10px; font-weight: 700; padding: 2px 7px; cursor: pointer; }
+.add-btn.gold { background: #e2b04a; color: #1a1a2e; }
+.photo-empty { display: flex; gap: 0; }
+.photo-empty-half { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 8px; gap: 4px; cursor: pointer; }
+.photo-empty-half:first-child { border-right: 1px solid #eee; }
+.photo-empty-icon { font-size: 22px; }
+.photo-empty-text { font-size: 11px; color: #bbb; text-align: center; }
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; }
+.photo-grid-item { position: relative; aspect-ratio: 1; }
+.photo-grid-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; cursor: pointer; display: block; }
+.photo-grid-remove { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.65); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.photo-input { display: none; }
+
+/* Progress */
+.progress-bar-wrap { background: white; margin: 0 12px 10px; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.progress-label { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 6px; }
+.progress-label span:last-child { font-weight: 700; color: #0f3460; }
+.progress-track { background: #f0f0f0; border-radius: 100px; height: 8px; }
+.progress-fill { background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; height: 8px; transition: width .4s; }
+
+/* Summary */
+.summary-page { padding: 12px; }
+.summary-card { background: white; border-radius: 12px; padding: 18px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.summary-card h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
+.summary-textarea { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; resize: vertical; color: #1a1a2e; }
+.summary-textarea:focus { outline: none; border-color: #0f3460; }
+.summary-textarea::placeholder { color: #bbb; }
+.priority-list { display: flex; flex-direction: column; gap: 6px; }
+.priority-item { display: flex; gap: 8px; align-items: flex-start; }
+.priority-item input[type=text] { flex: 1; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; color: #1a1a2e; }
+.priority-item input[type=text]:focus { outline: none; border-color: #0f3460; }
+.priority-num { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: #e2b04a; color: #1a1a2e; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 8px; }
+.priority-remove { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; padding: 4px; margin-top: 4px; }
+.priority-remove:hover { color: #e55; }
+.btn-add-priority { background: none; border: 2px dashed #ddd; border-radius: 8px; padding: 8px; font-size: 13px; color: #aaa; cursor: pointer; width: 100%; margin-top: 4px; }
+.btn-add-priority:hover { border-color: #0f3460; color: #0f3460; }
+.budget-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.budget-field { display: flex; flex-direction: column; gap: 4px; }
+.budget-field label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+.budget-field input { border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; color: #1a1a2e; }
+.budget-field input:focus { outline: none; border-color: #0f3460; }
+
+/* Participants */
+.participants-page { padding: 12px; }
+.participant-card { background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; align-items: center; gap: 12px; }
+.participant-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; flex-shrink: 0; }
+.participant-info { flex: 1; }
+.participant-name { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+.participant-meta { font-size: 11px; color: #aaa; margin-top: 2px; }
+.participant-you { font-size: 10px; font-weight: 700; background: #e2b04a; color: #1a1a2e; border-radius: 10px; padding: 1px 7px; margin-left: 6px; }
+.activity-feed { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 10px; }
+.activity-feed h3 { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 14px 16px 10px; border-bottom: 1px solid #f0f0f0; }
+.activity-item { display: flex; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #f8f8f8; align-items: flex-start; }
+.activity-item:last-child { border-bottom: none; }
+.activity-dot-wrap { padding-top: 2px; }
+.activity-text { font-size: 13px; color: #444; line-height: 1.4; flex: 1; }
+.activity-text strong { color: #1a1a2e; }
+.activity-time { font-size: 11px; color: #bbb; white-space: nowrap; }
+
+/* Sync status */
+.sync-bar { background: #0a2744; padding: 4px 16px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,.5); }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #28a745; flex-shrink: 0; }
+.sync-dot.offline { background: #ffc107; }
+.sync-dot.syncing { background: #17a2b8; animation: blink .6s infinite; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.modal { background: white; border-radius: 16px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.modal h2 { font-size: 18px; margin-bottom: 6px; }
+.modal p { font-size: 13px; color: #666; margin-bottom: 14px; line-height: 1.6; }
+.modal-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.modal-field label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+.modal-field input { border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; color: #1a1a2e; }
+.modal-field input:focus { outline: none; border-color: #0f3460; }
+.modal-field small { font-size: 11px; color: #aaa; line-height: 1.4; }
+.modal-btns { display: flex; gap: 10px; flex-direction: column; margin-top: 6px; }
+.btn-primary { background: #0f3460; color: white; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-primary:hover { background: #0d2d52; }
+.btn-secondary { background: #f0f0f0; color: #444; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-secondary:hover { background: #e4e4e4; }
+.btn-gold { background: #e2b04a; color: #1a1a2e; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-gold:hover { background: #d4a03a; }
+.setup-step { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; color: #444; line-height: 1.5; }
+.setup-step strong { color: #0f3460; }
+
+/* Lightbox */
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 300; display: flex; align-items: center; justify-content: center; }
+.lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
+.lightbox-close { position: fixed; top: 16px; right: 16px; background: rgba(255,255,255,.15); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; }
+
+@media (max-width: 480px) {
+  .photos-row { grid-template-columns: 1fr; }
+  .budget-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+// ── Constants ───────────────────────────────────────────────────────
+const CATEGORIES = [
+  { id: 'exterior', label: 'Exterior', icon: '🏠', items: [
+    { id: 'roof', label: 'Roof' }, { id: 'gutters', label: 'Gutters' },
+    { id: 'soffit_fascia', label: 'Soffit / Fascia' }, { id: 'window_door_trim', label: 'Window / Door Trim' },
+    { id: 'siding', label: 'Siding' }, { id: 'exterior_doors', label: 'Exterior Doors' },
+    { id: 'front_porch', label: 'Front Porch' }, { id: 'garage', label: 'Garage' },
+    { id: 'driveway', label: 'Driveway' }, { id: 'back_porch', label: 'Back Porch' },
+    { id: 'landscaping', label: 'Landscaping' },
+  ]},
+  { id: 'interior', label: 'Interior', icon: '🪟', items: [
+    { id: 'demo', label: 'Demo' }, { id: 'framing', label: 'Framing' },
+    { id: 'layout_change', label: 'Layout Change' }, { id: 'wall_knocking', label: 'Wall Knocking' },
+    { id: 'drywall', label: 'Drywall' }, { id: 'paint', label: 'Paint' },
+    { id: 'flooring', label: 'Flooring' }, { id: 'subfloor', label: 'Subfloor' },
+    { id: 'trim_quarterround', label: 'Trim & Quarter Round' }, { id: 'windows', label: 'Windows' },
+    { id: 'interior_doors', label: 'Doors' }, { id: 'electric_trim', label: 'Electric Trim' },
+    { id: 'garbage_removal', label: 'Garbage Removal & Cleaning' },
+  ]},
+  { id: 'kitchen', label: 'Kitchen', icon: '🍳', items: [
+    { id: 'cabinets', label: 'Cabinets' }, { id: 'island', label: 'Island' },
+    { id: 'countertop', label: 'Countertop' }, { id: 'backsplash', label: 'Backsplash' },
+    { id: 'appliances', label: 'Appliances' },
+  ]},
+  { id: 'bathroom', label: 'Bathroom', icon: '🛁', items: [
+    { id: 'vanity', label: 'Vanity' }, { id: 'mirror', label: 'Mirror & Lighting' },
+    { id: 'toilet', label: 'Toilet' }, { id: 'tub', label: 'Tub / Shower' },
+    { id: 'bathroom_floor', label: 'Bathroom Floor' }, { id: 'vents', label: 'Bathroom Vents' },
+  ]},
+  { id: 'plumbing', label: 'Plumbing', icon: '🔧', items: [
+    { id: 'plumbing_bathroom', label: 'Bathroom Plumbing' },
+    { id: 'plumbing_kitchen', label: 'Kitchen Plumbing' },
+    { id: 'laundry', label: 'Laundry Hook-ups' },
+  ]},
+  { id: 'electrical', label: 'Electrical', icon: '⚡', items: [
+    { id: 'panel', label: 'Panel' }, { id: 'wiring', label: 'Wiring' }, { id: 'addons', label: 'Add-ons' },
+  ]},
+  { id: 'mechanic', label: 'Mechanic', icon: '⚙️', items: [
+    { id: 'hvac', label: 'HVAC' }, { id: 'water_heater', label: 'Water Heater' }, { id: 'misc', label: 'Miscellaneous' },
+  ]},
+  { id: 'below_grade', label: 'Below Grade', icon: '🏗️', items: [
+    { id: 'basement_general', label: 'Basement — General' }, { id: 'basement_walls', label: 'Basement Walls' },
+    { id: 'basement_floor', label: 'Basement Floor' }, { id: 'basement_moisture', label: 'Moisture / Water Intrusion' },
+    { id: 'basement_egress', label: 'Egress Windows' }, { id: 'crawlspace_general', label: 'Crawl Space — General' },
+    { id: 'crawlspace_vapor', label: 'Vapor Barrier' }, { id: 'crawlspace_insulation', label: 'Crawl Space Insulation' },
+    { id: 'foundation_general', label: 'Foundation — General' }, { id: 'foundation_cracks', label: 'Cracks / Settling' },
+    { id: 'foundation_waterproofing', label: 'Waterproofing' }, { id: 'sump_pump', label: 'Sump Pump' },
+  ]},
+];
+
+const STATUSES     = [{ id:'keep', label:'✓ Keep', cls:'keep' }, { id:'replace', label:'↺ Replace', cls:'replace' }];
+const STATUS_LABELS = { keep: '✓ Keep', replace: '↺ Replace' };
+const STATUS_COLORS = { keep: '#d4edda', replace: '#f8d7da' };
+
+const AVATAR_COLORS = ['#0f3460','#e2b04a','#28a745','#dc3545','#6f42c1','#17a2b8','#fd7e14','#20c997'];
+function avatarColor(name) { let h=0; for(let c of (name||'?')) h=c.charCodeAt(0)+((h<<5)-h); return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length]; }
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function uid() { return Math.random().toString(36).slice(2,10); }
+function timeAgo(ts) {
+  if (!ts) return '';
+  const d = (Date.now() - ts) / 1000;
+  if (d < 60) return 'just now';
+  if (d < 3600) return Math.floor(d/60) + 'm ago';
+  if (d < 86400) return Math.floor(d/3600) + 'h ago';
+  return Math.floor(d/86400) + 'd ago';
+}
+
+// ── Firebase URL (hardcoded — applies to everyone automatically) ────
+const FIREBASE_URL = 'https://zanco-e2a3f-default-rtdb.firebaseio.com';
+
+// ── Local storage ───────────────────────────────────────────────────
+function loadProperties() { try { return JSON.parse(localStorage.getItem('flip_properties')||'[]'); } catch { return []; } }
+function saveProperties(l) { localStorage.setItem('flip_properties', JSON.stringify(l)); }
+function loadPropData(id) { try { return JSON.parse(localStorage.getItem(`flip_data_${id}`)||'{}'); } catch { return {}; } }
+function savePropData(id, d) { localStorage.setItem(`flip_data_${id}`, JSON.stringify(d)); }
+function getUsername()   { return localStorage.getItem('flip_username') || ''; }
+function setUsername(n)  { localStorage.setItem('flip_username', n); }
+function FIREBASE_URL { return localStorage.getItem('firebase_url_global') || ''; }
+function setFirebaseUrl(url) { localStorage.setItem('firebase_url_global', url); }
+// Viewed timestamps per user per item
+function getViewed(propId, catId, itemId) { return parseInt(localStorage.getItem(`viewed_${propId}_${catId}_${itemId}`)||'0'); }
+function markViewed(propId, catId, itemId) { localStorage.setItem(`viewed_${propId}_${catId}_${itemId}`, Date.now().toString()); }
+
+// Progress helpers
+function countReviewed(data, catId) {
+  return Object.values(data[catId]||{}).filter(v=>v.status||v.notes||v.photosBefore?.length||v.photosVision?.length).length;
+}
+function totalProgress(data) {
+  const total = CATEGORIES.reduce((s,c)=>s+c.items.length,0);
+  const done  = CATEGORIES.reduce((s,c)=>s+countReviewed(data,c.id),0);
+  return { total, done, pct: total ? Math.round(done/total*100) : 0 };
+}
+
+// ── Image compression ───────────────────────────────────────────────
+function compressImage(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1200, Q = 0.78;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h*MAX/w); w = MAX; } else { w = Math.round(w*MAX/h); h = MAX; }
+      }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', Q));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// ── Firebase REST helpers ───────────────────────────────────────────
+function fbUrl(base, path) { return `${base.replace(/\/+$/,'')}/${path}.json`; }
+
+async function fbGet(base, path) {
+  try {
+    const r = await fetch(fbUrl(base, path));
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+async function fbSet(base, path, value) {
+  try {
+    await fetch(fbUrl(base, path), { method:'PUT', body: JSON.stringify(value), headers:{'Content-Type':'application/json'} });
+    return true;
+  } catch { return false; }
+}
+
+async function fbPatch(base, path, value) {
+  try {
+    await fetch(fbUrl(base, path), { method:'PATCH', body: JSON.stringify(value), headers:{'Content-Type':'application/json'} });
+    return true;
+  } catch { return false; }
+}
+
+// ── Speech hook ─────────────────────────────────────────────────────
+function useSpeech(onResult) {
+  const [recording, setRecording] = React.useState(false);
+  const [interim,   setInterim]   = React.useState('');
+  const [errMsg,    setErrMsg]    = React.useState('');
+  const shouldRec   = React.useRef(false);
+  const onResultRef = React.useRef(onResult);
+  React.useEffect(() => { onResultRef.current = onResult; });
+
+  const SR        = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const supported = !!SR;
+
+  function startInstance() {
+    if (!shouldRec.current) return;
+    try {
+      const rec = new SR();
+      rec.lang = 'en-US'; rec.interimResults = true; rec.maxAlternatives = 1;
+      rec.onresult = e => {
+        const last = e.results[e.results.length-1];
+        if (last.isFinal) { const t = last[0].transcript.trim(); if(t) onResultRef.current(t); setInterim(''); }
+        else setInterim(last[0].transcript);
+      };
+      rec.onerror = e => {
+        setInterim('');
+        if (e.error==='not-allowed'||e.error==='service-not-allowed') {
+          setErrMsg('Mic blocked — click 🔒 in address bar and allow microphone, then try again.');
+          shouldRec.current = false; setRecording(false);
+        } else if (e.error==='network') {
+          setErrMsg('Speech needs an internet connection.'); shouldRec.current=false; setRecording(false);
+        }
+      };
+      rec.onend = () => { setInterim(''); if(shouldRec.current) setTimeout(startInstance,100); else setRecording(false); };
+      rec.start();
+    } catch(e) { setErrMsg('Could not start mic: '+e.message); shouldRec.current=false; setRecording(false); }
+  }
+
+  async function start() {
+    if(!supported) return; setErrMsg('');
+    try { await navigator.mediaDevices.getUserMedia({audio:true}); } catch {
+      setErrMsg('Mic access denied — click 🔒 in the address bar → allow microphone → refresh.'); return;
+    }
+    shouldRec.current=true; setRecording(true); startInstance();
+  }
+
+  function stop() { shouldRec.current=false; setRecording(false); setInterim(''); }
+  React.useEffect(()=>()=>{shouldRec.current=false;},[]);
+  return { recording, interim, errMsg, toggle: ()=>recording?stop():start(), supported };
+}
+
+// ── VoiceTextarea ───────────────────────────────────────────────────
+function VoiceTextarea({ value, onChange, placeholder, minHeight=100 }) {
+  const { recording, interim, errMsg, toggle, supported } = useSpeech(t => onChange((value?value+' ':'')+t));
+  return (
+    <div className="notes-row">
+      <textarea className="summary-textarea" style={{minHeight}} placeholder={placeholder}
+        value={value||''} onChange={e=>onChange(e.target.value)} />
+      <button className={`mic-btn${recording?' recording':''}${!supported?' unsupported':''}`} onClick={toggle} disabled={!supported}>
+        {recording?'⏹ Stop Recording':'🎙 Tap to Speak'}
+      </button>
+      {recording && <div className="recording-hint"><div className="recording-dot"/>{interim||'Listening…'}</div>}
+      {errMsg && <div style={{fontSize:12,color:'#dc3545',marginTop:6,background:'#fff5f5',borderRadius:8,padding:'8px 10px'}}>⚠️ {errMsg}</div>}
+    </div>
+  );
+}
+
+// ── PhotoSlot ───────────────────────────────────────────────────────
+function PhotoSlot({ label, photos, onAdd, onRemove, onView }) {
+  const cameraRef = React.useRef(); const libraryRef = React.useRef();
+  const has = photos && photos.length > 0;
+  async function handleFiles(e) {
+    for (const file of Array.from(e.target.files)) {
+      const r = new FileReader();
+      await new Promise(res => { r.onload = async ev => { onAdd(await compressImage(ev.target.result)); res(); }; r.readAsDataURL(file); });
+    }
+    e.target.value='';
+  }
+  return (
+    <div className="photo-slot">
+      <div className="photo-slot-label">
+        <span>{label}</span>
+        {has && <div className="add-btns">
+          <button className="add-btn gold" onClick={()=>cameraRef.current.click()}>📷</button>
+          <button className="add-btn" onClick={()=>libraryRef.current.click()}>+ Library</button>
+        </div>}
+      </div>
+      {!has ? (
+        <div className="photo-empty">
+          <div className="photo-empty-half" onClick={()=>cameraRef.current.click()}>
+            <span className="photo-empty-icon">📷</span><span className="photo-empty-text">Take Photo</span>
+          </div>
+          <div className="photo-empty-half" onClick={()=>libraryRef.current.click()}>
+            <span className="photo-empty-icon">🖼️</span><span className="photo-empty-text">Library</span>
+          </div>
+        </div>
+      ) : (
+        <div className="photo-grid">
+          {photos.map((p,i)=>(
+            <div key={i} className="photo-grid-item">
+              <img src={p} alt="" onClick={()=>onView(p)}/>
+              <button className="photo-grid-remove" onClick={()=>onRemove(i)}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="photo-input" onChange={handleFiles}/>
+      <input ref={libraryRef} type="file" accept="image/*" multiple className="photo-input" onChange={handleFiles}/>
+    </div>
+  );
+}
+
+// ── SectionCard ─────────────────────────────────────────────────────
+function SectionCard({ propId, item, catId, data, onChange, onView, isOpen, onToggle, username }) {
+  const d = data[item.id] || {};
+  const hasNotif = d.updatedAt && d.updatedBy && d.updatedBy !== username && d.updatedAt > getViewed(propId, catId, item.id);
+
+  function handleToggle() {
+    if (!isOpen) markViewed(propId, catId, item.id);
+    onToggle();
+  }
+
+  const { recording, interim, errMsg, toggle, supported } = useSpeech(text => {
+    const cur = (data[item.id]||{}).notes||'';
+    onChange(item.id, { ...(data[item.id]||{}), notes: cur ? cur+' '+text : text });
+  });
+
+  function setStatus(e, sid) {
+    e.stopPropagation();
+    onChange(item.id, { ...d, status: d.status===sid ? null : sid });
+  }
+
+  return (
+    <div className="section-card">
+      <div className="section-header" onClick={handleToggle}>
+        <span className="section-title">
+          {hasNotif && <span className="notif-dot" title="New update"/>}
+          {item.label}
+        </span>
+        <div className="quick-status">
+          <button className={`qs-btn qs-keep${d.status==='keep'?' active':''}`}    onClick={e=>setStatus(e,'keep')}>✓ Keep</button>
+          <button className={`qs-btn qs-replace${d.status==='replace'?' active':''}`} onClick={e=>setStatus(e,'replace')}>↺ Replace</button>
+        </div>
+        <span className={`chevron${isOpen?' open':''}`}>▾</span>
+      </div>
+
+      {isOpen && (
+        <div className="section-body">
+          <div className="notes-label" style={{marginBottom:6}}>Condition</div>
+          <div className="status-row">
+            {STATUSES.map(s=>(
+              <button key={s.id} className={`status-btn${d.status===s.id?' sel-'+s.cls:''}`}
+                onClick={()=>onChange(item.id,{...d,status:d.status===s.id?null:s.id})}>{s.label}</button>
+            ))}
+          </div>
+
+          <div className="notes-label" style={{marginTop:12}}>Notes</div>
+          <div className="notes-row">
+            <textarea className="notes-input" placeholder="Describe what you see…"
+              value={d.notes||''} onChange={e=>onChange(item.id,{...d,notes:e.target.value})}/>
+            <button className={`mic-btn${recording?' recording':''}${!supported?' unsupported':''}`}
+              onClick={toggle} disabled={!supported}>
+              {recording?'⏹ Stop Recording':'🎙 Tap to Speak Notes'}
+            </button>
+            {recording && <div className="recording-hint"><div className="recording-dot"/>{interim||'Listening…'}</div>}
+            {errMsg && <div style={{fontSize:12,color:'#dc3545',background:'#fff5f5',borderRadius:8,padding:'8px 10px'}}>⚠️ {errMsg}</div>}
+          </div>
+
+          {d.updatedBy && (
+            <div className="update-stamp">
+              <div style={{width:16,height:16,borderRadius:'50%',background:avatarColor(d.updatedBy),display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:'white',fontWeight:800}}>
+                {initials(d.updatedBy)}
+              </div>
+              <span>Updated by <strong>{d.updatedBy}</strong> · {timeAgo(d.updatedAt)}</span>
+            </div>
+          )}
+
+          <div className="photos-section">
+            <div className="notes-label" style={{marginBottom:8}}>Photos</div>
+            <div className="photos-row">
+              <PhotoSlot label="📸 Before / Existing"
+                photos={d.photosBefore||[]}
+                onAdd={src=>onChange(item.id,{...d,photosBefore:[...(d.photosBefore||[]),src]})}
+                onRemove={i=>onChange(item.id,{...d,photosBefore:(d.photosBefore||[]).filter((_,idx)=>idx!==i)})}
+                onView={onView}/>
+              <PhotoSlot label="✨ Vision / Reference"
+                photos={d.photosVision||[]}
+                onAdd={src=>onChange(item.id,{...d,photosVision:[...(d.photosVision||[]),src]})}
+                onRemove={i=>onChange(item.id,{...d,photosVision:(d.photosVision||[]).filter((_,idx)=>idx!==i)})}
+                onView={onView}/>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AccordionList ───────────────────────────────────────────────────
+function AccordionList({ propId, cat, data, updateItem, setLightbox, username }) {
+  const [openId, setOpenId] = React.useState(null);
+  React.useEffect(()=>{ setOpenId(null); }, [cat.id]);
+  return cat.items.map(item=>(
+    <SectionCard key={item.id} propId={propId} item={item} catId={cat.id}
+      data={data[cat.id]||{}} username={username}
+      isOpen={openId===item.id}
+      onToggle={()=>setOpenId(id=>id===item.id?null:item.id)}
+      onChange={(itemId,val)=>updateItem(cat.id,itemId,val)}
+      onView={src=>setLightbox(src)}/>
+  ));
+}
+
+// ── Swipeable ───────────────────────────────────────────────────────
+function Swipeable({ children, onLeft, onRight }) {
+  const startX = React.useRef(null);
+  return (
+    <div onTouchStart={e=>{ startX.current=e.touches[0].clientX; }}
+         onTouchEnd={e=>{ if(startX.current===null) return; const dx=e.changedTouches[0].clientX-startX.current; if(Math.abs(dx)>50) dx<0?onLeft():onRight(); startX.current=null; }}>
+      {children}
+    </div>
+  );
+}
+
+// ── SummaryPage ─────────────────────────────────────────────────────
+function SummaryPage({ summary, onChange, onView }) {
+  const s = summary || {};
+  function upd(i,val) { const l=[...(s.priorities||[])]; l[i]=val; onChange({...s,priorities:l}); }
+  return (
+    <div className="summary-page">
+      <div className="summary-card">
+        <h3>📋 Project Overview</h3>
+        <VoiceTextarea value={s.overview} onChange={v=>onChange({...s,overview:v})}
+          placeholder="High-level vision — style direction, type of flip, anything the contractor needs to know…" minHeight={120}/>
+      </div>
+      <div className="summary-card">
+        <h3>🚨 Top Priorities</h3>
+        <div className="priority-list">
+          {(s.priorities||[]).map((p,i)=>(
+            <div key={i} className="priority-item">
+              <div className="priority-num">{i+1}</div>
+              <input type="text" placeholder={`Priority #${i+1}…`} value={p} onChange={e=>upd(i,e.target.value)}/>
+              <button className="priority-remove" onClick={()=>onChange({...s,priorities:(s.priorities||[]).filter((_,idx)=>idx!==i)})}>×</button>
+            </div>
+          ))}
+          <button className="btn-add-priority" onClick={()=>onChange({...s,priorities:[...(s.priorities||[]),'']})}>+ Add priority</button>
+        </div>
+      </div>
+      <div className="summary-card">
+        <h3>💰 Budget & Timeline</h3>
+        <div className="budget-row">
+          <div className="budget-field"><label>Budget</label>
+            <input type="text" placeholder="e.g. $45,000" value={s.budget||''} onChange={e=>onChange({...s,budget:e.target.value})}/></div>
+          <div className="budget-field"><label>Target Timeline</label>
+            <input type="text" placeholder="e.g. 8–10 weeks" value={s.timeline||''} onChange={e=>onChange({...s,timeline:e.target.value})}/></div>
+        </div>
+      </div>
+      <div className="summary-card">
+        <h3>📸 Property Overview Photos</h3>
+        <PhotoSlot label="Overall Property Photos" photos={s.photos||[]}
+          onAdd={src=>onChange({...s,photos:[...(s.photos||[]),src]})}
+          onRemove={i=>onChange({...s,photos:(s.photos||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
+      </div>
+      <div className="summary-card" style={{border:'2px solid #e2b04a'}}>
+        <h3 style={{color:'#b8860b'}}>🤖 AI Vision Renderings</h3>
+        <p style={{fontSize:13,color:'#888',marginBottom:12,lineHeight:1.5}}>Upload your AI-generated renderings — the finished look you're going for.</p>
+        <PhotoSlot label="AI Renderings" photos={s.aiVision||[]}
+          onAdd={src=>onChange({...s,aiVision:[...(s.aiVision||[]),src]})}
+          onRemove={i=>onChange({...s,aiVision:(s.aiVision||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
+      </div>
+      <div className="summary-card" style={{border:'2px solid #0f3460'}}>
+        <h3 style={{color:'#0f3460'}}>📐 Final Floor Plan Vision</h3>
+        <p style={{fontSize:13,color:'#888',marginBottom:12,lineHeight:1.5}}>Upload the final floor plan the contractor should work toward.</p>
+        <PhotoSlot label="Final Floor Plan" photos={s.floorPlan||[]}
+          onAdd={src=>onChange({...s,floorPlan:[...(s.floorPlan||[]),src]})}
+          onRemove={i=>onChange({...s,floorPlan:(s.floorPlan||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
+      </div>
+    </div>
+  );
+}
+
+// ── ParticipantsPage ────────────────────────────────────────────────
+function ParticipantsPage({ data, propId, username }) {
+  // Collect all participants from item updates
+  const participants = React.useMemo(() => {
+    const map = {};
+    CATEGORIES.forEach(cat => {
+      Object.values(data[cat.id]||{}).forEach(item => {
+        if (item.updatedBy) {
+          if (!map[item.updatedBy] || map[item.updatedBy].lastSeen < item.updatedAt) {
+            map[item.updatedBy] = { name: item.updatedBy, lastSeen: item.updatedAt };
+          }
+        }
+      });
+    });
+    // Ensure current user appears
+    if (!map[username] && username) map[username] = { name: username, lastSeen: Date.now() };
+    return Object.values(map).sort((a,b)=>b.lastSeen-a.lastSeen);
+  }, [data, username]);
+
+  // Collect recent activity
+  const activity = React.useMemo(() => {
+    const items = [];
+    CATEGORIES.forEach(cat => {
+      cat.items.forEach(item => {
+        const d = (data[cat.id]||{})[item.id];
+        if (d?.updatedAt && d?.updatedBy) {
+          items.push({ catLabel: cat.label, itemLabel: item.label, user: d.updatedBy, ts: d.updatedAt, status: d.status });
+        }
+      });
+    });
+    return items.sort((a,b)=>b.ts-a.ts).slice(0,20);
+  }, [data]);
+
+  return (
+    <div className="participants-page">
+      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:12}}>
+        <div style={{padding:'14px 16px 10px',borderBottom:'1px solid #f0f0f0',fontSize:13,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px'}}>Team Members</div>
+        {participants.length === 0 ? (
+          <div style={{padding:'20px 16px',color:'#aaa',fontSize:13,textAlign:'center'}}>No activity yet — start adding notes!</div>
+        ) : participants.map(p=>(
+          <div key={p.name} className="participant-card" style={{boxShadow:'none',borderRadius:0,borderBottom:'1px solid #f8f8f8'}}>
+            <div className="participant-avatar" style={{background:avatarColor(p.name)}}>{initials(p.name)}</div>
+            <div className="participant-info">
+              <div className="participant-name">
+                {p.name}
+                {p.name===username && <span className="participant-you">You</span>}
+              </div>
+              <div className="participant-meta">Last active {timeAgo(p.lastSeen)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="activity-feed">
+        <h3>Recent Activity</h3>
+        {activity.length===0 ? (
+          <div style={{padding:'16px',color:'#aaa',fontSize:13,textAlign:'center'}}>No activity yet</div>
+        ) : activity.map((a,i)=>(
+          <div key={i} className="activity-item">
+            <div className="activity-dot-wrap">
+              <div style={{width:24,height:24,borderRadius:'50%',background:avatarColor(a.user),display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:800,flexShrink:0}}>
+                {initials(a.user)}
+              </div>
+            </div>
+            <div className="activity-text">
+              <strong>{a.user}</strong> updated <strong>{a.catLabel} › {a.itemLabel}</strong>
+              {a.status && <span style={{marginLeft:6,background:STATUS_COLORS[a.status]||'#f0f0f0',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:600}}>{STATUS_LABELS[a.status]||a.status}</span>}
+            </div>
+            <div className="activity-time">{timeAgo(a.ts)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Report builder ──────────────────────────────────────────────────
+function buildReport(prop, data) {
+  const date = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const sum  = data._summary || {};
+  const { done, total } = totalProgress(data);
+  const prioritiesHtml = (sum.priorities||[]).filter(Boolean).map((p,i)=>
+    `<tr><td style="width:32px;padding:5px 0"><div style="width:22px;height:22px;border-radius:50%;background:#e2b04a;color:#1a1a2e;font-size:11px;font-weight:800;text-align:center;line-height:22px">${i+1}</div></td><td style="padding:5px 0 5px 10px;font-size:14px;color:#333">${p}</td></tr>`
+  ).join('');
+  let catSections='';
+  CATEGORIES.forEach(cat=>{
+    let rows='';
+    cat.items.forEach(item=>{
+      const d=(data[cat.id]||{})[item.id]||{};
+      if(!d.status&&!d.notes&&!d.photosBefore?.length&&!d.photosVision?.length) return;
+      const bg=STATUS_COLORS[d.status]||'#f5f5f5';
+      const sl=STATUS_LABELS[d.status]||'—';
+      let photos='';
+      if(d.photosBefore?.length||d.photosVision?.length){
+        photos=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">`;
+        if(d.photosBefore?.length) photos+=`<div><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:5px">Before / Existing</div><div style="display:flex;gap:4px;flex-wrap:wrap">${d.photosBefore.map(p=>`<img src="${p}" style="width:100px;height:75px;object-fit:cover;border-radius:6px">`).join('')}</div></div>`;
+        if(d.photosVision?.length) photos+=`<div><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:5px">Vision / Reference</div><div style="display:flex;gap:4px;flex-wrap:wrap">${d.photosVision.map(p=>`<img src="${p}" style="width:100px;height:75px;object-fit:cover;border-radius:6px">`).join('')}</div></div>`;
+        photos+=`</div>`;
+      }
+      const stamp = d.updatedBy ? `<div style="font-size:11px;color:#aaa;margin-top:6px">Updated by <strong>${d.updatedBy}</strong> · ${timeAgo(d.updatedAt)}</div>` : '';
+      rows+=`<div style="break-inside:avoid;margin-bottom:10px;background:white;border-radius:10px;overflow:hidden;border:1px solid #e8e8e8">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fafafa;border-bottom:1px solid #eee">
+          <span style="font-weight:700;font-size:14px">${item.label}</span>
+          <span style="background:${bg};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${sl}</span>
+        </div>
+        ${(d.notes||photos)?`<div style="padding:11px 14px">${d.notes?`<p style="font-size:13px;color:#333;line-height:1.6;margin:0 0 ${photos?'8px':'0'}">${d.notes.replace(/\n/g,'<br>')}</p>`:''}${photos}${stamp}</div>`:''}
+      </div>`;
+    });
+    if(!rows) return;
+    catSections+=`<div style="break-inside:avoid;margin-bottom:26px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:3px solid #e2b04a">
+        <span style="font-size:20px">${cat.icon}</span><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0">${cat.label}</h2>
+      </div>${rows}</div>`;
+  });
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scope of Work — ${prop.address||'Property'}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e}.page{max-width:860px;margin:0 auto;padding:24px 20px 60px}@media print{body{background:white}.page{padding:0;max-width:100%}.no-print{display:none!important}.cover{page-break-after:always}}</style>
+</head><body><div class="page">
+<div class="no-print" style="text-align:right;margin-bottom:16px"><button onclick="window.print()" style="background:#0f3460;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 Print / Save as PDF</button></div>
+<div class="cover" style="background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white;border-radius:16px;padding:40px;margin-bottom:24px">
+  <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-bottom:12px">Scope of Work</div>
+  <h1 style="font-size:28px;font-weight:900;margin-bottom:8px">${prop.address||'Property'}</h1>
+  <div style="opacity:.6;font-size:14px;margin-bottom:24px">${prop.sqft?prop.sqft+' sq ft  ·  ':''}${date}</div>
+  ${(prop.curBed||prop.curBath||prop.futBed||prop.futBath)?`<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    ${(prop.curBed||prop.curBath)?`<div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px"><div style="font-size:10px;text-transform:uppercase;opacity:.5">Current</div><div style="font-size:15px;font-weight:800">${prop.curBed?prop.curBed+' bd':''}${prop.curBed&&prop.curBath?' / ':''}${prop.curBath?prop.curBath+' ba':''}</div></div>`:''}
+    ${(prop.futBed||prop.futBath)?`<div style="background:rgba(226,176,74,.25);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px"><div style="font-size:10px;text-transform:uppercase;color:#e2b04a;opacity:.8">Future</div><div style="font-size:15px;font-weight:800;color:#e2b04a">${prop.futBed?prop.futBed+' bd':''}${prop.futBed&&prop.futBath?' / ':''}${prop.futBath?prop.futBath+' ba':''}</div></div>`:''}
+  </div>`:''}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:${sum.overview?'24':'0'}px">
+    ${sum.budget?`<div style="background:rgba(255,255,255,.1);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Budget</div><div style="font-size:20px;font-weight:800">${sum.budget}</div></div>`:''}
+    ${sum.timeline?`<div style="background:rgba(255,255,255,.1);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Timeline</div><div style="font-size:20px;font-weight:800">${sum.timeline}</div></div>`:''}
+    <div style="background:rgba(226,176,74,.2);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Items Documented</div><div style="font-size:20px;font-weight:800">${done} / ${total}</div></div>
+  </div>
+  ${sum.overview?`<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:16px"><div style="font-size:10px;text-transform:uppercase;opacity:.5;margin-bottom:8px">Project Overview</div><p style="font-size:14px;line-height:1.7;opacity:.9">${sum.overview.replace(/\n/g,'<br>')}</p></div>`:''}
+</div>
+${(prioritiesHtml||sum.floorPlan?.length)?`<div style="display:grid;grid-template-columns:${prioritiesHtml&&sum.floorPlan?.length?'1fr 1fr':'1fr'};gap:16px;margin-bottom:24px">
+  ${prioritiesHtml?`<div style="background:white;border-radius:12px;padding:20px;border:1px solid #e8e8e8"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:12px">Top Priorities</div><table style="width:100%;border-collapse:collapse">${prioritiesHtml}</table></div>`:''}
+  ${sum.floorPlan?.length?`<div style="background:#eef2f8;border-radius:12px;padding:20px;border:2px solid #0f3460"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#0f3460;margin-bottom:12px">📐 Final Floor Plan</div><div style="display:flex;gap:8px;flex-wrap:wrap">${sum.floorPlan.map(p=>`<img src="${p}" style="max-width:100%;border-radius:8px">`).join('')}</div></div>`:''}
+</div>`:''}
+${sum.aiVision?.length?`<div style="background:#fffbf0;border-radius:12px;padding:20px;margin-bottom:24px;border:2px solid #e2b04a"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#b8860b;margin-bottom:12px">🤖 AI Vision Renderings</div><div style="display:flex;gap:8px;flex-wrap:wrap">${sum.aiVision.map(p=>`<img src="${p}" style="max-width:100%;border-radius:8px">`).join('')}</div></div>`:''}
+${sum.photos?.length?`<div style="background:white;border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid #e8e8e8"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:12px">Property Overview Photos</div><div style="display:flex;gap:8px;flex-wrap:wrap">${sum.photos.map(p=>`<img src="${p}" style="width:160px;height:120px;object-fit:cover;border-radius:8px">`).join('')}</div></div>`:''}
+<div style="border-top:3px solid #1a1a2e;margin-bottom:28px"></div>
+${catSections||'<p style="color:#888;text-align:center;padding:40px">No items documented yet.</p>'}
+</div></body></html>`;
+}
+
+// ── Cloud Sync Modal ────────────────────────────────────────────────
+function CloudSyncModal({ currentUrl, onSave, onClose }) {
+  const [url, setUrl] = React.useState(currentUrl || '');
+  const [testing, setTesting] = React.useState(false);
+  const [status, setStatus]   = React.useState('');
+
+  async function test() {
+    if (!url.trim()) return;
+    setTesting(true); setStatus('');
+    const result = await fbGet(url.trim(), 'ping');
+    setTesting(false);
+    if (result !== undefined) { setStatus('✅ Connected!'); }
+    else { setStatus('❌ Could not connect — check the URL and make sure database rules allow read/write.'); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2>☁️ Enable Cloud Sync</h2>
+        <p>Connect to Firebase so your whole team can see updates in real time. Free — no credit card needed.</p>
+        <div className="setup-step"><strong>Step 1:</strong> Go to <strong>console.firebase.google.com</strong> → Create a project</div>
+        <div className="setup-step"><strong>Step 2:</strong> In your project → Build → Realtime Database → Create Database → Start in test mode</div>
+        <div className="setup-step"><strong>Step 3:</strong> Copy the database URL (looks like <em>https://your-project-default-rtdb.firebaseio.com</em>)</div>
+        <div className="modal-field" style={{marginTop:8}}>
+          <label>Firebase Database URL</label>
+          <input placeholder="https://your-project-default-rtdb.firebaseio.com"
+            value={url} onChange={e=>setUrl(e.target.value)}/>
+          <small>Paste the URL from your Firebase Realtime Database console</small>
+        </div>
+        {status && <div style={{fontSize:13,marginBottom:10,color:status.startsWith('✅')?'#28a745':'#dc3545'}}>{status}</div>}
+        <div className="modal-btns">
+          <button className="btn-secondary" onClick={test} disabled={testing}>{testing?'Testing…':'Test Connection'}</button>
+          <button className="btn-primary" onClick={()=>{ onSave(url.trim()); onClose(); }}>Save & Enable Sync</button>
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Username Modal ──────────────────────────────────────────────────
+function UsernameModal({ onSave }) {
+  const [name, setName] = React.useState('');
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>👋 Who are you?</h2>
+        <p>Enter your name so the team knows who added notes and updates.</p>
+        <div className="modal-field">
+          <label>Your Name</label>
+          <input autoFocus placeholder="e.g. Hayley" value={name} onChange={e=>setName(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&name.trim()&&onSave(name.trim())}/>
+        </div>
+        <div className="modal-btns">
+          <button className="btn-primary" onClick={()=>name.trim()&&onSave(name.trim())}>Continue</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Property Modal ──────────────────────────────────────────────
+function AddPropertyModal({ onAdd, onClose }) {
+  const [address,setAddress]=React.useState('');const[sqft,setSqft]=React.useState('');
+  const[date,setDate]=React.useState(new Date().toISOString().split('T')[0]);
+  const[curBed,setCurBed]=React.useState('');const[curBath,setCurBath]=React.useState('');
+  const[futBed,setFutBed]=React.useState('');const[futBath,setFutBath]=React.useState('');
+  function submit(){ if(!address.trim()) return; onAdd({id:uid(),address:address.trim(),sqft:sqft.trim(),date,curBed,curBath,futBed,futBath,createdAt:Date.now()}); }
+  return (
+    <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <h2>Add Property</h2><p>Enter the property details to start a new walkthrough.</p>
+      <div className="modal-field"><label>Property Address *</label>
+        <input autoFocus placeholder="123 Main St, City, ST" value={address} onChange={e=>setAddress(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div className="modal-field"><label>Total Sq Ft</label><input placeholder="e.g. 1,800" value={sqft} onChange={e=>setSqft(e.target.value)}/></div>
+        <div className="modal-field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',margin:'8px 0 4px'}}>Current Layout</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div className="modal-field"><label>Bedrooms</label><input type="number" min="0" placeholder="3" value={curBed} onChange={e=>setCurBed(e.target.value)}/></div>
+        <div className="modal-field"><label>Bathrooms</label><input type="number" min="0" placeholder="1" value={curBath} onChange={e=>setCurBath(e.target.value)}/></div>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',margin:'8px 0 4px'}}>Future Layout</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div className="modal-field"><label>Bedrooms</label><input type="number" min="0" placeholder="4" value={futBed} onChange={e=>setFutBed(e.target.value)}/></div>
+        <div className="modal-field"><label>Bathrooms</label><input type="number" min="0" placeholder="2" value={futBath} onChange={e=>setFutBath(e.target.value)}/></div>
+      </div>
+      <div className="modal-btns">
+        <button className="btn-primary" onClick={submit}>Add Property</button>
+        <button className="btn-secondary" onClick={onClose}>Cancel</button>
+      </div>
+    </div></div>
+  );
+}
+
+// ── Share Modal ─────────────────────────────────────────────────────
+function ShareModal({ prop, data, onClose }) {
+  function download(){ const h=buildReport(prop,data),b=new Blob([h],{type:'text/html'}),u=URL.createObjectURL(b),a=document.createElement('a'); a.href=u; a.download=`scope-of-work-${(prop.address||'property').replace(/[^a-z0-9]/gi,'-').toLowerCase()}.html`; a.click(); URL.revokeObjectURL(u); }
+  function preview(){ const h=buildReport(prop,data),b=new Blob([h],{type:'text/html'}); window.open(URL.createObjectURL(b),'_blank'); onClose(); }
+  return (
+    <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <h2>Share with Contractor</h2>
+      <p>Generate a detailed, printable Scope of Work. The contractor can open it in any browser and print or save as PDF — no login needed.</p>
+      <div className="modal-btns">
+        <button className="btn-gold" onClick={preview}>👁 Preview Report</button>
+        <button className="btn-primary" onClick={download}>⬇ Download Report</button>
+        <button className="btn-secondary" onClick={onClose}>Cancel</button>
+      </div>
+    </div></div>
+  );
+}
+
+// ── Property List ───────────────────────────────────────────────────
+function PropertyList({ onOpen, username }) {
+  const [properties, setProperties] = React.useState(loadProperties);
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [deleteId, setDeleteId] = React.useState(null);
+  const [showCloudSync, setShowCloudSync] = React.useState(false);
+  const [firebaseUrl, setFirebaseUrlState] = React.useState(getFirebaseUrl);
+  const pollRef = React.useRef(null);
+
+  async function syncPropertiesFromFirebase(fbUrl) {
+    if (!fbUrl) return;
+    const remote = await fbGet(fbUrl, 'properties');
+    if (!remote) return;
+    const remoteList = Array.isArray(remote) ? remote : Object.values(remote);
+    if (!remoteList.length) return;
+    // Merge: union by id, remote wins for conflicts
+    const local = loadProperties();
+    const merged = Object.values(
+      [...local, ...remoteList].reduce((acc, p) => {
+        if (!acc[p.id] || (p.updatedAt||0) > (acc[p.id].updatedAt||0)) acc[p.id] = p;
+        return acc;
+      }, {})
+    );
+    setProperties(merged);
+    saveProperties(merged);
+  }
+
+  async function pushPropertiesToFirebase(list, fbUrl) {
+    const url = fbUrl || FIREBASE_URL;
+    if (!url) return;
+    const obj = list.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+    await fbSet(url, 'properties', obj);
+  }
+
+  React.useEffect(() => {
+    const fbUrl = FIREBASE_URL;
+    if (!fbUrl) return;
+    syncPropertiesFromFirebase(fbUrl);
+    pollRef.current = setInterval(() => syncPropertiesFromFirebase(FIREBASE_URL), 15000);
+    return () => clearInterval(pollRef.current);
+  }, [firebaseUrl]);
+
+  function addProperty(prop) {
+    const next = [...properties, { ...prop, updatedAt: Date.now() }];
+    setProperties(next); saveProperties(next);
+    pushPropertiesToFirebase(next);
+    setShowAdd(false); onOpen(prop);
+  }
+  function deleteProperty(id) {
+    const next = properties.filter(p=>p.id!==id);
+    setProperties(next); saveProperties(next);
+    pushPropertiesToFirebase(next);
+    localStorage.removeItem(`flip_data_${id}`); setDeleteId(null);
+  }
+
+  // Count unread notifications per property
+  function unreadCount(prop) {
+    const data = loadPropData(prop.id);
+    let count = 0;
+    CATEGORIES.forEach(cat => {
+      cat.items.forEach(item => {
+        const d = (data[cat.id]||{})[item.id];
+        if (d?.updatedAt && d?.updatedBy && d.updatedBy !== username && d.updatedAt > getViewed(prop.id, cat.id, item.id)) count++;
+      });
+    });
+    return count;
+  }
+
+  return (
+    <div className="list-page">
+      <div className="list-header">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+          <h1>🏚 Flip Walkthrough</h1>
+          <span style={{fontSize:12,color:'rgba(40,167,69,.8)',fontWeight:700}}>☁️ Live Sync On</span>
+        </div>
+        <p>Welcome back, {username} — manage all your properties</p>
+      </div>
+      <div className="list-content">
+        {properties.length===0 ? (
+          <div className="empty-state"><div className="icon">🏠</div><h2>No properties yet</h2><p>Add your first property to get started</p></div>
+        ) : properties.map(prop=>{
+          const data = loadPropData(prop.id);
+          const { done, total, pct } = totalProgress(data);
+          const unread = unreadCount(prop);
+          return (
+            <div key={prop.id} className="prop-card">
+              <div className="prop-card-body" onClick={()=>onOpen(prop)}>
+                <div className="prop-thumb">
+                  🏠
+                  {unread > 0 && <span className="notif-badge" style={{position:'absolute',top:-4,right:-4,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center'}}>{unread}</span>}
+                </div>
+                <div className="prop-info">
+                  <div className="prop-address">{prop.address}</div>
+                  <div className="prop-meta">{prop.sqft?prop.sqft+' sq ft  ·  ':''}{prop.date?new Date(prop.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}</div>
+                  <div className="prop-progress">
+                    <div className="prop-progress-bar"><div className="prop-progress-fill" style={{width:pct+'%'}}/></div>
+                    <span className="prop-progress-label">{done}/{total} items</span>
+                  </div>
+                </div>
+                <div className="prop-arrow">›</div>
+              </div>
+              <div className="prop-actions">
+                <button className="prop-action-btn" onClick={()=>onOpen(prop)}>✏️ Open</button>
+                <button className="prop-action-btn" onClick={()=>{ const d=loadPropData(prop.id); const h=buildReport(prop,d),b=new Blob([h],{type:'text/html'}); window.open(URL.createObjectURL(b),'_blank'); }}>📄 Report</button>
+                <button className="prop-action-btn danger" onClick={()=>setDeleteId(prop.id)}>🗑 Delete</button>
+              </div>
+            </div>
+          );
+        })}
+        <button className="btn-add-prop" onClick={()=>setShowAdd(true)}>＋ Add Property</button>
+      </div>
+      {showAdd && <AddPropertyModal onAdd={addProperty} onClose={()=>setShowAdd(false)}/>}
+      {deleteId && (
+        <div className="modal-overlay" onClick={()=>setDeleteId(null)}><div className="modal" onClick={e=>e.stopPropagation()}>
+          <h2>Delete Property?</h2><p>This permanently deletes all notes, photos, and walkthrough data. Cannot be undone.</p>
+          <div className="modal-btns">
+            <button className="btn-primary" style={{background:'#dc3545'}} onClick={()=>deleteProperty(deleteId)}>Yes, Delete</button>
+            <button className="btn-secondary" onClick={()=>setDeleteId(null)}>Cancel</button>
+          </div>
+        </div></div>
+      )}
+    </div>
+  );
+}
+
+// ── Walkthrough View ────────────────────────────────────────────────
+function WalkthroughView({ prop, onBack, onPropUpdate, username }) {
+  const TAB_SUMMARY = -1, TAB_TEAM = -2;
+  const [activeTab, setActiveTab] = React.useState(TAB_SUMMARY);
+  const [data, setData]           = React.useState(()=>loadPropData(prop.id));
+  const [sqft, setSqft]           = React.useState(prop.sqft||'');
+  const [curBed, setCurBed]       = React.useState(prop.curBed||'');
+  const [curBath, setCurBath]     = React.useState(prop.curBath||'');
+  const [futBed, setFutBed]       = React.useState(prop.futBed||'');
+  const [futBath, setFutBath]     = React.useState(prop.futBath||'');
+  const [showShare, setShowShare] = React.useState(false);
+  const [lightbox, setLightbox]   = React.useState(null);
+  const firebaseUrl = FIREBASE_URL;
+  const [syncStatus, setSyncStatus]       = React.useState('offline'); // offline | syncing | synced
+  const pollRef = React.useRef(null);
+
+  // ── Firebase sync ──
+  async function pushToFirebase(newData) {
+    if (!firebaseUrl) return;
+    setSyncStatus('syncing');
+    // Sync everything except photos in a lightweight pass (photos sync separately)
+    const lightweight = {};
+    CATEGORIES.forEach(cat => {
+      lightweight[cat.id] = {};
+      Object.entries(newData[cat.id]||{}).forEach(([k,v]) => {
+        lightweight[cat.id][k] = { status:v.status, notes:v.notes, updatedAt:v.updatedAt, updatedBy:v.updatedBy };
+      });
+    });
+    lightweight._summary = { ...(newData._summary||{}), photos:undefined, aiVision:undefined, floorPlan:undefined };
+    await fbPatch(firebaseUrl, `projects/${prop.id}/data`, lightweight);
+    setSyncStatus('synced');
+  }
+
+  async function pullFromFirebase() {
+    if (!firebaseUrl) return;
+    const remote = await fbGet(firebaseUrl, `projects/${prop.id}/data`);
+    if (!remote) return;
+    setData(prev => {
+      const merged = { ...prev };
+      CATEGORIES.forEach(cat => {
+        if (!remote[cat.id]) return;
+        merged[cat.id] = { ...(prev[cat.id]||{}) };
+        Object.entries(remote[cat.id]).forEach(([k,rv]) => {
+          const lv = (prev[cat.id]||{})[k] || {};
+          if ((rv.updatedAt||0) > (lv.updatedAt||0)) {
+            merged[cat.id][k] = { ...lv, status:rv.status, notes:rv.notes, updatedAt:rv.updatedAt, updatedBy:rv.updatedBy };
+          }
+        });
+      });
+      savePropData(prop.id, merged);
+      return merged;
+    });
+  }
+
+  // Poll for remote changes every 15 seconds
+  React.useEffect(() => {
+    if (!firebaseUrl) return;
+    pullFromFirebase();
+    pollRef.current = setInterval(pullFromFirebase, 15000);
+    return () => clearInterval(pollRef.current);
+  }, [firebaseUrl]);
+
+  function updateItem(catId, itemId, value) {
+    const stamped = { ...value, updatedAt: Date.now(), updatedBy: username };
+    const next = { ...data, [catId]: { ...(data[catId]||{}), [itemId]: stamped } };
+    setData(next); savePropData(prop.id, next);
+    pushToFirebase(next);
+  }
+
+  function updateSummary(value) {
+    const next = { ...data, _summary: value };
+    setData(next); savePropData(prop.id, next);
+  }
+
+  function savePropFields() { onPropUpdate({ ...prop, sqft, curBed, curBath, futBed, futBath }); }
+  function handleSaveFirebase(url) { setFirebaseUrlState(url); setFirebaseUrl(url); }
+
+  const cat = activeTab >= 0 ? CATEGORIES[activeTab] : null;
+  const { done, total, pct } = totalProgress(data);
+  const sumFilled = !!(data._summary?.overview || data._summary?.priorities?.filter(Boolean).length || data._summary?.budget);
+
+  // Count unread per category
+  function catUnread(catId) {
+    return CATEGORIES.find(c=>c.id===catId)?.items.filter(item => {
+      const d=(data[catId]||{})[item.id];
+      return d?.updatedAt && d?.updatedBy && d.updatedBy!==username && d.updatedAt > getViewed(prop.id,catId,item.id);
+    }).length || 0;
+  }
+  const totalUnread = CATEGORIES.reduce((s,c)=>s+catUnread(c.id),0);
+
+  return (
+    <div className="app">
+      <div className="header">
+        <div className="header-top">
+          <button className="btn-back" onClick={onBack}>← Back</button>
+          <div className="header-title">
+            <h1>{prop.address}</h1>
+            <p>{sqft?sqft+' sq ft  ·  ':''}{prop.date?new Date(prop.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}</p>
+          </div>
+          <button className="btn-share" onClick={()=>setShowShare(true)}>Share</button>
+        </div>
+        <div className="sqft-bar">
+          <div className="sqft-field"><label>Sq Ft</label><input placeholder="1,800" value={sqft} onChange={e=>setSqft(e.target.value)} onBlur={savePropFields}/></div>
+          <div className="sqft-divider"/>
+          <span className="sqft-group-label">Current</span>
+          <div className="sqft-field"><label>Bed</label><input type="number" min="0" placeholder="3" value={curBed} onChange={e=>setCurBed(e.target.value)} onBlur={savePropFields}/></div>
+          <div className="sqft-field"><label>Bath</label><input type="number" min="0" placeholder="1" value={curBath} onChange={e=>setCurBath(e.target.value)} onBlur={savePropFields}/></div>
+          <div className="sqft-divider"/>
+          <span className="sqft-group-label">Future</span>
+          <div className="sqft-field"><label>Bed</label><input type="number" min="0" placeholder="4" value={futBed} onChange={e=>setFutBed(e.target.value)} onBlur={savePropFields}/></div>
+          <div className="sqft-field"><label>Bath</label><input type="number" min="0" placeholder="2" value={futBath} onChange={e=>setFutBath(e.target.value)} onBlur={savePropFields}/></div>
+          {firebaseUrl && <span style={{marginLeft:'auto',fontSize:11,color:'rgba(40,167,69,.8)',fontWeight:600}}>☁️ Cloud Sync On</span>}
+        </div>
+        {firebaseUrl && (
+          <div className="sync-bar">
+            <div className={`sync-dot${syncStatus==='syncing'?' syncing':syncStatus==='offline'?' offline':''}`}/>
+            {syncStatus==='syncing'?'Syncing…':syncStatus==='synced'?'All changes saved to cloud':'Offline — changes saved locally'}
+          </div>
+        )}
+        <div className="tabs">
+          <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
+            📋 Summary {sumFilled&&<span className="tab-count">✓</span>}
+          </div>
+          {CATEGORIES.map((c,i)=>{
+            const unread = catUnread(c.id);
+            const rev    = countReviewed(data, c.id);
+            return (
+              <div key={c.id} className={`tab${activeTab===i?' active':''}`} onClick={()=>setActiveTab(i)}>
+                {c.icon} {c.label}
+                {unread>0 ? <span className="notif-badge">{unread}</span> : rev>0 ? <span className="tab-count">{rev}</span> : null}
+              </div>
+            );
+          })}
+          <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
+            👥 Team {totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
+          </div>
+        </div>
+      </div>
+
+      {activeTab>=0 && (
+        <div style={{padding:'12px 12px 0'}}>
+          <div className="progress-bar-wrap">
+            <div className="progress-label"><span>Walkthrough progress</span><span>{done} of {total} items · {pct}%</span></div>
+            <div className="progress-track"><div className="progress-fill" style={{width:pct+'%'}}/></div>
+          </div>
+        </div>
+      )}
+
+      {activeTab===TAB_SUMMARY && <SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)}/>}
+      {activeTab===TAB_TEAM    && <ParticipantsPage data={data} propId={prop.id} username={username}/>}
+      {activeTab>=0 && (
+        <Swipeable onLeft={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))} onRight={()=>setActiveTab(t=>t<=0?TAB_SUMMARY:t-1)}>
+          <div className="content">
+            <AccordionList propId={prop.id} cat={cat} data={data} username={username}
+              updateItem={updateItem} setLightbox={setLightbox}/>
+          </div>
+        </Swipeable>
+      )}
+
+      {showShare    && <ShareModal prop={{...prop,sqft}} data={data} onClose={()=>setShowShare(false)}/>}
+      {lightbox && (
+        <div className="lightbox" onClick={()=>setLightbox(null)}>
+          <button className="lightbox-close">×</button>
+          <img src={lightbox} alt="" onClick={e=>e.stopPropagation()}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Root App ────────────────────────────────────────────────────────
+function App() {
+  const [username, setUsername]   = React.useState(getUsername);
+  const [currentProp, setCurrentProp] = React.useState(null);
+
+  function handleSetUsername(name) { setUsername(name); setUsername(name); localStorage.setItem('flip_username', name); }
+
+  function handlePropUpdate(updated) {
+    const list = loadProperties().map(p=>p.id===updated.id?{...updated,updatedAt:Date.now()}:p);
+    saveProperties(list); setCurrentProp(updated);
+    const fbUrl = FIREBASE_URL;
+    if (fbUrl) { const obj = list.reduce((acc,p)=>{ acc[p.id]=p; return acc; },{}); fbSet(fbUrl,'properties',obj); }
+  }
+
+  if (!username) return <UsernameModal onSave={handleSetUsername}/>;
+  if (currentProp) return <WalkthroughView prop={currentProp} username={username} onBack={()=>setCurrentProp(null)} onPropUpdate={handlePropUpdate}/>;
+  return <PropertyList onOpen={setCurrentProp} username={username}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
