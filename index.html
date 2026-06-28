@@ -301,7 +301,7 @@ function loadPropData(id) { try { return JSON.parse(localStorage.getItem(`flip_d
 function savePropData(id, d) { localStorage.setItem(`flip_data_${id}`, JSON.stringify(d)); }
 function getUsername()   { return localStorage.getItem('flip_username') || ''; }
 function setUsername(n)  { localStorage.setItem('flip_username', n); }
-function FIREBASE_URL { return localStorage.getItem('firebase_url_global') || ''; }
+function getFirebaseUrl() { return localStorage.getItem('firebase_url_global') || FIREBASE_URL; }
 function setFirebaseUrl(url) { localStorage.setItem('firebase_url_global', url); }
 // Viewed timestamps per user per item
 function getViewed(propId, catId, itemId) { return parseInt(localStorage.getItem(`viewed_${propId}_${catId}_${itemId}`)||'0'); }
