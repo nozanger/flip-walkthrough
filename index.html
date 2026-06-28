@@ -223,6 +223,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .task-title.done { text-decoration:line-through; color:#aaa; }
 .task-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
 .task-assignee { font-size:11px; background:#e8f0fb; color:#0f3460; border-radius:20px; padding:2px 8px; font-weight:700; }
+.task-tag { font-size:11px; background:#fff3cd; color:#856404; border-radius:20px; padding:2px 8px; font-weight:700; }
 .task-date { font-size:11px; color:#aaa; }
 .task-body { padding:0 14px 12px 50px; }
 .task-notes-input { width:100%; border:1.5px solid #eee; border-radius:8px; padding:8px 10px; font-size:13px; resize:none; outline:none; min-height:60px; font-family:inherit; }
@@ -1078,12 +1079,13 @@ function VideoAnalyzer({onApply,onClose,isOwner}){
 }
 
 // ── SummaryPage ──────────────────────────────────────────────────────
-function SummaryPage({summary,onChange,onView,propId,currentUser,onApplyAI,isOwner}){
+function SummaryPage({summary,onChange,onView,propId,currentUser,onApplyAI,isOwner,members}){
   const s=summary||{};
   const[showAI,setShowAI]=React.useState(false);
   function upd(i,val){const l=[...(s.priorities||[])];l[i]=val;onChange({...s,priorities:l});}
   return(
     <div className="summary-page">
+      <TasksPage propId={propId} currentUser={currentUser} members={members} inline={true}/>
       <button className="ai-analyze-btn" onClick={()=>setShowAI(true)}>✨ Auto-fill Scope from Video</button>
       {showAI&&<VideoAnalyzer onApply={onApplyAI} onClose={()=>setShowAI(false)} isOwner={isOwner}/>}
       <div className="summary-card">
@@ -1401,7 +1403,7 @@ function InviteModal({prop,properties,currentUser,onClose}){
 
 // ── ParticipantsPage ─────────────────────────────────────────────────
 // ── TasksPage ─────────────────────────────────────────────────────────
-function TasksPage({propId,currentUser,members}){
+function TasksPage({propId,currentUser,members,inline}){
   const[tasks,setTasks]=React.useState({});
   const[newTitle,setNewTitle]=React.useState('');
   const[filter,setFilter]=React.useState('all');
@@ -1413,7 +1415,7 @@ function TasksPage({propId,currentUser,members}){
   async function addTask(){
     const title=newTitle.trim();if(!title)return;
     const id=uid();
-    await dbSet(`projects/${propId}/tasks/${id}`,{id,title,status:'todo',notes:'',assignedTo:'',createdBy:username,createdAt:Date.now(),updatedAt:Date.now()});
+    await dbSet(`projects/${propId}/tasks/${id}`,{id,title,status:'todo',notes:'',assignedTo:'',tagged:{},createdBy:username,createdAt:Date.now(),updatedAt:Date.now()});
     setNewTitle('');
   }
 
@@ -1428,9 +1430,16 @@ function TasksPage({propId,currentUser,members}){
     updateTask(task.id,{status:next[task.status]||'todo'});
   }
 
+  function toggleTag(task,name){
+    const tagged={...(task.tagged||{})};
+    if(tagged[name])delete tagged[name];else tagged[name]=true;
+    updateTask(task.id,{tagged});
+  }
+
   const FILTERS=[{id:'all',label:'All'},{id:'todo',label:'To Do'},{id:'inprogress',label:'In Progress'},{id:'done',label:'Done'}];
   const STATUS_ICON={todo:'',inprogress:'⏳',done:'✓'};
-  const memberNames=Object.values(members||{}).map(m=>m.name).sort();
+  const memberList=Object.values(members||{}).sort((a,b)=>a.name.localeCompare(b.name));
+  const memberNames=memberList.map(m=>m.name);
 
   const list=Object.values(tasks)
     .filter(t=>filter==='all'||t.status===filter)
@@ -1439,8 +1448,8 @@ function TasksPage({propId,currentUser,members}){
   const counts={todo:0,inprogress:0,done:0};
   Object.values(tasks).forEach(t=>{if(counts[t.status]!==undefined)counts[t.status]++;});
 
-  return(
-    <div className="tasks-page">
+  const inner=(
+    <>
       <div className="tasks-add-row">
         <input className="tasks-add-input" placeholder="Add a task…" value={newTitle}
           onChange={e=>setNewTitle(e.target.value)}
@@ -1450,13 +1459,14 @@ function TasksPage({propId,currentUser,members}){
       <div className="tasks-filters">
         {FILTERS.map(f=>(
           <button key={f.id} className={`task-filter${filter===f.id?' active':''}`} onClick={()=>setFilter(f.id)}>
-            {f.label}{f.id!=='all'&&counts[f.id]>0?` (${counts[f.id]})`:f.id==='all'?` (${Object.keys(tasks).length})`:''}
+            {f.label}{f.id!=='all'&&counts[f.id]>0?` (${counts[f.id]})`:f.id==='all'&&Object.keys(tasks).length>0?` (${Object.keys(tasks).length})`:''}
           </button>
         ))}
       </div>
       {list.length===0&&<div className="tasks-empty">{Object.keys(tasks).length===0?'No tasks yet — add one above.':'No tasks in this filter.'}</div>}
       {list.map(task=>{
         const isOpen=!!expanded[task.id];
+        const tagged=Object.keys(task.tagged||{});
         return(
           <div key={task.id} className={`task-card status-${task.status}`}>
             <div className="task-card-top" onClick={()=>setExpanded(e=>({...e,[task.id]:!e[task.id]}))}>
@@ -1467,7 +1477,8 @@ function TasksPage({propId,currentUser,members}){
                 <div className={`task-title${task.status==='done'?' done':''}`}>{task.title}</div>
                 <div className="task-meta">
                   {task.assignedTo&&<span className="task-assignee">👤 {task.assignedTo}</span>}
-                  {task.updatedBy&&<span className="task-date">Updated by {task.updatedBy} · {timeAgo(task.updatedAt)}</span>}
+                  {tagged.map(n=><span key={n} className="task-tag">@{n}</span>)}
+                  {task.updatedBy&&<span className="task-date">{timeAgo(task.updatedAt)}</span>}
                 </div>
               </div>
               <span style={{fontSize:12,color:'#ccc',marginLeft:4}}>{isOpen?'▴':'▾'}</span>
@@ -1485,13 +1496,37 @@ function TasksPage({propId,currentUser,members}){
                   </select>
                   <button className="task-delete-btn" onClick={()=>deleteTask(task.id)}>🗑</button>
                 </div>
+                {memberList.length>0&&(
+                  <div style={{marginTop:8}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',marginBottom:5}}>@ Tag for attention</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                      {memberList.map(m=>{
+                        const on=!!(task.tagged||{})[m.name];
+                        return(
+                          <button key={m.name} onClick={()=>toggleTag(task,m.name)}
+                            style={{border:'2px solid',borderColor:on?'#0f3460':'#dde',borderRadius:20,padding:'4px 10px',fontSize:12,fontWeight:700,background:on?'#0f3460':'white',color:on?'white':'#666',cursor:'pointer'}}>
+                            {on?'✓ ':''}{m.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         );
       })}
+    </>
+  );
+
+  if(inline) return(
+    <div className="summary-card" style={{marginBottom:16}}>
+      <h3>✅ Tasks</h3>
+      {inner}
     </div>
   );
+  return <div className="tasks-page">{inner}</div>;
 }
 
 function ParticipantsPage({prop,data,currentUser,isOwner}){
@@ -2131,7 +2166,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
         </div>
       )}
 
-      {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner}/>}
+      {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner} members={members}/>}
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
       {activeTab===TAB_TASKS&&<TasksPage propId={prop.id} currentUser={currentUser} members={members}/>}
       {activeTab>=0&&cat&&(
