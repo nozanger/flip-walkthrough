@@ -462,7 +462,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .all-tasks-prop-count { font-size: 12px; font-weight: 700; background: #f0f2f5; color: #666; border-radius: 20px; padding: 3px 10px; }
 .all-tasks-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-top: 1px solid #f5f5f5; cursor: pointer; transition: background .1s; }
 .all-tasks-row:active { background: #f8f9fa; }
+.all-tasks-row.urgent { background: #fff5f5; border-top-color: #fcd0d0; }
+.all-tasks-row.urgent .all-tasks-title { color: #c0392b; font-weight: 700; }
 .all-tasks-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.all-tasks-urgent-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #dde; background: white; font-size: 11px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #ccc; line-height: 1; padding: 0; transition: all .15s; }
+.all-tasks-urgent-btn.on { background: #dc3545; border-color: #dc3545; color: white; }
 .all-tasks-title { flex: 1; font-size: 14px; color: #1a1a2e; font-weight: 500; line-height: 1.3; }
 .all-tasks-assignee { font-size: 12px; color: #888; white-space: nowrap; }
 .all-tasks-empty { text-align: center; padding: 50px 20px; color: #aaa; }
@@ -2278,9 +2282,14 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
             <span className="all-tasks-prop-count">{prop.openTasks.length} open</span>
             <span style={{color:'#ccc',fontSize:16}}>›</span>
           </div>
-          {prop.openTasks.map(task=>(
-            <div key={task.id} className="all-tasks-row" onClick={()=>setEditingTask({task,propId:prop.id,address:prop.address})}>
-              <div className="all-tasks-dot" style={{background:task.assignedTo?'#0f3460':'#ddd'}}/>
+          {prop.openTasks.sort((a,b)=>((b.urgent?1:0)-(a.urgent?1:0))).map(task=>(
+            <div key={task.id} className={`all-tasks-row${task.urgent?' urgent':''}`} onClick={()=>setEditingTask({task,propId:prop.id,address:prop.address})}>
+              <button className={`all-tasks-urgent-btn${task.urgent?' on':''}`}
+                onClick={e=>{
+                  e.stopPropagation();
+                  dbUpdate(`projects/${prop.id}/tasks/${task.id}`,{urgent:!task.urgent,updatedAt:Date.now()});
+                }}>!</button>
+              <div className="all-tasks-dot" style={{background:task.urgent?'#dc3545':task.assignedTo?'#0f3460':'#ddd'}}/>
               <span className="all-tasks-title">{task.title}</span>
               {task.assignedTo&&<span className="all-tasks-assignee">👤 {task.assignedTo}</span>}
               <span style={{color:'#ccc',fontSize:14,flexShrink:0}}>✎</span>
