@@ -205,13 +205,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 /* ── Project stage ── */
 .stage-bar { display:flex; gap:6px; padding:8px 12px 4px; overflow-x:auto; }
 .stage-pill { border:2px solid #dde; border-radius:20px; padding:5px 13px; font-size:12px; font-weight:700; cursor:pointer; background:white; color:#666; white-space:nowrap; transition:all .15s; }
-.stage-pill.active-walkthrough { background:#e8f0fb; border-color:#0f3460; color:#0f3460; }
-.stage-pill.active-contract { background:#fff3cd; border-color:#d4a017; color:#856404; }
-.stage-pill.active-renovation { background:#f8d7da; border-color:#dc3545; color:#721c24; }
+.stage-pill.active-walkthrough { background:#f5f5f5; border-color:#999; color:#333; }
+.stage-pill.active-contract { background:#c8e6e2; border-color:#3a9e8f; color:#1e6358; }
+.stage-pill.active-renovation { background:#cddec4; border-color:#5a8a4a; color:#2e5223; }
 .stage-badge { display:inline-block; font-size:10px; font-weight:800; border-radius:20px; padding:2px 8px; margin-top:4px; }
-.stage-badge.walkthrough { background:#e8f0fb; color:#0f3460; }
-.stage-badge.contract { background:#fff3cd; color:#856404; }
-.stage-badge.renovation { background:#f8d7da; color:#721c24; }
+.stage-badge.walkthrough { background:#f0f0f0; color:#555; }
+.stage-badge.contract { background:#c8e6e2; color:#1e6358; }
+.stage-badge.renovation { background:#cddec4; color:#2e5223; }
+.prop-card.stage-contract { border-left:4px solid #3a9e8f; background:#f4fbfa; }
+.prop-card.stage-renovation { border-left:4px solid #5a8a4a; background:#f6faf3; }
+.prop-card.stage-walkthrough { border-left:4px solid #ccc; background:white; }
 /* ── Tasks ── */
 .tasks-page { padding: 12px; }
 .tasks-add-row { display:flex; gap:8px; margin-bottom:14px; }
@@ -2013,7 +2016,7 @@ function PropertyList({currentUser,onOpen}){
 
   function PropCard({prop}){
     return(
-      <div className="prop-card">
+      <div className={`prop-card stage-${prop.stage||'walkthrough'}`}>
         <div className="prop-card-body" onClick={()=>onOpen(prop)}>
           <div className="prop-thumb">{prop.stage==='renovation'?'🔨':prop.stage==='contract'?'📝':'🔍'}</div>
           <div className="prop-info">
