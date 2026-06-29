@@ -1,6 +1,12 @@
 [build]
   publish = "."
 
+[functions]
+  directory = "netlify/functions"
+
+[functions."daily-reminders"]
+  schedule = "0 9 * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
