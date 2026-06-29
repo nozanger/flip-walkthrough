@@ -5,7 +5,7 @@
   directory = "netlify/functions"
 
 [functions."daily-reminders"]
-  schedule = "0 9 * * *"
+  schedule = "0 19 * * *"
 
 [[redirects]]
   from = "/*"
