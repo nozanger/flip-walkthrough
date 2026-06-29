@@ -408,12 +408,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* Sync bar */
 .sync-bar { background: #0a2744; padding: 4px 16px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,.5); }
-/* ── Home bottom nav ── */
-.home-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e8e8e8; display: flex; z-index: 200; box-shadow: 0 -2px 12px rgba(0,0,0,.08); }
-.home-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0 14px; gap: 3px; border: none; background: none; cursor: pointer; color: #aaa; font-size: 11px; font-weight: 600; transition: color .15s; }
-.home-nav-btn.active { color: #0f3460; }
-.home-nav-btn span:first-child { font-size: 22px; line-height: 1; }
-.home-nav-count { background: #ff6b35; color: white; border-radius: 10px; font-size: 10px; font-weight: 800; padding: 1px 6px; margin-left: 4px; }
+/* ── Home top nav ── */
+.home-nav { display: flex; background: #16213e; padding: 0 16px; gap: 4px; }
+.home-nav-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 0; border: none; background: none; cursor: pointer; color: rgba(255,255,255,.45); font-size: 13px; font-weight: 700; border-bottom: 3px solid transparent; transition: all .2s; }
+.home-nav-btn.active { color: #e2b04a; border-bottom-color: #e2b04a; }
+.home-nav-count { background: #ff6b35; color: white; border-radius: 10px; font-size: 10px; font-weight: 800; padding: 1px 6px; margin-left: 2px; }
 
 /* ── All Tasks page ── */
 .all-tasks-prop { background: white; border-radius: 14px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
@@ -2194,6 +2193,14 @@ function PropertyList({currentUser,onOpen}){
         </div>
         <p>{homeTab==='tasks'?'All open tasks across your properties':`Welcome back, ${currentUser.displayName||currentUser.email}`}</p>
       </div>
+      <nav className="home-nav">
+        <button className={`home-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
+          <span>🏠</span><span>Properties</span>
+        </button>
+        <button className={`home-nav-btn${homeTab==='tasks'?' active':''}`} onClick={()=>setHomeTab('tasks')}>
+          <span>✅</span><span>Tasks</span>
+        </button>
+      </nav>
       {notifBanner&&(
         <div style={{background:'#e8f4fd',borderBottom:'1px solid #bee3f8',padding:'12px 16px',display:'flex',alignItems:'center',gap:'10px'}}>
           <span style={{fontSize:'20px'}}>🔔</span>
@@ -2227,14 +2234,6 @@ function PropertyList({currentUser,onOpen}){
       ):(
         <AllTasksPage currentUser={currentUser} properties={properties} onOpenProp={onOpen}/>
       )}
-      <nav className="home-nav">
-        <button className={`home-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
-          <span>🏠</span><span>Properties</span>
-        </button>
-        <button className={`home-nav-btn${homeTab==='tasks'?' active':''}`} onClick={()=>setHomeTab('tasks')}>
-          <span>✅</span><span>Tasks</span>
-        </button>
-      </nav>
       {showAdd&&<AddPropertyModal onAdd={addProperty} currentUser={currentUser} onClose={()=>setShowAdd(false)}/>}
       {showTeam&&<TeamModal currentUser={currentUser} onClose={()=>setShowTeam(false)}/>}
       {showInvite&&<InviteModal properties={properties} currentUser={currentUser} onClose={()=>setShowInvite(false)}/>}
