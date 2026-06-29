@@ -414,6 +414,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .home-nav-btn.active { color: #e2b04a; border-bottom-color: #e2b04a; }
 .home-nav-count { background: #ff6b35; color: white; border-radius: 10px; font-size: 10px; font-weight: 800; padding: 1px 6px; margin-left: 2px; }
 
+/* ── Task Edit Drawer ── */
+.task-drawer-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:flex-end; }
+.task-drawer { background:white;border-radius:20px 20px 0 0;width:100%;max-height:88vh;overflow-y:auto;padding:0 0 40px; }
+.task-drawer-handle { width:40px;height:4px;background:#ddd;border-radius:2px;margin:12px auto 0; }
+.task-drawer-header { padding:14px 16px 12px;border-bottom:1px solid #f0f0f0; }
+.task-drawer-prop { font-size:12px;color:#888;font-weight:600;margin-bottom:4px; }
+.task-drawer-body { padding:16px; }
+
 /* ── All Tasks page ── */
 .all-tasks-prop { background: white; border-radius: 14px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
 .all-tasks-prop-header { padding: 14px 16px 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
@@ -2026,9 +2034,111 @@ function MigrationModal({currentUser,onDone}){
 }
 
 // ── Property List ────────────────────────────────────────────────────
+function TaskEditDrawer({task, propId, address, currentUser, onClose}){
+  const[t,setT]=React.useState(task);
+  const[members,setMembers]=React.useState({});
+  const[toast,setToast]=React.useState(false);
+  const toastTimer=React.useRef(null);
+  const username=currentUser.displayName||currentUser.email;
+
+  React.useEffect(()=>{
+    dbGet(`projects/${propId}/members`).then(m=>setMembers(m||{}));
+  },[propId]);
+
+  // Keep local state in sync if task changes externally
+  React.useEffect(()=>{ setT(task); },[task]);
+
+  async function save(patch){
+    const updated={...t,...patch,updatedAt:Date.now(),updatedBy:username};
+    setT(updated);
+    await dbUpdate(`projects/${propId}/tasks/${task.id}`,{...patch,updatedAt:Date.now(),updatedBy:username});
+  }
+
+  async function markDone(){
+    await save({status:'done'});
+    clearTimeout(toastTimer.current);
+    setToast(true);
+    toastTimer.current=setTimeout(()=>{setToast(false);onClose();},3000);
+  }
+
+  async function undo(){
+    clearTimeout(toastTimer.current);
+    setToast(false);
+    await save({status:'todo'});
+  }
+
+  const memberNames=Object.values(members).sort((a,b)=>a.name.localeCompare(b.name)).map(m=>m.name);
+
+  return(
+    <div className="task-drawer-overlay" onClick={onClose}>
+      <div className="task-drawer" onClick={e=>e.stopPropagation()}>
+        <div className="task-drawer-handle"/>
+        <div className="task-drawer-header">
+          <div className="task-drawer-prop">📍 {address}</div>
+          <input
+            className="task-title-input"
+            style={{fontSize:17,fontWeight:700,width:'100%',border:'none',outline:'none',padding:0,background:'transparent',color:'#1a1a2e'}}
+            value={t.title||''}
+            onChange={e=>setT({...t,title:e.target.value})}
+            onBlur={e=>save({title:e.target.value.trim()})}
+          />
+        </div>
+        <div className="task-drawer-body">
+          {toast&&(
+            <div style={{background:'#d4edda',borderRadius:10,padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:10}}>
+              <span style={{flex:1,fontSize:13,color:'#155724',fontWeight:600}}>✅ Marked as done</span>
+              <button onClick={undo} style={{background:'none',border:'1.5px solid #155724',borderRadius:8,padding:'4px 10px',fontSize:12,fontWeight:700,color:'#155724',cursor:'pointer'}}>Undo</button>
+            </div>
+          )}
+
+          <div className="notes-label" style={{marginBottom:6}}>Assign to</div>
+          <select className="task-assign-select" style={{width:'100%',marginBottom:16,padding:'9px 12px',borderRadius:10,border:'1.5px solid #e0e0e0',fontSize:14,background:'white'}}
+            value={t.assignedTo||''}
+            onChange={e=>{
+              const name=e.target.value;
+              setT({...t,assignedTo:name});
+              save({assignedTo:name});
+              if(name){
+                const entry=Object.entries(members).find(([,m])=>m.name===name);
+                if(entry){
+                  fetch('/.netlify/functions/notify-assignment',{
+                    method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({assigneeUid:entry[0],taskTitle:t.title,address,assignerName:username}),
+                  }).catch(()=>{});
+                }
+              }
+            }}>
+            <option value="">Unassigned</option>
+            {memberNames.map(n=><option key={n} value={n}>{n}</option>)}
+            {t.assignedTo&&!memberNames.includes(t.assignedTo)&&<option value={t.assignedTo}>{t.assignedTo}</option>}
+          </select>
+
+          <div className="notes-label" style={{marginBottom:6}}>Notes</div>
+          <textarea className="notes-input" style={{marginBottom:16}}
+            value={t.notes||''}
+            placeholder="Add notes..."
+            onChange={e=>setT({...t,notes:e.target.value})}
+            onBlur={e=>save({notes:e.target.value})}
+          />
+
+          {t.status!=='done'&&(
+            <button onClick={markDone} style={{width:'100%',padding:'14px',background:'#0f3460',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer'}}>
+              ✅ Mark as Done
+            </button>
+          )}
+          {t.status==='done'&&!toast&&(
+            <div style={{textAlign:'center',padding:'12px',background:'#f0faf2',borderRadius:12,color:'#28a745',fontWeight:700,fontSize:14}}>✅ Completed</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AllTasksPage({currentUser,properties,onOpenProp}){
-  const[allTasks,setAllTasks]=React.useState({}); // propId → {tasks, address, stage}
+  const[allTasks,setAllTasks]=React.useState({});
   const[loading,setLoading]=React.useState(true);
+  const[editingTask,setEditingTask]=React.useState(null); // {task, propId, address}
 
   React.useEffect(()=>{
     if(!properties.length){setLoading(false);return;}
@@ -2071,6 +2181,15 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
 
   return(
     <div style={{padding:'16px 16px 0'}}>
+      {editingTask&&(
+        <TaskEditDrawer
+          task={editingTask.task}
+          propId={editingTask.propId}
+          address={editingTask.address}
+          currentUser={currentUser}
+          onClose={()=>setEditingTask(null)}
+        />
+      )}
       <div style={{fontSize:13,color:'#888',marginBottom:14,fontWeight:600}}>{totalOpen} open task{totalOpen!==1?'s':''} across {propsWithTasks.length} propert{propsWithTasks.length!==1?'ies':'y'}</div>
       {propsWithTasks.map(prop=>(
         <div key={prop.id} className="all-tasks-prop">
@@ -2085,10 +2204,11 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
             <span style={{color:'#ccc',fontSize:16}}>›</span>
           </div>
           {prop.openTasks.map(task=>(
-            <div key={task.id} className="all-tasks-row" onClick={()=>onOpenProp(prop)}>
+            <div key={task.id} className="all-tasks-row" onClick={()=>setEditingTask({task,propId:prop.id,address:prop.address})}>
               <div className="all-tasks-dot" style={{background:task.assignedTo?'#0f3460':'#ddd'}}/>
               <span className="all-tasks-title">{task.title}</span>
               {task.assignedTo&&<span className="all-tasks-assignee">👤 {task.assignedTo}</span>}
+              <span style={{color:'#ccc',fontSize:14,flexShrink:0}}>✎</span>
             </div>
           ))}
         </div>
