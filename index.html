@@ -1600,18 +1600,24 @@ function TasksPage({propId,address,currentUser,members,inline}){
         const photos=task.photos||[];
         return(
           <div key={task.id} className={`task-card status-${task.status}`}>
+            {/* ── Collapsed header ── */}
             <div className="task-card-top" onClick={()=>setExpanded(e=>({...e,[task.id]:!e[task.id]}))}>
-              <div className={`task-done-check${task.status==='done'?' checked':''}`}>
-                {task.status==='done'&&'✓'}
-              </div>
-              <div style={{flex:1}}>
-                <input
-                  className={`task-title-input${task.status==='done'?' done':''}`}
-                  value={task.title}
-                  onClick={e=>e.stopPropagation()}
-                  onChange={e=>updateTask(task.id,{title:e.target.value})}
-                  placeholder="Task title…"
-                />
+              <div className={`task-done-check${task.status==='done'?' checked':''}`}>{task.status==='done'&&'✓'}</div>
+              <div style={{flex:1,minWidth:0}}>
+                {isOpen?(
+                  <input
+                    className={`task-title-input${task.status==='done'?' done':''}`}
+                    value={task.title}
+                    onClick={e=>e.stopPropagation()}
+                    onChange={e=>updateTask(task.id,{title:e.target.value})}
+                    placeholder="Task title…"
+                    autoFocus
+                  />
+                ):(
+                  <div className={`task-title-input${task.status==='done'?' done':''}`} style={{cursor:'pointer',padding:'2px 0',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    {task.title||'Untitled task'}
+                  </div>
+                )}
                 <div className="task-meta">
                   {task.assignedTo&&<span className="task-assignee">👤 {task.assignedTo}</span>}
                   {tagged.map(n=><span key={n} className="task-tag">@{n}</span>)}
@@ -1621,10 +1627,13 @@ function TasksPage({propId,address,currentUser,members,inline}){
               </div>
               <span style={{fontSize:12,color:'#ccc',marginLeft:4}}>{isOpen?'▴':'▾'}</span>
             </div>
+
+            {/* ── Expanded body ── */}
             {isOpen&&(
               <div className="task-body">
                 <textarea className="task-notes-input" placeholder="Add notes…" value={task.notes||''}
                   onChange={e=>updateTask(task.id,{notes:e.target.value})}/>
+
                 {photos.length>0&&(
                   <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:8}}>
                     {photos.map((src,i)=>(
@@ -1636,33 +1645,20 @@ function TasksPage({propId,address,currentUser,members,inline}){
                     ))}
                   </div>
                 )}
-                <div className="task-actions">
-                  <select className="task-assign-select" value={task.assignedTo||''}
-                    onChange={e=>{
-                      const name=e.target.value;
-                      updateTask(task.id,{assignedTo:name});
-                      if(name) notifyAssignment(name, task.title, address||'');
-                    }}>
-                    <option value="">Unassigned</option>
-                    {memberNames.map(n=><option key={n} value={n}>{n}</option>)}
-                    {task.assignedTo&&!memberNames.includes(task.assignedTo)&&<option value={task.assignedTo}>{task.assignedTo}</option>}
-                  </select>
-                  <label style={{cursor:'pointer',padding:'6px 10px',background:'#f4f7fb',borderRadius:8,fontSize:13,border:'1px solid #dde'}}>
-                    📷
-                    <input type="file" accept="image/*" multiple style={{display:'none'}}
-                      onChange={e=>{Array.from(e.target.files).forEach(f=>addTaskPhoto(task.id,f));e.target.value='';}}/>
-                  </label>
-                  <button className="task-delete-btn" onClick={()=>deleteTask(task.id)}>🗑</button>
-                </div>
+
+                {/* Assign — button chips */}
                 {memberList.length>0&&(
-                  <div style={{marginTop:8}}>
-                    <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',marginBottom:5}}>@ Tag for attention</div>
+                  <div style={{marginTop:12}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:6}}>Assign to</div>
                     <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
                       {memberList.map(m=>{
-                        const on=!!(task.tagged||{})[m.name];
+                        const on=task.assignedTo===m.name;
                         return(
-                          <button key={m.name} onClick={()=>toggleTag(task,m.name)}
-                            style={{border:'2px solid',borderColor:on?'#0f3460':'#dde',borderRadius:20,padding:'4px 10px',fontSize:12,fontWeight:700,background:on?'#0f3460':'white',color:on?'white':'#666',cursor:'pointer'}}>
+                          <button key={m.name} onClick={()=>{
+                            const newVal=on?'':m.name;
+                            updateTask(task.id,{assignedTo:newVal});
+                            if(newVal) notifyAssignment(newVal,task.title,address||'');
+                          }} style={{border:'2px solid',borderColor:on?'#0f3460':'#dde',borderRadius:20,padding:'5px 12px',fontSize:12,fontWeight:700,background:on?'#0f3460':'white',color:on?'white':'#666',cursor:'pointer',transition:'all .15s'}}>
                             {on?'✓ ':''}{m.name}
                           </button>
                         );
@@ -1670,9 +1666,41 @@ function TasksPage({propId,address,currentUser,members,inline}){
                     </div>
                   </div>
                 )}
-                <button
-                  onClick={()=>toggleDone(task)}
-                  style={{marginTop:12,width:'100%',padding:'10px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:14,
+
+                {/* Tag — dropdown + chips */}
+                {memberList.length>0&&(
+                  <div style={{marginTop:12}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:6}}>@ Tag for attention</div>
+                    <select style={{width:'100%',padding:'8px 10px',borderRadius:10,border:'1.5px solid #dde',fontSize:13,background:'white',marginBottom:tagged.length?8:0}}
+                      value=""
+                      onChange={e=>{if(e.target.value)toggleTag(task,e.target.value);}}>
+                      <option value="">+ Add tag…</option>
+                      {memberList.filter(m=>!(task.tagged||{})[m.name]).map(m=><option key={m.name} value={m.name}>{m.name}</option>)}
+                    </select>
+                    {tagged.length>0&&(
+                      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                        {tagged.map(n=>(
+                          <span key={n} onClick={()=>toggleTag(task,n)}
+                            style={{display:'inline-flex',alignItems:'center',gap:4,background:'#e8f0fb',border:'1.5px solid #aac4e8',borderRadius:20,padding:'4px 10px',fontSize:12,fontWeight:700,color:'#0f3460',cursor:'pointer'}}>
+                            @{n} <span style={{fontSize:14,lineHeight:1,opacity:.6}}>×</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{display:'flex',gap:8,marginTop:12,alignItems:'center'}}>
+                  <label style={{cursor:'pointer',padding:'7px 12px',background:'#f4f7fb',borderRadius:8,fontSize:13,border:'1px solid #dde',flexShrink:0}}>
+                    📷 Photo
+                    <input type="file" accept="image/*" multiple style={{display:'none'}}
+                      onChange={e=>{Array.from(e.target.files).forEach(f=>addTaskPhoto(task.id,f));e.target.value='';}}/>
+                  </label>
+                  <button className="task-delete-btn" onClick={()=>deleteTask(task.id)}>🗑 Delete</button>
+                </div>
+
+                <button onClick={()=>toggleDone(task)}
+                  style={{marginTop:12,width:'100%',padding:'11px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:14,
                     background:task.status==='done'?'#f4f7fb':'#0f3460',
                     color:task.status==='done'?'#888':'white'}}>
                   {task.status==='done'?'↩ Mark Undone':'✓ Mark as Done'}
