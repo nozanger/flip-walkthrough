@@ -236,6 +236,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .task-card { background:white; border-radius:12px; border:2px solid #eee; margin-bottom:10px; overflow:hidden; transition:border-color .15s; }
 .task-card.status-done { border-color:#d4edda; background:#f9fffe; }
 .task-card.status-inprogress { border-color:#fff3cd; background:#fffdf0; }
+.task-card.urgent { border-color:#dc3545; background:#fff5f5; }
+.task-urgent-btn { width:26px; height:26px; border-radius:50%; border:2px solid #dde; background:white; font-size:12px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#ccc; transition:all .15s; line-height:1; padding:0; }
+.task-urgent-btn.on { background:#dc3545; border-color:#dc3545; color:white; }
 .task-card-top { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; cursor:pointer; }
 .task-status-btn { width:26px; height:26px; border-radius:50%; border:2px solid #ddd; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; margin-top:1px; transition:all .15s; }
 .task-status-btn.todo { border-color:#ddd; }
@@ -1567,7 +1570,11 @@ function TasksPage({propId,address,currentUser,members,inline}){
 
   const list=Object.values(tasks)
     .filter(t=>filter==='all'||t.status===filter)
-    .sort((a,b)=>{const o={todo:0,done:1};return(o[a.status]??0)-(o[b.status]??0)||(a.createdAt-b.createdAt);});
+    .sort((a,b)=>{
+      if(a.status!==b.status){const o={todo:0,done:1};return(o[a.status]??0)-(o[b.status]??0);}
+      if(!!b.urgent!==!!a.urgent)return b.urgent?1:-1;
+      return(a.createdAt-b.createdAt);
+    });
 
   const counts={todo:0,done:0};
   Object.values(tasks).forEach(t=>{if(counts[t.status]!==undefined)counts[t.status]++;});
@@ -1599,9 +1606,12 @@ function TasksPage({propId,address,currentUser,members,inline}){
         const tagged=Object.keys(task.tagged||{});
         const photos=task.photos||[];
         return(
-          <div key={task.id} className={`task-card status-${task.status}`}>
+          <div key={task.id} className={`task-card status-${task.status}${task.urgent?' urgent':''}`}>
             {/* ── Collapsed header ── */}
             <div className="task-card-top" onClick={()=>setExpanded(e=>({...e,[task.id]:!e[task.id]}))}>
+              <button className={`task-urgent-btn${task.urgent?' on':''}`}
+                onClick={e=>{e.stopPropagation();updateTask(task.id,{urgent:!task.urgent});}}
+                title="Mark urgent">!</button>
               <div className={`task-done-check${task.status==='done'?' checked':''}`}>{task.status==='done'&&'✓'}</div>
               <div style={{flex:1,minWidth:0}}>
                 {isOpen?(
