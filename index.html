@@ -1955,6 +1955,7 @@ function ShareModal({prop,data,onClose}){
 function TeamModal({currentUser,onClose}){
   const[roster,setRoster]=React.useState(null);
   const[showAdd,setShowAdd]=React.useState(false);
+  const[editingId,setEditingId]=React.useState(null);
   const[name,setName]=React.useState('');
   const[email,setEmail]=React.useState('');
   const[phone,setPhone]=React.useState('');
@@ -1965,17 +1966,43 @@ function TeamModal({currentUser,onClose}){
   },[currentUser.uid]);
 
   async function addMember(){
-    if(!name.trim()||!email.trim())return;
+    if(!name.trim())return;
     const id=uid();
     await dbSet(`roster/${currentUser.uid}/${id}`,{id,name:name.trim(),email:email.trim(),phone:phone.trim(),role,addedAt:Date.now()});
     setName('');setEmail('');setPhone('');setRole('Member');setShowAdd(false);
   }
 
+  function startEdit(m){
+    setEditingId(m.id);setName(m.name);setEmail(m.email||'');setPhone(m.phone||'');setRole(m.role||'Member');setShowAdd(false);
+  }
+
+  async function saveEdit(){
+    if(!name.trim())return;
+    await dbSet(`roster/${currentUser.uid}/${editingId}`,{id:editingId,name:name.trim(),email:email.trim(),phone:phone.trim(),role,addedAt:(roster[editingId]?.addedAt||Date.now())});
+    setEditingId(null);setName('');setEmail('');setPhone('');setRole('Member');
+  }
+
   async function removeMember(id){
     await dbRemove(`roster/${currentUser.uid}/${id}`);
+    if(editingId===id)setEditingId(null);
   }
 
   const members=Object.values(roster||{}).sort((a,b)=>a.name.localeCompare(b.name));
+  const editForm=(id)=>(
+    <div style={{padding:'12px',background:'#f8f9fa',borderRadius:10,marginTop:4}}>
+      <div className="role-pills" style={{marginBottom:10}}>
+        {INVITE_ROLES.map(r=><button key={r} className={`role-pill${role===r?' active':''}`} onClick={()=>setRole(r)}>{r}</button>)}
+      </div>
+      <div className="modal-field"><label>Name *</label><input autoFocus value={name} onChange={e=>setName(e.target.value)}/></div>
+      <div className="modal-field"><label>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+      <div className="modal-field"><label>Phone</label><input type="tel" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
+      <div className="modal-btns" style={{marginTop:8}}>
+        <button className="btn-primary" onClick={id?saveEdit:addMember}>Save</button>
+        <button className="btn-secondary" onClick={()=>{setEditingId(null);setShowAdd(false);}}>Cancel</button>
+        {id&&<button className="btn-danger" style={{marginLeft:'auto'}} onClick={()=>removeMember(id)}>Delete</button>}
+      </div>
+    </div>
+  );
 
   return(
     <div className="modal-overlay" onClick={onClose}>
@@ -1983,36 +2010,85 @@ function TeamModal({currentUser,onClose}){
         <h2>👥 My Team</h2>
         {members.length===0&&!showAdd&&<p style={{color:'#aaa',fontSize:13}}>No team members saved yet. Add people you work with regularly.</p>}
         {members.map(m=>(
-          <div key={m.id} className="roster-member">
-            <div className="roster-avatar">{m.name[0].toUpperCase()}</div>
-            <div className="roster-info">
-              <div className="roster-name">{m.name}</div>
-              <div className="roster-sub">{m.email}{m.phone?' · '+m.phone:''}</div>
+          <div key={m.id}>
+            <div className="roster-member" style={{cursor:'pointer'}} onClick={()=>editingId===m.id?setEditingId(null):startEdit(m)}>
+              <div className="roster-avatar">{m.name[0].toUpperCase()}</div>
+              <div className="roster-info">
+                <div className="roster-name">{m.name}</div>
+                <div className="roster-sub">{m.email}{m.phone?' · '+m.phone:''}</div>
+              </div>
+              <span className="roster-role-badge">{m.role}</span>
+              <span style={{fontSize:13,color:'#bbb',marginLeft:4}}>✎</span>
             </div>
-            <span className="roster-role-badge">{m.role}</span>
-            <button className="roster-remove" onClick={()=>removeMember(m.id)}>×</button>
+            {editingId===m.id&&editForm(m.id)}
           </div>
         ))}
 
-        {showAdd?(
-          <div style={{marginTop:12,padding:'14px',background:'#f8f9fa',borderRadius:10}}>
-            <div className="role-pills" style={{marginBottom:10}}>
-              {INVITE_ROLES.map(r=><button key={r} className={`role-pill${role===r?' active':''}`} onClick={()=>setRole(r)}>{r}</button>)}
-            </div>
-            <div className="modal-field"><label>Name *</label><input autoFocus placeholder="Jane Smith" value={name} onChange={e=>setName(e.target.value)}/></div>
-            <div className="modal-field"><label>Email *</label><input type="email" placeholder="jane@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
-            <div className="modal-field"><label>Phone (optional)</label><input type="tel" placeholder="+1 (555) 000-0000" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
-            <div className="modal-btns" style={{marginTop:8}}>
-              <button className="btn-primary" onClick={addMember}>Save</button>
-              <button className="btn-secondary" onClick={()=>setShowAdd(false)}>Cancel</button>
-            </div>
-          </div>
-        ):(
-          <button className="btn-add-prop" style={{marginTop:14}} onClick={()=>setShowAdd(true)}>＋ Add Team Member</button>
+        {showAdd?editForm(null):(
+          <button className="btn-add-prop" style={{marginTop:14}} onClick={()=>{setShowAdd(true);setName('');setEmail('');setPhone('');setRole('Member');setEditingId(null);}}>＋ Add Team Member</button>
         )}
 
         <div className="modal-btns" style={{marginTop:16}}>
           <button className="btn-secondary" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Profile Modal ────────────────────────────────────────────────────
+function ProfileModal({currentUser,onClose}){
+  const[name,setName]=React.useState(currentUser.displayName||'');
+  const[phone,setPhone]=React.useState('');
+  const[title,setTitle]=React.useState('');
+  const[company,setCompany]=React.useState('');
+  const[saving,setSaving]=React.useState(false);
+  const[saved,setSaved]=React.useState(false);
+
+  React.useEffect(()=>{
+    dbGet(`users/${currentUser.uid}/profile`).then(p=>{
+      if(!p)return;
+      if(p.phone)setPhone(p.phone);
+      if(p.title)setTitle(p.title);
+      if(p.company)setCompany(p.company);
+    });
+  },[currentUser.uid]);
+
+  async function save(){
+    if(!name.trim())return;
+    setSaving(true);
+    await getAuth().currentUser.updateProfile({displayName:name.trim()});
+    await dbSet(`users/${currentUser.uid}/profile`,{name:name.trim(),phone:phone.trim(),title:title.trim(),company:company.trim(),updatedAt:Date.now()});
+    setSaving(false);setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  }
+
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2>👤 My Profile</h2>
+
+        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20,padding:'14px',background:'#f8f9fa',borderRadius:12}}>
+          <div style={{width:54,height:54,borderRadius:'50%',background:'#0f3460',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:700,color:'white',flexShrink:0}}>
+            {(name||currentUser.email||'?')[0].toUpperCase()}
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:15,color:'#1a1a2e'}}>{name||'(no name set)'}</div>
+            <div style={{fontSize:12,color:'#888'}}>{currentUser.email}</div>
+          </div>
+        </div>
+
+        <div className="modal-field"><label>Display Name *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name"/></div>
+        <div className="modal-field"><label>Email</label><input value={currentUser.email} disabled style={{background:'#f5f5f5',color:'#aaa'}}/></div>
+        <div className="modal-field"><label>Phone</label><input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+1 (555) 000-0000"/></div>
+        <div className="modal-field"><label>Title / Role</label><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Property Investor, GC, Realtor"/></div>
+        <div className="modal-field"><label>Company</label><input value={company} onChange={e=>setCompany(e.target.value)} placeholder="e.g. ABC Real Estate LLC"/></div>
+
+        <div className="modal-btns" style={{marginTop:16}}>
+          <button className="btn-primary" onClick={save} disabled={saving}>
+            {saving?'Saving…':saved?'✓ Saved!':'Save Profile'}
+          </button>
+          <button className="btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -2403,6 +2479,7 @@ function PropertyList({currentUser,onOpen}){
   const[showAdd,setShowAdd]=React.useState(false);
   const[showInvite,setShowInvite]=React.useState(false);
   const[showTeam,setShowTeam]=React.useState(false);
+  const[showProfile,setShowProfile]=React.useState(false);
   const[deleteId,setDeleteId]=React.useState(null);
   const[showMigration,setShowMigration]=React.useState(false);
   const[notifBanner,setNotifBanner]=React.useState(false);
@@ -2511,10 +2588,13 @@ function PropertyList({currentUser,onOpen}){
             </svg>
             <h1>Zanco</h1>
           </div>
-          <button className="btn-signout" onClick={signOut}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Sign out
-          </button>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn-signout" onClick={()=>setShowProfile(true)}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              Profile
+            </button>
+            <button className="btn-signout" onClick={signOut} style={{paddingLeft:10,paddingRight:10}}>Sign out</button>
+          </div>
         </div>
         <p>Welcome back, {currentUser.displayName||currentUser.email?.split('@')[0]}</p>
       </div>
@@ -2592,6 +2672,7 @@ function PropertyList({currentUser,onOpen}){
       </nav>
       {showAdd&&<AddPropertyModal onAdd={addProperty} currentUser={currentUser} onClose={()=>setShowAdd(false)}/>}
       {showTeam&&<TeamModal currentUser={currentUser} onClose={()=>setShowTeam(false)}/>}
+      {showProfile&&<ProfileModal currentUser={currentUser} onClose={()=>setShowProfile(false)}/>}
       {showInvite&&<InviteModal properties={properties} currentUser={currentUser} onClose={()=>setShowInvite(false)}/>}
       {showMigration&&<MigrationModal currentUser={currentUser} onDone={()=>setShowMigration(false)}/>}
       {deleteId&&(
