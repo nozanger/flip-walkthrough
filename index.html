@@ -1976,28 +1976,44 @@ function TeamModal({currentUser,onClose}){
     setEditingId(m.id);setName(m.name);setEmail(m.email||'');setPhone(m.phone||'');setRole(m.role||'Member');setShowAdd(false);
   }
 
+  async function cascadeName(targetId,newName,matchNames){
+    // matchNames: array of strings to match against (old names + email variants)
+    const projectIds=await dbGet(`userProjects/${currentUser.uid}`)||{};
+    await Promise.all(Object.keys(projectIds).map(async projId=>{
+      const [mems,tasks]=await Promise.all([
+        dbGet(`projects/${projId}/members`)||{},
+        dbGet(`projects/${projId}/tasks`)||{},
+      ]);
+      // Update member record — match by id or by any of the old names
+      const memEntry=Object.entries(mems||{}).find(([uid,m])=>uid===targetId||matchNames.includes(m.name));
+      if(memEntry) await dbSet(`projects/${projId}/members/${memEntry[0]}/name`,newName);
+      // Update tasks
+      await Promise.all(Object.entries(tasks||{})
+        .filter(([,t])=>matchNames.includes(t.assignedTo))
+        .map(([tid])=>dbSet(`projects/${projId}/tasks/${tid}/assignedTo`,newName))
+      );
+    }));
+  }
+
   async function saveEdit(){
     if(!name.trim())return;
     const oldName=roster[editingId]?.name||'';
+    const oldEmail=roster[editingId]?.email||'';
     const newName=name.trim();
     await dbSet(`roster/${currentUser.uid}/${editingId}`,{id:editingId,name:newName,email:email.trim(),phone:phone.trim(),role,addedAt:(roster[editingId]?.addedAt||Date.now())});
-    // Cascade name change to all projects and tasks
-    if(oldName&&oldName!==newName){
-      const projectIds=await dbGet(`userProjects/${currentUser.uid}`)||{};
-      await Promise.all(Object.keys(projectIds).map(async projId=>{
-        // Update member record if present
-        const mems=await dbGet(`projects/${projId}/members`)||{};
-        const memEntry=Object.entries(mems).find(([,m])=>m.name===oldName);
-        if(memEntry) await dbSet(`projects/${projId}/members/${memEntry[0]}/name`,newName);
-        // Update all tasks assigned to old name
-        const tasks=await dbGet(`projects/${projId}/tasks`)||{};
-        await Promise.all(Object.entries(tasks)
-          .filter(([,t])=>t.assignedTo===oldName)
-          .map(([tid])=>dbSet(`projects/${projId}/tasks/${tid}/assignedTo`,newName))
-        );
-      }));
-    }
+    // Match by old name AND old email (handles email-as-name case)
+    const matchNames=[...new Set([oldName,oldEmail].filter(Boolean))];
+    if(matchNames.length) await cascadeName(editingId,newName,matchNames);
     setEditingId(null);setName('');setEmail('');setPhone('');setRole('Member');
+  }
+
+  const[syncing,setSyncing]=React.useState(null);
+  async function syncTasks(m){
+    setSyncing(m.id);
+    // Match by current name AND email — catches any stragglers
+    const matchNames=[...new Set([m.name,m.email].filter(Boolean))];
+    await cascadeName(m.id,m.name,matchNames);
+    setSyncing(null);
   }
 
   async function removeMember(id){
@@ -2017,6 +2033,7 @@ function TeamModal({currentUser,onClose}){
       <div className="modal-btns" style={{marginTop:8}}>
         <button className="btn-primary" onClick={id?saveEdit:addMember}>Save</button>
         <button className="btn-secondary" onClick={()=>{setEditingId(null);setShowAdd(false);}}>Cancel</button>
+        {id&&<button style={{background:'#e8f0fb',border:'none',borderRadius:8,color:'#0f3460',fontSize:12,fontWeight:600,padding:'6px 12px',cursor:'pointer'}} onClick={()=>syncTasks(roster[id])}>{syncing===id?'Syncing…':'↺ Sync tasks'}</button>}
         {id&&<button className="btn-danger" style={{marginLeft:'auto'}} onClick={()=>removeMember(id)}>Delete</button>}
       </div>
     </div>
