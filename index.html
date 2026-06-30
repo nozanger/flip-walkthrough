@@ -1954,13 +1954,14 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
     const prop={id:uid(),address:address.trim(),sqft:sqft.trim(),date,curBed,curBath,futBed,futBath,createdAt:Date.now()};
     const assignedMembers=Object.entries(selected).filter(([,v])=>v).map(([id])=>roster[id]).filter(Boolean);
 
-    // Notify via email — one mailto with all recipients
-    if(assignedMembers.length>0&&!notified){
-      const emails=assignedMembers.map(m=>m.email).join(',');
-      const subject=`You've been assigned to ${prop.address} on Zanco`;
-      const body=`Hi,\n\nYou've been assigned to a new Scope of Work project: ${prop.address}.\n\nLog in to Zanco to view it: ${window.location.origin}${window.location.pathname}\n\nSee you on Zanco!`;
-      window.open(`mailto:${emails}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_self');
-      setNotified(true);
+    // Notify via push notification (no email needed — they're already on your team)
+    if(assignedMembers.length>0){
+      assignedMembers.forEach(m=>{
+        fetch('/.netlify/functions/notify-property-added',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:username}),
+        }).catch(e=>console.warn('notify-property-added failed:',e));
+      });
     }
 
     // Write assigned members to the project
@@ -2025,7 +2026,7 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
           })}
           <div className="modal-btns" style={{marginTop:16}}>
             <button className="assign-notify-btn" onClick={finish}>
-              {numSelected>0?`Add Property & Notify ${numSelected} Member${numSelected>1?'s':''}  ✉️`:'Add Property (No Team)'}
+              {numSelected>0?`Add Property & Notify ${numSelected} Member${numSelected>1?'s':''}  🔔`:'Add Property (No Team)'}
             </button>
             <button className="btn-secondary" onClick={()=>setStep(1)}>← Back</button>
           </div>
