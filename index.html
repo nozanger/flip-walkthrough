@@ -2572,9 +2572,60 @@ function PropertyList({currentUser,onOpen}){
   );
 }
 
+// ── ScopeOverviewPage ────────────────────────────────────────────────
+function ScopeOverviewPage({data,onOpenCat}){
+  const[open,setOpen]=React.useState({});
+  function toggle(id){setOpen(s=>({...s,[id]:!s[id]}));}
+  function countReviewed(catId){
+    const d=data[catId]||{};
+    return Object.values(d).filter(v=>v&&v.status&&v.status!=='none').length;
+  }
+  return(
+    <div className="content" style={{paddingTop:12}}>
+      {CATEGORIES.map((cat,i)=>{
+        const rev=countReviewed(cat.id);
+        const total=cat.items.length;
+        const isOpen=!!open[cat.id];
+        return(
+          <div key={cat.id} className="section-card" style={{marginBottom:10,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14}}>
+            <div className="section-header" onClick={()=>toggle(cat.id)} style={{padding:'14px 16px'}}>
+              <span className="section-title" style={{color:'white',fontSize:15,fontWeight:700}}>
+                {cat.icon} {cat.label}
+              </span>
+              {rev>0&&<span style={{fontSize:12,color:'rgba(255,255,255,.5)',marginRight:8}}>{rev}/{total}</span>}
+              <span style={{color:'rgba(255,255,255,.4)',fontSize:18,lineHeight:1}}>{isOpen?'▲':'▼'}</span>
+            </div>
+            {isOpen&&(
+              <div style={{borderTop:'1px solid rgba(255,255,255,.08)',padding:'8px 0 4px'}}>
+                {cat.items.map(item=>{
+                  const d=(data[cat.id]||{})[item.id]||{};
+                  const s=d.status;
+                  const dot=s==='good'?'#5bbfb5':s==='fair'?'#e2b04a':s==='poor'?'#dc3545':'rgba(255,255,255,.2)';
+                  return(
+                    <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:dot,flexShrink:0}}/>
+                      <span style={{flex:1,fontSize:14,color:s?'white':'rgba(255,255,255,.5)'}}>{item.label}</span>
+                      {d.notes&&<span style={{fontSize:12,color:'rgba(255,255,255,.35)',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.notes}</span>}
+                    </div>
+                  );
+                })}
+                <div style={{padding:'10px 16px 6px'}}>
+                  <button onClick={()=>onOpenCat(i)} style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:10,color:'white',padding:'10px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    Edit {cat.label} →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── WalkthroughView ──────────────────────────────────────────────────
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3,TAB_MGMT=-4;
+  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3,TAB_MGMT=-4,TAB_SCOPE=-5;
   const initStage=prop.stage||'walkthrough';
   const[activeTab,setActiveTab]=React.useState(initStage==='contract'||initStage==='renovation'?TAB_MGMT:TAB_SUMMARY);
   const[data,setData]=React.useState({});
@@ -2779,7 +2830,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
             📋 Summary{sumFilled&&<span className="tab-count">✓</span>}
           </div>
-          {CATEGORIES.map((c,i)=>{
+          {stage==='walkthrough'?CATEGORIES.map((c,i)=>{
             const unread=catUnread(c.id);
             const rev=countReviewed(data,c.id);
             return(
@@ -2788,12 +2839,16 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
                 {unread>0?<span className="notif-badge">{unread}</span>:rev>0?<span className="tab-count">{rev}</span>:null}
               </div>
             );
-          })}
-          <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
-            👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
-          </div>
+          }):(
+            <div className={`tab${activeTab===TAB_SCOPE?' active':''}`} onClick={()=>setActiveTab(TAB_SCOPE)}>
+              📐 Scope of Work
+            </div>
+          )}
           <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
             ✅ Tasks
+          </div>
+          <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
+            👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
         </div>
       </div>
@@ -2810,6 +2865,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} address={prop.address} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner} members={members}/>}
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
       {activeTab===TAB_TASKS&&<TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>}
+      {activeTab===TAB_SCOPE&&<ScopeOverviewPage data={data} onOpenCat={i=>{setActiveTab(i);}}/>}
       {activeTab===TAB_MGMT&&(
         <div className="content">
           <div style={{padding:'12px 0 4px'}}>
