@@ -3398,10 +3398,10 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
             </div>
           </div>
           <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
-            <div style={{width:260,flexShrink:0}}>
+            <div style={{width:'50%',flexShrink:0}}>
               <BudgetSection propId={prop.id}/>
             </div>
-            <div style={{flex:1}}>{/* future content */}</div>
+            <div style={{width:'50%'}}>{/* future content */}</div>
           </div>
           <TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>
         </div>
