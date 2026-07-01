@@ -2411,6 +2411,7 @@ function TaskEditDrawer({task, propId, address, currentUser, members: membersPro
 
 function AllTasksPage({currentUser,properties,onOpenProp}){
   const[allTasks,setAllTasks]=React.useState({});
+  const[allMembers,setAllMembers]=React.useState({}); // propId → members obj
   const[loading,setLoading]=React.useState(true);
   const[editingTask,setEditingTask]=React.useState(null); // {task, propId, address}
   const[addingForProp,setAddingForProp]=React.useState(null); // {propId, address} for new task
@@ -2430,6 +2431,10 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
         if(loaded>=properties.length)setLoading(false);
       });
       unsubs.push(unsub);
+      // fetch members for each property so assignee chips are instant
+      dbGet(`projects/${prop.id}/members`).then(m=>
+        setAllMembers(prev=>({...prev,[prop.id]:m||{}}))
+      );
     });
     return()=>unsubs.forEach(u=>u());
   },[properties]);
@@ -2460,6 +2465,7 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
           propId={editingTask.propId}
           address={editingTask.address}
           currentUser={currentUser}
+          members={allMembers[editingTask.propId]}
           onClose={()=>setEditingTask(null)}
         />
       )}
@@ -2469,6 +2475,7 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
           propId={addingForProp.propId}
           address={addingForProp.address}
           currentUser={currentUser}
+          members={allMembers[addingForProp.propId]}
           onClose={()=>setAddingForProp(null)}
         />
       )}
