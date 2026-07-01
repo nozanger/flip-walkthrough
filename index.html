@@ -304,21 +304,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .summary-page { padding: 12px; }
 .summary-card { background: white; border-radius: 12px; padding: 18px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .summary-card h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
-.budget-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; margin-top:12px; }
-.budget-col-header { font-size:10px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.5px; padding:0 0 6px; text-align:right; }
-.budget-col-header:first-child { text-align:left; }
-.budget-row { display:contents; }
-.budget-row > div { padding:8px 0; border-top:1px solid #f0f0f0; display:flex; align-items:center; }
-.budget-row > div:not(:first-child) { justify-content:flex-end; }
-.budget-label { font-size:13px; font-weight:600; color:#1a1a2e; }
-.budget-input { width:90px; text-align:right; border:1.5px solid #e0e0e0; border-radius:8px; padding:5px 8px; font-size:13px; font-weight:600; color:#1a1a2e; outline:none; background:white; font-family:inherit; }
-.budget-input:focus { border-color:#0f3460; }
-.budget-remaining.ok { color:#28a745; font-size:13px; font-weight:700; }
-.budget-remaining.warn { color:#d4a017; font-size:13px; font-weight:700; }
-.budget-remaining.over { color:#dc3545; font-size:13px; font-weight:700; }
-.budget-total-row > div { border-top:2px solid #dde; padding-top:10px; margin-top:2px; }
-.budget-total-label { font-size:13px; font-weight:800; color:#1a1a2e; }
-.budget-total-val { font-size:13px; font-weight:800; color:#1a1a2e; }
+.budget-section-title { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.5px; margin:16px 0 8px; }
+.budget-section-title:first-of-type { margin-top:4px; }
+.budget-top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.budget-total-budget-label { font-size:13px; color:#666; }
+.budget-total-budget-val { font-size:15px; font-weight:700; color:#1a1a2e; }
+.budget-amount-input { width:110px; border:1.5px solid #e0e0e0; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:600; color:#1a1a2e; outline:none; background:white; font-family:inherit; text-align:right; }
+.budget-amount-input:focus { border-color:#0f3460; }
+.budget-payment-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #f4f4f4; }
+.budget-payment-desc { flex:1; border:1.5px solid #e0e0e0; border-radius:8px; padding:6px 10px; font-size:13px; color:#1a1a2e; outline:none; background:white; font-family:inherit; }
+.budget-payment-desc:focus { border-color:#0f3460; }
+.budget-add-btn { background:none; border:1.5px dashed #ccc; border-radius:8px; padding:7px 14px; font-size:13px; color:#888; cursor:pointer; width:100%; margin-top:6px; }
+.budget-add-btn:hover { border-color:#0f3460; color:#0f3460; }
+.budget-del-btn { background:none; border:none; color:#ddd; font-size:16px; cursor:pointer; padding:2px 6px; flex-shrink:0; }
+.budget-del-btn:hover { color:#dc3545; }
+.budget-subtotal { display:flex; justify-content:space-between; align-items:center; padding:8px 0 0; font-size:13px; color:#666; }
+.budget-subtotal strong { color:#1a1a2e; }
+.budget-divider { border:none; border-top:2px solid #eee; margin:16px 0; }
+.budget-summary-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:14px; }
+.budget-summary-row.total { font-weight:800; font-size:15px; border-top:2px solid #1a1a2e; margin-top:4px; padding-top:10px; }
+.budget-remaining-ok { color:#28a745; font-weight:700; }
+.budget-remaining-warn { color:#d4a017; font-weight:700; }
+.budget-remaining-over { color:#dc3545; font-weight:700; }
 .summary-textarea { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; resize: vertical; color: #1a1a2e; }
 .summary-textarea:focus { outline: none; border-color: #0f3460; }
 .summary-textarea::placeholder { color: #bbb; }
@@ -2188,89 +2195,159 @@ function MigrationModal({currentUser,onDone}){
 }
 
 function BudgetSection({propId}){
-  const[budget,setBudget]=React.useState({laborBudget:'',laborSpent:'',materialsBudget:'',materialsSpent:''});
-  React.useEffect(()=>dbListen(`projects/${propId}/budget`,b=>setBudget(b||{laborBudget:'',laborSpent:'',materialsBudget:'',materialsSpent:''})),[propId]);
+  const base=`projects/${propId}/budget`;
+  const[laborBudget,setLaborBudget]=React.useState('');
+  const[gcPayments,setGcPayments]=React.useState({});
+  const[extraPayments,setExtraPayments]=React.useState({});
+  const[materialsSpent,setMaterialsSpent]=React.useState('');
 
-  function save(patch){dbUpdate(`projects/${propId}/budget`,patch);}
+  React.useEffect(()=>{
+    const unsub=dbListen(base,b=>{
+      if(!b)return;
+      setLaborBudget(b.laborBudget||'');
+      setGcPayments(b.gcPayments||{});
+      setExtraPayments(b.extraPayments||{});
+      setMaterialsSpent(b.materialsSpent||'');
+    });
+    return unsub;
+  },[propId]);
 
-  function fmt(n){return n?'$'+Number(n).toLocaleString():'—';}
-  function remaining(budget,spent){
-    const b=parseFloat(budget)||0, s=parseFloat(spent)||0;
-    if(!b)return null;
-    const r=b-s;
-    const cls=r<0?'over':r<b*0.1?'warn':'ok';
-    return<span className={`budget-remaining ${cls}`}>{r<0?'-$'+Math.abs(r).toLocaleString():'$'+r.toLocaleString()} left</span>;
+  function fmt(n){
+    if(!n&&n!==0)return'—';
+    return'$'+Number(n).toLocaleString();
   }
 
-  const totalBudget=(parseFloat(budget.laborBudget)||0)+(parseFloat(budget.materialsBudget)||0);
-  const totalSpent=(parseFloat(budget.laborSpent)||0)+(parseFloat(budget.materialsSpent)||0);
-  const totalRemaining=totalBudget-totalSpent;
-  const totalCls=totalRemaining<0?'over':totalRemaining<totalBudget*0.1?'warn':'ok';
+  function sumPayments(payments){
+    return Object.values(payments||{}).reduce((s,p)=>s+(parseFloat(p.amount)||0),0);
+  }
 
-  function Field({field}){
-    const[local,setLocal]=React.useState(budget[field]||'');
-    React.useEffect(()=>setLocal(budget[field]||''),[budget[field]]);
+  function addPayment(field){
+    const id=uid();
+    dbUpdate(`${base}/${field}/${id}`,{id,amount:'',description:''});
+  }
+
+  function updatePayment(field,id,patch){
+    dbUpdate(`${base}/${field}/${id}`,patch);
+  }
+
+  function removePayment(field,id){
+    dbRemove(`${base}/${field}/${id}`);
+  }
+
+  function PaymentRow({fieldKey,payment}){
+    const[amt,setAmt]=React.useState(payment.amount||'');
+    const[desc,setDesc]=React.useState(payment.description||'');
+    React.useEffect(()=>setAmt(payment.amount||''),[payment.amount]);
+    React.useEffect(()=>setDesc(payment.description||''),[payment.description]);
     return(
-      <input className="budget-input" type="number" min="0" placeholder="$0"
-        value={local}
-        onChange={e=>setLocal(e.target.value)}
-        onBlur={e=>save({[field]:e.target.value})}
-      />
+      <div className="budget-payment-row">
+        <input className="budget-amount-input" type="number" min="0" placeholder="$0"
+          value={amt} onChange={e=>setAmt(e.target.value)}
+          onBlur={e=>updatePayment(fieldKey,payment.id,{amount:e.target.value})}/>
+        <input className="budget-payment-desc" placeholder="Description…"
+          value={desc} onChange={e=>setDesc(e.target.value)}
+          onBlur={e=>updatePayment(fieldKey,payment.id,{description:e.target.value})}/>
+        <button className="budget-del-btn" onClick={()=>removePayment(fieldKey,payment.id)}>×</button>
+      </div>
     );
   }
+
+  function LaborBudgetField(){
+    const[local,setLocal]=React.useState(laborBudget);
+    React.useEffect(()=>setLocal(laborBudget),[laborBudget]);
+    return(
+      <input className="budget-amount-input" type="number" min="0" placeholder="$0"
+        value={local} onChange={e=>setLocal(e.target.value)}
+        onBlur={e=>dbUpdate(base,{laborBudget:e.target.value})}/>
+    );
+  }
+
+  function MaterialsField(){
+    const[local,setLocal]=React.useState(materialsSpent);
+    React.useEffect(()=>setLocal(materialsSpent),[materialsSpent]);
+    return(
+      <input className="budget-amount-input" type="number" min="0" placeholder="$0"
+        value={local} onChange={e=>setLocal(e.target.value)}
+        onBlur={e=>dbUpdate(base,{materialsSpent:e.target.value})}/>
+    );
+  }
+
+  const gcList=Object.values(gcPayments).sort((a,b)=>(a.id||'').localeCompare(b.id||''));
+  const extraList=Object.values(extraPayments).sort((a,b)=>(a.id||'').localeCompare(b.id||''));
+  const laborSpentTotal=sumPayments(gcPayments)+sumPayments(extraPayments);
+  const matSpent=parseFloat(materialsSpent)||0;
+  const totalSpent=laborSpentTotal+matSpent;
+  const totalBudget=parseFloat(laborBudget)||0;
+  const remaining=totalBudget-totalSpent;
+  const remCls=remaining<0?'budget-remaining-over':remaining<totalBudget*0.1?'budget-remaining-warn':'budget-remaining-ok';
 
   return(
     <div className="summary-card" style={{marginBottom:12}}>
       <h3>💰 Project Budget</h3>
-      <div className="budget-grid">
-        <div className="budget-col-header">Category</div>
-        <div className="budget-col-header">Budget</div>
-        <div className="budget-col-header">Spent</div>
 
-        <div className="budget-row">
-          <div><span className="budget-label">Labor</span></div>
-          <div><Field field="laborBudget"/></div>
-          <div><Field field="laborSpent"/></div>
+      {/* ── Labor ── */}
+      <div className="budget-section-title">Labor</div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+        <span style={{fontSize:13,color:'#666'}}>Total Labor Budget</span>
+        <LaborBudgetField/>
+      </div>
+
+      <div style={{fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:4}}>GC Payments</div>
+      {gcList.map(p=><PaymentRow key={p.id} fieldKey="gcPayments" payment={p}/>)}
+      <button className="budget-add-btn" onClick={()=>addPayment('gcPayments')}>+ Add GC Payment</button>
+
+      <div style={{fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'.4px',margin:'12px 0 4px'}}>Additional Payments</div>
+      {extraList.map(p=><PaymentRow key={p.id} fieldKey="extraPayments" payment={p}/>)}
+      <button className="budget-add-btn" onClick={()=>addPayment('extraPayments')}>+ Add Payment</button>
+
+      {laborSpentTotal>0&&(
+        <div className="budget-subtotal" style={{marginTop:10}}>
+          <span>Labor spent</span>
+          <strong>{fmt(laborSpentTotal)}</strong>
         </div>
-        {remaining(budget.laborBudget,budget.laborSpent)&&(
-          <div style={{gridColumn:'1/-1',paddingBottom:4,borderTop:'none',fontSize:12,color:'#888',display:'flex',gap:6,alignItems:'center'}}>
-            <span style={{fontSize:11,color:'#bbb'}}>Labor remaining:</span>
-            {remaining(budget.laborBudget,budget.laborSpent)}
-          </div>
-        )}
+      )}
 
-        <div className="budget-row">
-          <div><span className="budget-label">Materials</span></div>
-          <div><Field field="materialsBudget"/></div>
-          <div><Field field="materialsSpent"/></div>
-        </div>
-        {remaining(budget.materialsBudget,budget.materialsSpent)&&(
-          <div style={{gridColumn:'1/-1',paddingBottom:4,borderTop:'none',fontSize:12,color:'#888',display:'flex',gap:6,alignItems:'center'}}>
-            <span style={{fontSize:11,color:'#bbb'}}>Materials remaining:</span>
-            {remaining(budget.materialsBudget,budget.materialsSpent)}
-          </div>
-        )}
+      <hr className="budget-divider"/>
 
-        {totalBudget>0&&(
-          <div className="budget-total-row" style={{display:'contents'}}>
-            <div style={{borderTop:'2px solid #dde',paddingTop:10}}>
-              <span className="budget-total-label">Total</span>
+      {/* ── Materials ── */}
+      <div className="budget-section-title" style={{marginTop:0}}>Materials</div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{fontSize:13,color:'#666'}}>Total spent so far</span>
+        <MaterialsField/>
+      </div>
+
+      {/* ── Summary ── */}
+      {(totalBudget>0||totalSpent>0)&&(
+        <>
+          <hr className="budget-divider"/>
+          <div className="budget-section-title" style={{marginTop:0}}>Summary</div>
+          {totalBudget>0&&(
+            <div className="budget-summary-row">
+              <span>Total Budget</span>
+              <span style={{fontWeight:600}}>{fmt(totalBudget)}</span>
             </div>
-            <div style={{borderTop:'2px solid #dde',paddingTop:10,justifyContent:'flex-end'}}>
-              <span className="budget-total-val">{fmt(totalBudget)}</span>
-            </div>
-            <div style={{borderTop:'2px solid #dde',paddingTop:10,justifyContent:'flex-end'}}>
-              <span className="budget-total-val">{fmt(totalSpent)}</span>
-            </div>
-            <div style={{gridColumn:'1/-1',paddingTop:4,display:'flex',gap:6,alignItems:'center'}}>
-              <span style={{fontSize:11,color:'#bbb'}}>Total remaining:</span>
-              <span className={`budget-remaining ${totalCls}`}>
-                {totalRemaining<0?'-$'+Math.abs(totalRemaining).toLocaleString():'$'+totalRemaining.toLocaleString()} left
+          )}
+          <div className="budget-summary-row">
+            <span>Labor Spent</span>
+            <span style={{fontWeight:600}}>{fmt(laborSpentTotal)}</span>
+          </div>
+          <div className="budget-summary-row">
+            <span>Materials Spent</span>
+            <span style={{fontWeight:600}}>{fmt(matSpent)}</span>
+          </div>
+          <div className="budget-summary-row total">
+            <span>Total Spent</span>
+            <span>{fmt(totalSpent)}</span>
+          </div>
+          {totalBudget>0&&(
+            <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
+              <span className={remCls} style={{fontSize:15}}>
+                {remaining<0?`$${Math.abs(remaining).toLocaleString()} over budget`:`$${remaining.toLocaleString()} remaining`}
               </span>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
