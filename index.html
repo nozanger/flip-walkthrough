@@ -3397,7 +3397,12 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
               {stage==='contract'?'📝 Under Contract — Project Management':'🔨 Ongoing Renovation — Project Management'}
             </div>
           </div>
-          <BudgetSection propId={prop.id}/>
+          <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+            <div style={{width:260,flexShrink:0}}>
+              <BudgetSection propId={prop.id}/>
+            </div>
+            <div style={{flex:1}}>{/* future content */}</div>
+          </div>
           <TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>
         </div>
       )}
