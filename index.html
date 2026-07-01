@@ -61,6 +61,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .prop-address { font-size: 15px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prop-meta { font-size: 12px; color: rgba(255,255,255,.45); margin-top: 3px; }
 .prop-arrow { color: rgba(255,255,255,.3); font-size: 20px; flex-shrink: 0; }
+.prop-budget-bar { padding: 0 14px 12px; }
+.prop-budget-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,.15); overflow: hidden; margin-bottom: 5px; }
+.prop-budget-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.prop-budget-nums { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.55); }
+.prop-budget-nums strong { color: rgba(255,255,255,.9); }
 .prop-actions { display: flex; align-items: center; gap: 0; padding: 0 14px 12px; border-top: 1px solid rgba(255,255,255,.06); margin-top: 0; padding-top: 10px; }
 .prop-stage-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-right: 6px; }
 .prop-stage-label { font-size: 12px; color: rgba(255,255,255,.5); font-weight: 500; flex: 1; }
@@ -2194,6 +2199,34 @@ function MigrationModal({currentUser,onDone}){
   );
 }
 
+function PropBudgetBar({propId}){
+  const[b,setB]=React.useState(null);
+  React.useEffect(()=>dbListen(`projects/${propId}/budget`,v=>setB(v||null)),[propId]);
+  if(!b||!b.totalBudget)return null;
+  const total=parseFloat(b.totalBudget)||0;
+  const gcSpent=Object.values(b.gcPayments||{}).reduce((s,p)=>s+(parseFloat(p.amount)||0),0);
+  const extraSpent=Object.values(b.extraPayments||{}).reduce((s,p)=>s+(parseFloat(p.amount)||0),0);
+  const spent=gcSpent+extraSpent+(parseFloat(b.materialsSpent)||0);
+  const pct=Math.min(100,Math.round((spent/total)*100));
+  const remaining=total-spent;
+  const fillColor=remaining<0?'#dc3545':pct>90?'#d4a017':'#4ade80';
+  const fmt=n=>'$'+Math.round(n).toLocaleString();
+  return(
+    <div className="prop-budget-bar">
+      <div className="prop-budget-track">
+        <div className="prop-budget-fill" style={{width:pct+'%',background:fillColor}}/>
+      </div>
+      <div className="prop-budget-nums">
+        <span>Budget: <strong>{fmt(total)}</strong></span>
+        <span>Spent: <strong>{fmt(spent)}</strong></span>
+        <span style={{color:remaining<0?'#f87171':'rgba(255,255,255,.55)'}}>
+          {remaining<0?<strong>Over {fmt(Math.abs(remaining))}</strong>:<><strong>{fmt(remaining)}</strong> left</>}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function BudgetSection({propId}){
   const base=`projects/${propId}/budget`;
   const[totalBudget,setTotalBudget]=React.useState('');
@@ -2972,6 +3005,7 @@ function PropertyList({currentUser,onOpen}){
           </div>
           <div className="prop-arrow">›</div>
         </div>
+        {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
         <div className="prop-actions">
           <div className="prop-stage-dot" style={{background:s.dot}}/>
           <span className="prop-stage-label">{s.label}</span>
