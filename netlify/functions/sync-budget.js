@@ -33,7 +33,9 @@ exports.handler = async (event) => {
   }
 
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
-  if (!apiKey) return { statusCode: 500, body: 'GOOGLE_SHEETS_API_KEY not set' };
+  console.log('ENV KEYS:', Object.keys(process.env).filter(k=>k.startsWith('GOOGLE')));
+  console.log('API KEY present:', !!apiKey, 'length:', apiKey?.length);
+  if (!apiKey) return { statusCode: 500, body: `GOOGLE_SHEETS_API_KEY not set. Env keys: ${Object.keys(process.env).join(',')}` };
 
   // Fetch columns A–E from the tab (enough for Materials, Labor, Other, Closing)
   const range = encodeURIComponent(`${tabName}!A:E`);
