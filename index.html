@@ -33,6 +33,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .list-content { padding: 0 14px; }
 
 /* Stage section cards */
+/* ── Kanban ── */
+.kanban-board { display:flex; gap:12px; overflow-x:auto; padding:14px 16px 100px; -webkit-overflow-scrolling:touch; min-height:70vh; }
+.kanban-board::-webkit-scrollbar { height:4px; }
+.kanban-board::-webkit-scrollbar-track { background:rgba(255,255,255,.05); border-radius:2px; }
+.kanban-board::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:2px; }
+.kanban-col { flex-shrink:0; width:252px; display:flex; flex-direction:column; }
+.kanban-col-header { display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; margin-bottom:8px; }
+.kanban-col-title { font-size:13px; font-weight:800; color:white; letter-spacing:.3px; }
+.kanban-col-count { margin-left:auto; font-size:11px; font-weight:700; background:rgba(255,255,255,.15); color:rgba(255,255,255,.7); border-radius:20px; padding:2px 8px; }
+.kanban-card { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:13px 14px; margin-bottom:8px; cursor:pointer; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); transition:all .15s; }
+.kanban-card:active { transform:scale(.97); opacity:.9; }
+.kanban-card-address { font-size:14px; font-weight:800; color:white; line-height:1.3; margin-bottom:6px; }
+.kanban-card-date { font-size:11px; color:rgba(255,255,255,.4); margin-bottom:10px; }
+.kanban-card-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.kanban-chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:20px; padding:3px 9px; }
+.kanban-chip-tasks { background:rgba(226,176,74,.15); color:#e2b04a; border:1px solid rgba(226,176,74,.3); }
+.kanban-chip-ok { background:rgba(40,167,69,.15); color:#5cb85c; border:1px solid rgba(40,167,69,.3); }
+.kanban-chip-warn { background:rgba(212,160,23,.15); color:#d4a017; border:1px solid rgba(212,160,23,.3); }
+.kanban-chip-over { background:rgba(220,53,69,.15); color:#dc3545; border:1px solid rgba(220,53,69,.3); }
+.kanban-move-btn { margin-top:10px; width:100%; padding:6px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:8px; color:rgba(255,255,255,.5); font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; }
+.kanban-move-btn:active { background:rgba(255,255,255,.12); }
+.kanban-empty { text-align:center; padding:24px 12px; color:rgba(255,255,255,.2); font-size:13px; border:1.5px dashed rgba(255,255,255,.1); border-radius:14px; }
+.view-toggle-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); cursor:pointer; flex-shrink:0; transition:all .15s; }
+.view-toggle-btn.active { background:rgba(226,176,74,.2); border-color:rgba(226,176,74,.4); }
+
 .stage-section { border-radius: 20px; margin-bottom: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 .stage-section-walkthrough { background: rgba(30, 50, 90, 0.55); }
 .stage-section-contract { background: rgba(15, 70, 65, 0.55); }
@@ -3106,6 +3131,77 @@ function GlobalOwnerPage({currentUser}){
   );
 }
 
+function KanbanCard({prop, onOpen, onMoveStage}){
+  const[taskCount,setTaskCount]=React.useState(null);
+  const[budget,setBudget]=React.useState(null);
+  React.useEffect(()=>{
+    dbGet(`projects/${prop.id}/tasks`).then(t=>setTaskCount(t?Object.values(t).filter(x=>x.status!=='done').length:0));
+    dbGet(`projects/${prop.id}/budget`).then(b=>setBudget(b||null));
+  },[prop.id]);
+
+  const STAGES=['walkthrough','contract','renovation'];
+  const stageIdx=STAGES.indexOf(prop.stage||'walkthrough');
+  const nextStage=STAGES[stageIdx+1];
+  const nextLabel=nextStage==='contract'?'Under Contract':nextStage==='renovation'?'Renovation':null;
+
+  const totalBudget=parseFloat(budget?.totalBudget)||0;
+  const laborSpent=parseFloat(budget?.laborSpent)||0;
+  const matSpent=parseFloat(budget?.materialsSpent)||0;
+  const otherSpent=parseFloat(budget?.otherSpent)||0;
+  const totalSpent=laborSpent+matSpent+otherSpent;
+  const pct=totalBudget>0?totalSpent/totalBudget:0;
+  const budgetChip=totalBudget>0?(
+    pct>1?<span className="kanban-chip kanban-chip-over">⚠ Over budget</span>:
+    pct>0.8?<span className="kanban-chip kanban-chip-warn">⚡ {Math.round(pct*100)}% spent</span>:
+    totalSpent>0?<span className="kanban-chip kanban-chip-ok">✓ {Math.round(pct*100)}% spent</span>:null
+  ):null;
+
+  return(
+    <div className="kanban-card" onClick={()=>onOpen(prop)}>
+      <div className="kanban-card-address">{prop.address}</div>
+      <div className="kanban-card-date">{prop.date||new Date(prop.createdAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+      <div className="kanban-card-meta">
+        {taskCount>0&&<span className="kanban-chip kanban-chip-tasks">✅ {taskCount} task{taskCount!==1?'s':''}</span>}
+        {taskCount===0&&<span style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>No open tasks</span>}
+        {budgetChip}
+      </div>
+      {nextLabel&&(
+        <button className="kanban-move-btn" onClick={e=>{e.stopPropagation();onMoveStage(prop,nextStage);}}>
+          Move to {nextLabel} →
+        </button>
+      )}
+    </div>
+  );
+}
+
+function KanbanView({properties, onOpen, onMoveStage}){
+  const COLS=[
+    {id:'walkthrough', icon:'🔍', label:'Walkthrough', bg:'rgba(30,50,90,0.7)'},
+    {id:'contract',    icon:'📝', label:'Under Contract', bg:'rgba(15,70,65,0.7)'},
+    {id:'renovation',  icon:'🔨', label:'Renovation', bg:'rgba(25,60,20,0.7)'},
+  ];
+  return(
+    <div className="kanban-board">
+      {COLS.map(col=>{
+        const cards=properties.filter(p=>(p.stage||'walkthrough')===col.id);
+        return(
+          <div key={col.id} className="kanban-col">
+            <div className="kanban-col-header" style={{background:col.bg}}>
+              <span style={{fontSize:16}}>{col.icon}</span>
+              <span className="kanban-col-title">{col.label}</span>
+              <span className="kanban-col-count">{cards.length}</span>
+            </div>
+            {cards.length===0&&<div className="kanban-empty">No properties</div>}
+            {cards.map(p=>(
+              <KanbanCard key={p.id} prop={p} onOpen={onOpen} onMoveStage={onMoveStage}/>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PropertyList({currentUser,onOpen}){
   const[properties,setProperties]=React.useState([]);
   const[loading,setLoading]=React.useState(true);
@@ -3116,7 +3212,9 @@ function PropertyList({currentUser,onOpen}){
   const[deleteId,setDeleteId]=React.useState(null);
   const[showMigration,setShowMigration]=React.useState(false);
   const[notifBanner,setNotifBanner]=React.useState(false);
-  const[homeTab,setHomeTab]=React.useState('properties'); // 'properties' | 'tasks'
+  const[homeTab,setHomeTab]=React.useState('properties'); // 'properties' | 'tasks' | 'owner'
+  const[viewMode,setViewMode]=React.useState(()=>localStorage.getItem('zanco_view')||'list'); // 'list' | 'kanban'
+  function toggleView(){setViewMode(v=>{const n=v==='list'?'kanban':'list';localStorage.setItem('zanco_view',n);return n;});}
 
   React.useEffect(()=>{
     if(!('Notification' in window)||VAPID_KEY.startsWith('REPLACE_'))return;
@@ -3166,6 +3264,10 @@ function PropertyList({currentUser,onOpen}){
   }
 
   function signOut(){getAuth().signOut();}
+
+  async function moveStage(prop, newStage){
+    await dbUpdate(`projects/${prop.id}/meta`,{stage:newStage,updatedAt:Date.now()});
+  }
 
   if(loading)return<div className="spinner-page"><div className="spinner"/></div>;
 
@@ -3248,6 +3350,18 @@ function PropertyList({currentUser,onOpen}){
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           Private
         </button>
+        {homeTab==='properties'&&(
+          <>
+            <div className="home-nav-sep"/>
+            <button className={`view-toggle-btn${viewMode==='kanban'?' active':''}`} onClick={toggleView} title={viewMode==='list'?'Switch to Kanban':'Switch to List'}>
+              {viewMode==='list'?(
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={viewMode==='kanban'?'#e2b04a':'rgba(255,255,255,.5)'} strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="18"/><rect x="17" y="3" width="5" height="18"/></svg>
+              ):(
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2.2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              )}
+            </button>
+          </>
+        )}
       </nav>
 
       {notifBanner&&(
@@ -3260,7 +3374,10 @@ function PropertyList({currentUser,onOpen}){
       )}
 
       {homeTab==='owner'&&<GlobalOwnerPage currentUser={currentUser}/>}
-      {homeTab==='properties'?(
+      {homeTab==='properties'&&viewMode==='kanban'&&(
+        <KanbanView properties={properties} onOpen={onOpen} onMoveStage={moveStage}/>
+      )}
+      {homeTab==='properties'&&viewMode==='list'?(
         <div className="list-content" style={{paddingTop:14}}>
           {properties.length===0&&(
             <div className="empty-state"><div className="icon">🏠</div><h2>No properties yet</h2><p style={{color:'rgba(255,255,255,.3)'}}>Add your first property to get started</p></div>
@@ -3288,9 +3405,10 @@ function PropertyList({currentUser,onOpen}){
             <button className="btn-add-prop" onClick={()=>setShowInvite(true)}>📲 Invite to Project</button>
           </div>
         </div>
-      ):(homeTab==='tasks'&&(
+      ):null}
+      {homeTab==='tasks'&&(
         <AllTasksPage currentUser={currentUser} properties={properties} onOpenProp={onOpen}/>
-      ))}
+      )}
 
       <nav className="bottom-nav">
         <button className="bottom-nav-btn active">
