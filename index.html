@@ -3608,13 +3608,14 @@ function AIPicturesPage({propId, currentUser}){
     const toUpload=Array.from(files).slice(0,remaining);
     setUploading(u=>({...u,[itemId]:true}));
     try{
-      const storage=firebase.storage();
       const newPhotos=[];
       for(const file of toUpload){
-        const ref=storage.ref(`projects/${propId}/photos/ai/${itemId}/${uid()}_${file.name}`);
-        const task=ref.put(file);
-        await task;
-        const url=await ref.getDownloadURL();
+        const url=await new Promise((res,rej)=>{
+          const r=new FileReader();
+          r.onload=async ev=>{try{res(await compressImage(ev.target.result));}catch(err){rej(err);}};
+          r.onerror=rej;
+          r.readAsDataURL(file);
+        });
         newPhotos.push({url,name:file.name,uploadedAt:Date.now()});
       }
       await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{photos:[...existing,...newPhotos]});
