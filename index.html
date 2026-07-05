@@ -3573,10 +3573,178 @@ function OwnerSection({propId, currentUser, members}){
 }
 
 // ── WalkthroughView ──────────────────────────────────────────────────
+function AIPicturesPage({propId, currentUser}){
+  const [items, setItems] = React.useState([]);
+  const [adding, setAdding] = React.useState(false);
+  const [newTitle, setNewTitle] = React.useState('');
+  const [uploading, setUploading] = React.useState({}); // itemId → true
+  const [lightbox, setLightbox] = React.useState(null);
+
+  React.useEffect(()=>{
+    return dbListen(`projects/${propId}/aiPictures`, val=>{
+      if(!val) return setItems([]);
+      setItems(Object.entries(val).map(([id,v])=>({id,...v})).sort((a,b)=>a.createdAt-b.createdAt));
+    });
+  },[propId]);
+
+  async function addItem(){
+    const title=newTitle.trim();
+    if(!title) return;
+    const id=uid();
+    await dbSet(`projects/${propId}/aiPictures/${id}`,{title,photos:[],createdAt:Date.now(),createdBy:currentUser.uid});
+    setNewTitle('');setAdding(false);
+  }
+
+  async function deleteItem(itemId){
+    if(!confirm('Delete this item and all its photos?')) return;
+    await dbRemove(`projects/${propId}/aiPictures/${itemId}`);
+  }
+
+  async function addPhotos(itemId, files, existing){
+    const remaining=5-(existing||[]).length;
+    if(remaining<=0) return;
+    const toUpload=Array.from(files).slice(0,remaining);
+    setUploading(u=>({...u,[itemId]:true}));
+    try{
+      const storage=firebase.storage();
+      const newPhotos=[];
+      for(const file of toUpload){
+        const ref=storage.ref(`projects/${propId}/aiPictures/${itemId}/${uid()}_${file.name}`);
+        await ref.put(file);
+        const url=await ref.getDownloadURL();
+        newPhotos.push({url,name:file.name,uploadedAt:Date.now()});
+      }
+      await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{photos:[...(existing||[]),...newPhotos]});
+    }finally{
+      setUploading(u=>({...u,[itemId]:false}));
+    }
+  }
+
+  async function deletePhoto(itemId, photoIdx, existing){
+    const updated=existing.filter((_,i)=>i!==photoIdx);
+    await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{photos:updated});
+  }
+
+  async function updateTitle(itemId, title){
+    await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{title});
+  }
+
+  return(
+    <div className="content">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0 12px'}}>
+        <div style={{fontSize:13,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#888'}}>🖼 AI Pictures</div>
+        <button onClick={()=>setAdding(true)} style={{background:'#e2b04a',color:'#000',border:'none',borderRadius:8,padding:'7px 14px',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Add Item</button>
+      </div>
+
+      {adding&&(
+        <div style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:12,padding:16,marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:600,color:'#e2b04a',marginBottom:10}}>New Item</div>
+          <input
+            autoFocus
+            value={newTitle} onChange={e=>setNewTitle(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter')addItem();if(e.key==='Escape'){setAdding(false);setNewTitle('');}}}
+            placeholder="e.g. Downstairs Bathroom, Master Bedroom…"
+            style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'white',fontSize:14,boxSizing:'border-box',marginBottom:10}}
+          />
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={addItem} style={{background:'#e2b04a',color:'#000',border:'none',borderRadius:8,padding:'7px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>Add</button>
+            <button onClick={()=>{setAdding(false);setNewTitle('');}} style={{background:'rgba(255,255,255,.1)',color:'white',border:'none',borderRadius:8,padding:'7px 16px',fontSize:13,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {items.length===0&&!adding&&(
+        <div style={{textAlign:'center',padding:'60px 0',color:'rgba(255,255,255,.35)',fontSize:14}}>
+          No pictures yet.<br/>Tap <strong style={{color:'#e2b04a'}}>+ Add Item</strong> to create your first one.
+        </div>
+      )}
+
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        {items.map(item=>(
+          <AIPictureItem
+            key={item.id}
+            item={item}
+            uploading={!!uploading[item.id]}
+            onAddPhotos={files=>addPhotos(item.id,files,item.photos)}
+            onDeletePhoto={(idx)=>deletePhoto(item.id,idx,item.photos)}
+            onDeleteItem={()=>deleteItem(item.id)}
+            onUpdateTitle={t=>updateTitle(item.id,t)}
+            onLightbox={setLightbox}
+          />
+        ))}
+      </div>
+
+      {lightbox&&(
+        <div onClick={()=>setLightbox(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <img src={lightbox} style={{maxWidth:'100%',maxHeight:'100%',borderRadius:10,objectFit:'contain'}} onClick={e=>e.stopPropagation()}/>
+          <button onClick={()=>setLightbox(null)} style={{position:'fixed',top:20,right:20,background:'rgba(255,255,255,.15)',border:'none',borderRadius:'50%',width:40,height:40,color:'white',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onLightbox}){
+  const [editingTitle, setEditingTitle] = React.useState(false);
+  const [titleVal, setTitleVal] = React.useState(item.title);
+  const fileRef = React.useRef();
+  const photos = item.photos||[];
+  const canAdd = photos.length < 5;
+
+  function saveTitle(){
+    const t=titleVal.trim();
+    if(t&&t!==item.title) onUpdateTitle(t);
+    setEditingTitle(false);
+  }
+
+  return(
+    <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+        {editingTitle?(
+          <input
+            autoFocus value={titleVal} onChange={e=>setTitleVal(e.target.value)}
+            onBlur={saveTitle} onKeyDown={e=>{if(e.key==='Enter')saveTitle();if(e.key==='Escape'){setTitleVal(item.title);setEditingTitle(false);}}}
+            style={{background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:7,padding:'5px 10px',color:'white',fontSize:15,fontWeight:600,flex:1,marginRight:8}}
+          />
+        ):(
+          <div onClick={()=>{setTitleVal(item.title);setEditingTitle(true);}} style={{fontSize:15,fontWeight:700,color:'white',cursor:'pointer',flex:1}} title="Tap to edit">
+            {item.title} <span style={{fontSize:11,color:'rgba(255,255,255,.3)',fontWeight:400}}>✏️</span>
+          </div>
+        )}
+        <button onClick={onDeleteItem} style={{background:'rgba(220,53,69,.15)',border:'none',borderRadius:7,padding:'5px 10px',color:'#dc3545',fontSize:12,cursor:'pointer',flexShrink:0}}>🗑 Delete</button>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:8,marginBottom:canAdd||uploading?12:0}}>
+        {photos.map((p,i)=>(
+          <div key={i} style={{position:'relative',borderRadius:9,overflow:'hidden',aspectRatio:'1',background:'rgba(255,255,255,.05)'}}>
+            <img src={p.url} onClick={()=>onLightbox(p.url)} style={{width:'100%',height:'100%',objectFit:'cover',cursor:'pointer',display:'block'}}/>
+            <button onClick={()=>onDeletePhoto(i)} style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,.6)',border:'none',borderRadius:'50%',width:22,height:22,color:'white',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+          </div>
+        ))}
+        {uploading&&(
+          <div style={{borderRadius:9,aspectRatio:'1',background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>⏳</div>
+        )}
+      </div>
+
+      {canAdd&&!uploading&&(
+        <>
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>{onAddPhotos(e.target.files);e.target.value='';}}/>
+          <button onClick={()=>fileRef.current.click()} style={{background:'rgba(255,255,255,.08)',border:'1px dashed rgba(255,255,255,.2)',borderRadius:9,padding:'8px 14px',color:'rgba(255,255,255,.6)',fontSize:13,cursor:'pointer',width:'100%'}}>
+            📷 Add Photo{photos.length>0?` (${photos.length}/5)`:''}
+          </button>
+        </>
+      )}
+      {photos.length===5&&(
+        <div style={{fontSize:12,color:'rgba(255,255,255,.3)',textAlign:'center',marginTop:4}}>5/5 photos — max reached</div>
+      )}
+    </div>
+  );
+}
+
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3,TAB_MGMT=-4,TAB_SCOPE=-5,TAB_OWNER=-6;
+  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3,TAB_MGMT=-4,TAB_SCOPE=-5,TAB_OWNER=-6,TAB_PICS=-7;
   const initStage=prop.stage||'walkthrough';
-  const[activeTab,setActiveTab]=React.useState(initStage==='contract'||initStage==='renovation'?TAB_MGMT:TAB_SUMMARY);
+  const[activeTab,setActiveTab]=React.useState(initStage==='contract'||initStage==='renovation'?TAB_TASKS:TAB_SUMMARY);
   const[data,setData]=React.useState({});
   const[members,setMembers]=React.useState({});
   const[stage,setStage]=React.useState(prop.stage||'walkthrough');
@@ -3772,38 +3940,59 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           {syncStatus==='syncing'?'Syncing…':'All changes saved · Live sync on'}
         </div>
         <div className="tabs">
-          {(stage==='contract'||stage==='renovation')&&(
-            <div className={`tab${activeTab===TAB_MGMT?' active':''}`} onClick={()=>setActiveTab(TAB_MGMT)}>
-              🏗 Project
-            </div>
-          )}
-          <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
-            📋 Summary{sumFilled&&<span className="tab-count">✓</span>}
-          </div>
-          {stage==='walkthrough'?CATEGORIES.map((c,i)=>{
-            const unread=catUnread(c.id);
-            const rev=countReviewed(data,c.id);
-            return(
-              <div key={c.id} className={`tab${activeTab===i?' active':''}`} onClick={()=>setActiveTab(i)}>
-                {c.icon} {c.label}
-                {unread>0?<span className="notif-badge">{unread}</span>:rev>0?<span className="tab-count">{rev}</span>:null}
+          {(stage==='contract'||stage==='renovation')?(
+            <>
+              <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
+                ✅ Tasks
               </div>
-            );
-          }):(
-            <div className={`tab${activeTab===TAB_SCOPE?' active':''}`} onClick={()=>setActiveTab(TAB_SCOPE)}>
-              📐 Scope of Work
-            </div>
-          )}
-          <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
-            ✅ Tasks
-          </div>
-          <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
-            👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
-          </div>
-          {canSeeOwner&&(
-            <div className={`tab${activeTab===TAB_OWNER?' active':''}`} onClick={()=>setActiveTab(TAB_OWNER)}>
-              🔒 Owner
-            </div>
+              <div className={`tab${activeTab===TAB_PICS?' active':''}`} onClick={()=>setActiveTab(TAB_PICS)}>
+                🖼 Pictures
+              </div>
+              <div className={`tab${activeTab===TAB_MGMT?' active':''}`} onClick={()=>setActiveTab(TAB_MGMT)}>
+                🏗 Project
+              </div>
+              <div className={`tab${activeTab===TAB_SCOPE?' active':''}`} onClick={()=>setActiveTab(TAB_SCOPE)}>
+                📐 Scope of Work
+              </div>
+              <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
+                📋 Summary{sumFilled&&<span className="tab-count">✓</span>}
+              </div>
+              <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
+                👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
+              </div>
+              {canSeeOwner&&(
+                <div className={`tab${activeTab===TAB_OWNER?' active':''}`} onClick={()=>setActiveTab(TAB_OWNER)}>
+                  🔒 Owner
+                </div>
+              )}
+            </>
+          ):(
+            <>
+              <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
+                📋 Summary{sumFilled&&<span className="tab-count">✓</span>}
+              </div>
+              {CATEGORIES.map((c,i)=>{
+                const unread=catUnread(c.id);
+                const rev=countReviewed(data,c.id);
+                return(
+                  <div key={c.id} className={`tab${activeTab===i?' active':''}`} onClick={()=>setActiveTab(i)}>
+                    {c.icon} {c.label}
+                    {unread>0?<span className="notif-badge">{unread}</span>:rev>0?<span className="tab-count">{rev}</span>:null}
+                  </div>
+                );
+              })}
+              <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
+                ✅ Tasks
+              </div>
+              <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
+                👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
+              </div>
+              {canSeeOwner&&(
+                <div className={`tab${activeTab===TAB_OWNER?' active':''}`} onClick={()=>setActiveTab(TAB_OWNER)}>
+                  🔒 Owner
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -3822,6 +4011,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
       {activeTab===TAB_TASKS&&<TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>}
       {activeTab===TAB_SCOPE&&<ScopeOverviewPage data={data} onOpenCat={i=>{setActiveTab(i);}}/>}
+      {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
       {activeTab===TAB_MGMT&&(
         <div className="content">
           <div style={{padding:'12px 0 4px'}}>
