@@ -1,4 +1,5 @@
 const { GoogleAuth } = require('google-auth-library');
+const { alertAdmin } = require('./utils/alert');
 
 const DB         = 'https://zanco-e2a3f-default-rtdb.firebaseio.com';
 const APP_URL    = 'https://zanco.netlify.app';
@@ -83,6 +84,7 @@ exports.handler = async (event) => {
 
   } catch (err) {
     console.error('notify-property-added error:', err);
+    await alertAdmin('notify-property-added', err, `Property: "${address}" | Member: ${memberEmail}`);
     return { statusCode: 500, body: err.message };
   }
 };

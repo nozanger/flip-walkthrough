@@ -1,4 +1,5 @@
 const { GoogleAuth } = require('google-auth-library');
+const { alertAdmin } = require('./utils/alert');
 
 const DB      = 'https://zanco-e2a3f-default-rtdb.firebaseio.com';
 const APP_URL = 'https://zanco.netlify.app';
@@ -175,6 +176,7 @@ exports.handler = async () => {
 
   } catch (err) {
     console.error('daily-reminders error:', err);
+    await alertAdmin('daily-reminders', err);
     return { statusCode: 500, body: err.message };
   }
 };

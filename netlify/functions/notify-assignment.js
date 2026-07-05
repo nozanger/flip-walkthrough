@@ -1,4 +1,5 @@
 const { GoogleAuth } = require('google-auth-library');
+const { alertAdmin } = require('./utils/alert');
 
 const DB         = 'https://zanco-e2a3f-default-rtdb.firebaseio.com';
 const APP_URL    = 'https://zanco.netlify.app';
@@ -76,6 +77,7 @@ exports.handler = async (event) => {
 
   } catch (err) {
     console.error('notify-assignment error:', err);
+    await alertAdmin('notify-assignment', err, `Task: "${taskTitle}" | Assignee UID: ${assigneeUid}`);
     return { statusCode: 500, body: err.message };
   }
 };
