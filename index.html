@@ -3611,12 +3611,15 @@ function AIPicturesPage({propId, currentUser}){
       const storage=firebase.storage();
       const newPhotos=[];
       for(const file of toUpload){
-        const ref=storage.ref(`projects/${propId}/aiPictures/${itemId}/${uid()}_${file.name}`);
-        await ref.put(file);
+        const ref=storage.ref(`projects/${propId}/photos/ai/${itemId}/${uid()}_${file.name}`);
+        const task=ref.put(file);
+        await task;
         const url=await ref.getDownloadURL();
         newPhotos.push({url,name:file.name,uploadedAt:Date.now()});
       }
-      await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{photos:[...(existing||[]),...newPhotos]});
+      await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{photos:[...existing,...newPhotos]});
+    }catch(e){
+      alert('Upload failed: '+e.message);
     }finally{
       setUploading(u=>({...u,[itemId]:false}));
     }
