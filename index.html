@@ -719,6 +719,7 @@ const AVATAR_COLORS = ['#0f3460','#e2b04a','#28a745','#dc3545','#6f42c1','#17a2b
 function avatarColor(name){let h=0;for(let c of(name||'?'))h=c.charCodeAt(0)+((h<<5)-h);return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length];}
 function initials(name){return(name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function uid(){return Math.random().toString(36).slice(2,10);}
+function toArr(val){if(!val)return[];if(Array.isArray(val))return val;return Object.values(val);}
 function timeAgo(ts){if(!ts)return'';const d=(Date.now()-ts)/1000;if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 
 // ── Local photo cache (base64 photos stay on-device) ─────────────────
@@ -3601,7 +3602,8 @@ function AIPicturesPage({propId, currentUser}){
   }
 
   async function addPhotos(itemId, files, existing){
-    const remaining=5-(existing||[]).length;
+    existing=toArr(existing);
+    const remaining=5-existing.length;
     if(remaining<=0) return;
     const toUpload=Array.from(files).slice(0,remaining);
     setUploading(u=>({...u,[itemId]:true}));
@@ -3692,12 +3694,12 @@ function AIPicturesPage({propId, currentUser}){
 function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onUpdateLinks, onLightbox}){
   const [editingTitle, setEditingTitle] = React.useState(false);
   const [titleVal, setTitleVal] = React.useState(item.title);
-  const [links, setLinks] = React.useState(item.materialLinks||[]);
+  const [links, setLinks] = React.useState(toArr(item.materialLinks));
   const fileRef = React.useRef();
-  const photos = item.photos||[];
+  const photos = toArr(item.photos);
   const canAdd = photos.length < 5;
 
-  React.useEffect(()=>{ setLinks(item.materialLinks||[]); },[item.materialLinks]);
+  React.useEffect(()=>{ setLinks(toArr(item.materialLinks)); },[JSON.stringify(item.materialLinks)]);
 
   function saveTitle(){
     const t=titleVal.trim();
