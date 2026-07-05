@@ -3629,8 +3629,8 @@ function AIPicturesPage({propId, currentUser}){
     await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{title});
   }
 
-  async function updateLink(itemId, materialLink){
-    await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{materialLink});
+  async function updateLinks(itemId, materialLinks){
+    await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{materialLinks});
   }
 
   return(
@@ -3673,7 +3673,7 @@ function AIPicturesPage({propId, currentUser}){
             onDeletePhoto={(idx)=>deletePhoto(item.id,idx,item.photos)}
             onDeleteItem={()=>deleteItem(item.id)}
             onUpdateTitle={t=>updateTitle(item.id,t)}
-            onUpdateLink={l=>updateLink(item.id,l)}
+            onUpdateLinks={links=>updateLinks(item.id,links)}
             onLightbox={setLightbox}
           />
         ))}
@@ -3689,13 +3689,15 @@ function AIPicturesPage({propId, currentUser}){
   );
 }
 
-function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onUpdateLink, onLightbox}){
+function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onUpdateLinks, onLightbox}){
   const [editingTitle, setEditingTitle] = React.useState(false);
   const [titleVal, setTitleVal] = React.useState(item.title);
-  const [linkVal, setLinkVal] = React.useState(item.materialLink||'');
+  const [links, setLinks] = React.useState(item.materialLinks||[]);
   const fileRef = React.useRef();
   const photos = item.photos||[];
   const canAdd = photos.length < 5;
+
+  React.useEffect(()=>{ setLinks(item.materialLinks||[]); },[item.materialLinks]);
 
   function saveTitle(){
     const t=titleVal.trim();
@@ -3703,9 +3705,23 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
     setEditingTitle(false);
   }
 
-  function saveLink(){
-    const l=linkVal.trim();
-    if(l!==item.materialLink) onUpdateLink(l);
+  function updateLinkField(idx, field, val){
+    const next=links.map((l,i)=>i===idx?{...l,[field]:val}:l);
+    setLinks(next);
+    onUpdateLinks(next);
+  }
+
+  function addLink(){
+    if(links.length>=6) return;
+    const next=[...links,{title:'',url:''}];
+    setLinks(next);
+    onUpdateLinks(next);
+  }
+
+  function removeLink(idx){
+    const next=links.filter((_,i)=>i!==idx);
+    setLinks(next);
+    onUpdateLinks(next);
   }
 
   return(
@@ -3725,16 +3741,28 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
         <button onClick={onDeleteItem} style={{background:'rgba(220,53,69,.15)',border:'none',borderRadius:7,padding:'5px 10px',color:'#dc3545',fontSize:12,cursor:'pointer',flexShrink:0}}>🗑 Delete</button>
       </div>
 
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-        <span style={{fontSize:13,flexShrink:0}}>🔗</span>
-        <input
-          value={linkVal} onChange={e=>setLinkVal(e.target.value)}
-          onBlur={saveLink} onKeyDown={e=>{if(e.key==='Enter'){e.target.blur();}}}
-          placeholder="Material link (paste URL)"
-          style={{flex:1,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'7px 10px',color:'white',fontSize:13,minWidth:0}}
-        />
-        {linkVal&&(
-          <a href={linkVal} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:7,padding:'6px 10px',color:'#e2b04a',fontSize:12,fontWeight:600,textDecoration:'none',whiteSpace:'nowrap'}}>Open ↗</a>
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#888',marginBottom:8}}>🔗 Material Links</div>
+        {links.map((link,i)=>(
+          <div key={i} style={{display:'flex',gap:6,marginBottom:7,alignItems:'center'}}>
+            <input
+              value={link.title} onChange={e=>updateLinkField(i,'title',e.target.value)}
+              placeholder="Title (e.g. Tiles)"
+              style={{width:110,flexShrink:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
+            />
+            <input
+              value={link.url} onChange={e=>updateLinkField(i,'url',e.target.value)}
+              placeholder="Paste URL"
+              style={{flex:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
+            />
+            {link.url&&(
+              <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:6,padding:'5px 8px',color:'#e2b04a',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
+            )}
+            <button onClick={()=>removeLink(i)} style={{flexShrink:0,background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 2px',lineHeight:1}}>×</button>
+          </div>
+        ))}
+        {links.length<6&&(
+          <button onClick={addLink} style={{background:'rgba(255,255,255,.06)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:7,padding:'6px 12px',color:'rgba(255,255,255,.45)',fontSize:12,cursor:'pointer'}}>+ Add Link</button>
         )}
       </div>
 
