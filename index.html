@@ -3629,6 +3629,10 @@ function AIPicturesPage({propId, currentUser}){
     await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{title});
   }
 
+  async function updateLink(itemId, materialLink){
+    await dbUpdate(`projects/${propId}/aiPictures/${itemId}`,{materialLink});
+  }
+
   return(
     <div className="content">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0 12px'}}>
@@ -3669,6 +3673,7 @@ function AIPicturesPage({propId, currentUser}){
             onDeletePhoto={(idx)=>deletePhoto(item.id,idx,item.photos)}
             onDeleteItem={()=>deleteItem(item.id)}
             onUpdateTitle={t=>updateTitle(item.id,t)}
+            onUpdateLink={l=>updateLink(item.id,l)}
             onLightbox={setLightbox}
           />
         ))}
@@ -3684,9 +3689,10 @@ function AIPicturesPage({propId, currentUser}){
   );
 }
 
-function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onLightbox}){
+function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onUpdateLink, onLightbox}){
   const [editingTitle, setEditingTitle] = React.useState(false);
   const [titleVal, setTitleVal] = React.useState(item.title);
+  const [linkVal, setLinkVal] = React.useState(item.materialLink||'');
   const fileRef = React.useRef();
   const photos = item.photos||[];
   const canAdd = photos.length < 5;
@@ -3695,6 +3701,11 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
     const t=titleVal.trim();
     if(t&&t!==item.title) onUpdateTitle(t);
     setEditingTitle(false);
+  }
+
+  function saveLink(){
+    const l=linkVal.trim();
+    if(l!==item.materialLink) onUpdateLink(l);
   }
 
   return(
@@ -3712,6 +3723,19 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
           </div>
         )}
         <button onClick={onDeleteItem} style={{background:'rgba(220,53,69,.15)',border:'none',borderRadius:7,padding:'5px 10px',color:'#dc3545',fontSize:12,cursor:'pointer',flexShrink:0}}>🗑 Delete</button>
+      </div>
+
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <span style={{fontSize:13,flexShrink:0}}>🔗</span>
+        <input
+          value={linkVal} onChange={e=>setLinkVal(e.target.value)}
+          onBlur={saveLink} onKeyDown={e=>{if(e.key==='Enter'){e.target.blur();}}}
+          placeholder="Material link (paste URL)"
+          style={{flex:1,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'7px 10px',color:'white',fontSize:13,minWidth:0}}
+        />
+        {linkVal&&(
+          <a href={linkVal} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:7,padding:'6px 10px',color:'#e2b04a',fontSize:12,fontWeight:600,textDecoration:'none',whiteSpace:'nowrap'}}>Open ↗</a>
+        )}
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:8,marginBottom:canAdd||uploading?12:0}}>
