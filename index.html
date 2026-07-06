@@ -3807,7 +3807,7 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
               <input
                 value={link.url} onChange={e=>updateLinkField(i,'url',e.target.value)}
                 placeholder="Paste URL"
-                style={{flex:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
+                style={{width:120,flexShrink:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
               />
               {link.url&&(
                 <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:6,padding:'5px 8px',color:'#e2b04a',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
