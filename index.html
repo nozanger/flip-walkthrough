@@ -722,6 +722,38 @@ function uid(){return Math.random().toString(36).slice(2,10);}
 function toArr(val){if(!val)return[];if(Array.isArray(val))return val;return Object.values(val);}
 function timeAgo(ts){if(!ts)return'';const d=(Date.now()-ts)/1000;if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 
+/* ── Reusable drag-to-reorder list ── */
+function SortableList({items, onReorder, renderItem, keyFn, gap=8, style={}}){
+  const dragIdx=React.useRef(null);
+  const [overIdx,setOverIdx]=React.useState(null);
+
+  function reorder(from,to){
+    if(from===to)return;
+    const next=[...items];
+    const[moved]=next.splice(from,1);
+    next.splice(to,0,moved);
+    onReorder(next);
+  }
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap,...style}}>
+      {items.map((item,i)=>(
+        <div
+          key={keyFn?keyFn(item):i}
+          draggable
+          onDragStart={e=>{dragIdx.current=i;e.dataTransfer.effectAllowed='move';}}
+          onDragOver={e=>{e.preventDefault();setOverIdx(i);}}
+          onDrop={e=>{e.preventDefault();reorder(dragIdx.current,i);dragIdx.current=null;setOverIdx(null);}}
+          onDragEnd={()=>{dragIdx.current=null;setOverIdx(null);}}
+          style={{opacity:overIdx===i&&dragIdx.current!==i?.45:1,transition:'opacity .15s'}}
+        >
+          {renderItem(item,i)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Local photo cache (base64 photos stay on-device) ─────────────────
 function loadPhotoCache(propId){try{return JSON.parse(localStorage.getItem(`pc_${propId}`)||'{}');}catch{return{};}}
 function savePhotoCache(propId,cache){localStorage.setItem(`pc_${propId}`,JSON.stringify(cache));}
@@ -3584,9 +3616,16 @@ function AIPicturesPage({propId, currentUser}){
   React.useEffect(()=>{
     return dbListen(`projects/${propId}/aiPictures`, val=>{
       if(!val) return setItems([]);
-      setItems(Object.entries(val).map(([id,v])=>({id,...v})).sort((a,b)=>a.createdAt-b.createdAt));
+      setItems(Object.entries(val).map(([id,v])=>({id,...v})).sort((a,b)=>(a.order??a.createdAt)-(b.order??b.createdAt)));
     });
   },[propId]);
+
+  async function reorderItems(newItems){
+    setItems(newItems);
+    const updates={};
+    newItems.forEach((item,i)=>{ updates[`${item.id}/order`]=i; });
+    await dbUpdate(`projects/${propId}/aiPictures`,updates);
+  }
 
   async function addItem(){
     const title=newTitle.trim();
@@ -3669,10 +3708,13 @@ function AIPicturesPage({propId, currentUser}){
         </div>
       )}
 
-      <div style={{display:'flex',flexDirection:'column',gap:14}}>
-        {items.map(item=>(
+      <SortableList
+        items={items}
+        keyFn={item=>item.id}
+        onReorder={reorderItems}
+        gap={14}
+        renderItem={item=>(
           <AIPictureItem
-            key={item.id}
             item={item}
             uploading={!!uploading[item.id]}
             onAddPhotos={files=>addPhotos(item.id,files,item.photos)}
@@ -3682,8 +3724,8 @@ function AIPicturesPage({propId, currentUser}){
             onUpdateLinks={links=>updateLinks(item.id,links)}
             onLightbox={setLightbox}
           />
-        ))}
-      </div>
+        )}
+      />
 
       {lightbox&&(
         <div onClick={()=>setLightbox(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
@@ -3733,6 +3775,7 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
   return(
     <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:16}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+        <span style={{color:'rgba(255,255,255,.2)',fontSize:18,cursor:'grab',flexShrink:0,marginRight:10,userSelect:'none'}}>⠿</span>
         {editingTitle?(
           <input
             autoFocus value={titleVal} onChange={e=>setTitleVal(e.target.value)}
@@ -3749,24 +3792,30 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
 
       <div style={{marginBottom:12}}>
         <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#888',marginBottom:8}}>🔗 Material Links</div>
-        {links.map((link,i)=>(
-          <div key={i} style={{display:'flex',gap:6,marginBottom:7,alignItems:'center'}}>
-            <input
-              value={link.title} onChange={e=>updateLinkField(i,'title',e.target.value)}
-              placeholder="Title (e.g. Tiles)"
-              style={{width:110,flexShrink:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
-            />
-            <input
-              value={link.url} onChange={e=>updateLinkField(i,'url',e.target.value)}
-              placeholder="Paste URL"
-              style={{flex:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
-            />
-            {link.url&&(
-              <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:6,padding:'5px 8px',color:'#e2b04a',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
-            )}
-            <button onClick={()=>removeLink(i)} style={{flexShrink:0,background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 2px',lineHeight:1}}>×</button>
-          </div>
-        ))}
+        <SortableList
+          items={links}
+          onReorder={next=>{setLinks(next);onUpdateLinks(next);}}
+          gap={7}
+          renderItem={(link,i)=>(
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <span style={{color:'rgba(255,255,255,.25)',fontSize:14,cursor:'grab',flexShrink:0,userSelect:'none'}}>⠿</span>
+              <input
+                value={link.title} onChange={e=>updateLinkField(i,'title',e.target.value)}
+                placeholder="Title (e.g. Tiles)"
+                style={{width:100,flexShrink:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
+              />
+              <input
+                value={link.url} onChange={e=>updateLinkField(i,'url',e.target.value)}
+                placeholder="Paste URL"
+                style={{flex:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
+              />
+              {link.url&&(
+                <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:6,padding:'5px 8px',color:'#e2b04a',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
+              )}
+              <button onClick={()=>removeLink(i)} style={{flexShrink:0,background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 2px',lineHeight:1}}>×</button>
+            </div>
+          )}
+        />
         {links.length<6&&(
           <button onClick={addLink} style={{background:'rgba(255,255,255,.06)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:7,padding:'6px 12px',color:'rgba(255,255,255,.45)',fontSize:12,cursor:'pointer'}}>+ Add Link</button>
         )}
