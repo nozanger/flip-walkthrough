@@ -3776,7 +3776,10 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
         {photos.map((p,i)=>(
           <div key={i} style={{position:'relative',borderRadius:9,overflow:'hidden',aspectRatio:'1',background:'rgba(255,255,255,.05)'}}>
             <img src={p.url} onClick={()=>onLightbox(p.url)} style={{width:'100%',height:'100%',objectFit:'cover',cursor:'pointer',display:'block'}}/>
-            <button onClick={()=>onDeletePhoto(i)} style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,.6)',border:'none',borderRadius:'50%',width:22,height:22,color:'white',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+            <div style={{position:'absolute',top:4,right:4,display:'flex',gap:4}}>
+              <a href={p.url} download={p.name||`photo-${i+1}.jpg`} style={{background:'rgba(0,0,0,.6)',borderRadius:'50%',width:22,height:22,color:'white',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',textDecoration:'none'}} title="Download">⬇</a>
+              <button onClick={()=>onDeletePhoto(i)} style={{background:'rgba(0,0,0,.6)',border:'none',borderRadius:'50%',width:22,height:22,color:'white',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+            </div>
           </div>
         ))}
         {uploading&&(
