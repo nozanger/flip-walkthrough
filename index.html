@@ -3262,6 +3262,8 @@ function PropertyList({currentUser,onOpen}){
   const[fabOpen,setFabOpen]=React.useState(false);
   const[fabPropId,setFabPropId]=React.useState('');
   const[fabTitle,setFabTitle]=React.useState('');
+  const[expandedIds,setExpandedIds]=React.useState(new Set());
+  function toggleExpand(id){setExpandedIds(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next;});}
   function toggleView(){setViewMode(v=>{const n=v==='list'?'kanban':'list';localStorage.setItem('zanco_view',n);return n;});}
 
   React.useEffect(()=>{
@@ -3350,9 +3352,11 @@ function PropertyList({currentUser,onOpen}){
     const stage=prop.stage||'walkthrough';
     const s=STAGES.find(x=>x.id===stage)||STAGES[0];
     const dateStr=prop.date?new Date(prop.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+    const expanded=expandedIds.has(prop.id);
     return(
       <div className={`prop-card stage-${stage}`}>
-        <div className="prop-card-body" onClick={()=>onOpen(prop)}>
+        {/* Always-visible header row */}
+        <div className="prop-card-body" onClick={()=>toggleExpand(prop.id)} style={{cursor:'pointer'}}>
           <div className="prop-thumb">
             {stage==='renovation'?(
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -3364,19 +3368,26 @@ function PropertyList({currentUser,onOpen}){
           </div>
           <div className="prop-info">
             <div className="prop-address">{prop.address}</div>
-            <div className="prop-meta">{prop.sqft?prop.sqft+' sq ft  ·  ':''}{dateStr}</div>
+            <div className="prop-meta">
+              <span style={{background:s.dot,width:6,height:6,borderRadius:3,display:'inline-block',marginRight:5,verticalAlign:'middle'}}/>
+              {s.label}{prop.sqft?'  ·  '+prop.sqft+' sq ft':''}{dateStr?'  ·  '+dateStr:''}
+            </div>
           </div>
-          <div className="prop-arrow">›</div>
+          <div style={{color:'rgba(255,255,255,.4)',fontSize:16,transition:'transform .2s',transform:expanded?'rotate(90deg)':'rotate(0deg)',flexShrink:0}}>›</div>
         </div>
-        {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
-        <div className="prop-actions">
-          <div className="prop-stage-dot" style={{background:s.dot}}/>
-          <span className="prop-stage-label">{s.label}</span>
-          <button className="prop-action-btn open" onClick={()=>onOpen(prop)}>↗ Open</button>
-          <div className="prop-action-sep"/>
-          <button className="prop-action-btn" onClick={()=>onOpen(prop)} title="Edit">✏️</button>
-          {prop.ownerId===currentUser.uid&&<><div className="prop-action-sep"/><button className="prop-action-btn danger" onClick={e=>{e.stopPropagation();setDeleteId(prop.id);}} title="Delete">🗑</button></>}
-        </div>
+
+        {/* Expanded section */}
+        {expanded&&(
+          <>
+            {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
+            <div className="prop-actions">
+              <button className="prop-action-btn open" onClick={()=>onOpen(prop)}>↗ Open</button>
+              <div className="prop-action-sep"/>
+              <button className="prop-action-btn" onClick={()=>onOpen(prop)} title="Edit">✏️ Edit</button>
+              {prop.ownerId===currentUser.uid&&<><div className="prop-action-sep"/><button className="prop-action-btn danger" onClick={e=>{e.stopPropagation();setDeleteId(prop.id);}} title="Delete">🗑 Delete</button></>}
+            </div>
+          </>
+        )}
       </div>
     );
   }
