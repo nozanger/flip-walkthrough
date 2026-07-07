@@ -10,6 +10,9 @@
 [functions."daily-reminders"]
   schedule = "0 0 * * *"
 
+[functions."sync-budget"]
+  schedule = "0 12 * * *"
+
 [[redirects]]
   from = "/firebase-messaging-sw.js"
   to = "/firebase-messaging-sw.js"
