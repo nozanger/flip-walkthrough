@@ -22,10 +22,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #080e1a; color: #1a1a2e; min-height: 100vh; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #05080f; color: #1a1a2e; min-height: 100vh; }
 
 /* ── Home screen ── */
-.list-page { max-width: 700px; margin: 0 auto; padding: 0 0 90px; background: linear-gradient(160deg, #0d1829 0%, #080e1a 60%, #0a1020 100%); min-height: 100vh; }
+.list-page { max-width: 700px; margin: 0 auto; padding: 0 0 90px; background: linear-gradient(160deg, #080f1e 0%, #05080f 60%, #0a1020 100%); min-height: 100vh; }
 .list-header { background: transparent; color: white; padding: 56px 20px 20px; }
 .list-header-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .list-header-logo svg { flex-shrink: 0; }
@@ -52,7 +52,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .kanban-card-date { font-size:11px; color:rgba(255,255,255,.4); margin-bottom:10px; }
 .kanban-card-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .kanban-chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:20px; padding:3px 9px; }
-.kanban-chip-tasks { background:rgba(226,176,74,.15); color:#e2b04a; border:1px solid rgba(226,176,74,.3); }
+.kanban-chip-tasks { background:rgba(245,158,11,.15); color:#f59e0b; border:1px solid rgba(245,158,11,.3); }
 .kanban-chip-ok { background:rgba(40,167,69,.15); color:#5cb85c; border:1px solid rgba(40,167,69,.3); }
 .kanban-chip-warn { background:rgba(212,160,23,.15); color:#d4a017; border:1px solid rgba(212,160,23,.3); }
 .kanban-chip-over { background:rgba(220,53,69,.15); color:#dc3545; border:1px solid rgba(220,53,69,.3); }
@@ -60,7 +60,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .kanban-move-btn:active { background:rgba(255,255,255,.12); }
 .kanban-empty { text-align:center; padding:24px 12px; color:rgba(255,255,255,.2); font-size:13px; border:1.5px dashed rgba(255,255,255,.1); border-radius:14px; }
 .view-toggle-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); cursor:pointer; flex-shrink:0; transition:all .15s; }
-.view-toggle-btn.active { background:rgba(226,176,74,.2); border-color:rgba(226,176,74,.4); }
+.view-toggle-btn.active { background:rgba(245,158,11,.2); border-color:rgba(245,158,11,.4); }
 
 .stage-section { border-radius: 22px; margin-bottom: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.09); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 4px 24px rgba(0,0,0,.2); }
 .stage-section-walkthrough { background: rgba(30, 50, 90, 0.55); }
@@ -106,7 +106,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .prop-action-btn.danger:hover { color: #ff6b6b; background: rgba(220,53,69,.1); }
 
 .btn-add-prop { width: 100%; background: rgba(255,255,255,.04); border: 1.5px dashed rgba(255,255,255,.15); border-radius: 14px; padding: 16px; font-size: 14px; font-weight: 600; color: rgba(255,255,255,.35); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all .2s; margin-bottom: 10px; }
-.btn-add-prop:hover { border-color: #e2b04a; color: #e2b04a; background: rgba(226,176,74,.05); }
+.btn-add-prop:hover { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,.05); }
 .empty-state { text-align: center; padding: 60px 20px; color: rgba(255,255,255,.3); }
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state h2 { font-size: 18px; color: rgba(255,255,255,.5); margin-bottom: 6px; }
@@ -116,27 +116,27 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 /* ── Home nav (top tabs) ── */
 .home-nav { display: flex; background: rgba(13,24,41,.95); padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(10px); gap: 4px; }
 .home-nav-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 0; border: none; background: none; cursor: pointer; color: rgba(255,255,255,.35); font-size: 14px; font-weight: 600; border-bottom: 2.5px solid transparent; transition: all .2s; }
-.home-nav-btn.active { color: #e2b04a; border-bottom-color: #e2b04a; }
+.home-nav-btn.active { color: #f59e0b; border-bottom-color: #f59e0b; }
 .home-nav-sep { width: 1px; background: rgba(255,255,255,.1); margin: 10px 0; }
 .home-nav-count { background: #ff6b35; color: white; border-radius: 10px; font-size: 10px; font-weight: 800; padding: 1px 6px; margin-left: 2px; }
 
 /* ── Bottom nav ── */
 .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,18,35,0.85); border-top: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: flex; z-index: 200; padding-bottom: env(safe-area-inset-bottom); }
 .bottom-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0 8px; gap: 4px; border: none; background: none; cursor: pointer; color: rgba(255,255,255,.35); font-size: 10px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; transition: color .15s; }
-.bottom-nav-btn.active { color: #e2b04a; background: rgba(226,176,74,.1); border-radius: 10px; padding: 8px 16px; }
+.bottom-nav-btn.active { color: #f59e0b; background: rgba(245,158,11,.1); border-radius: 10px; padding: 8px 16px; }
 
 .app { max-width: 900px; margin: 0 auto; padding: 0 0 80px; }
-.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 14px 16px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #0a1628 100%); color: white; padding: 14px 16px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
 .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .btn-back { background: rgba(255,255,255,.12); border: none; color: white; border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
 .btn-back:hover { background: rgba(255,255,255,.2); }
 .header-title { flex: 1; min-width: 0; }
 .header-title h1 { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-title p { font-size: 11px; opacity: .6; margin-top: 1px; }
-.btn-share { background: #e2b04a; color: #1a1a2e; border: none; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-.btn-share:hover { background: #d4a03a; }
+.btn-share { background: #f59e0b; color: #1a1a2e; border: none; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.btn-share:hover { background: #d97706; }
 
-.sqft-bar { background: #16213e; padding: 6px 10px; margin: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.sqft-bar { background: #0a1628; padding: 6px 10px; margin: 0; display: flex; gap: 6px; flex-wrap: wrap; }
 .sqft-field { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 7px; padding: 4px 8px; }
 .sqft-field-icon { display: flex; align-items: center; gap: 4px; }
 .sqft-field-icon svg { opacity: .4; flex-shrink: 0; }
@@ -150,10 +150,10 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .tabs { display: flex; overflow-x: auto; padding: 6px 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; gap: 2px; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex-shrink: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.5); cursor: pointer; border-bottom: none; border-radius: 8px; margin: 4px 2px; transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
-.tab.active { color: #e2b04a; background: rgba(226,176,74,.15); border-bottom: none; }
+.tab.active { color: #f59e0b; background: rgba(245,158,11,.15); border-bottom: none; }
 .tab:hover:not(.active) { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
 .tab-count { background: rgba(255,255,255,.15); border-radius: 10px; font-size: 10px; padding: 1px 5px; }
-.tab.active .tab-count { background: rgba(226,176,74,.25); color: #e2b04a; }
+.tab.active .tab-count { background: rgba(245,158,11,.25); color: #f59e0b; }
 .content { padding: 12px 12px 0; }
 
 .section-card { background: white; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
@@ -177,7 +177,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 
 .notes-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
 .notes-input { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px; color: #1a1a2e; transition: border-color .15s; }
-.notes-input:focus { outline: none; border-color: #0f3460; }
+.notes-input:focus { outline: none; border-color: #1d4ed8; }
 .notes-input::placeholder { color: #bbb; }
 .notes-row { display: flex; flex-direction: column; gap: 8px; }
 .update-stamp { font-size: 11px; color: #aaa; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
@@ -186,16 +186,16 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 /* ── Item Card (swipe walkthrough) ── */
 .item-card-wrap { display:flex; flex-direction:column; height:100%; padding:0; }
 .item-card-nav { display:flex; align-items:center; gap:10px; padding:10px 16px 6px; }
-.item-nav-btn { width:40px; height:40px; border-radius:50%; border:2px solid #dde; background:white; font-size:22px; line-height:1; color:#0f3460; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.item-nav-btn { width:40px; height:40px; border-radius:50%; border:2px solid #dde; background:white; font-size:22px; line-height:1; color:#1d4ed8; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
 .item-nav-btn:disabled { opacity:.25; cursor:default; }
 .item-nav-btn:not(:disabled):active { background:#e8f0fb; }
-.item-view-toggle { width:36px; height:36px; border-radius:10px; border:2px solid #dde; background:white; font-size:16px; color:#0f3460; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; }
-.item-view-toggle.active { background:#0f3460; color:white; border-color:#0f3460; }
+.item-view-toggle { width:36px; height:36px; border-radius:10px; border:2px solid #dde; background:white; font-size:16px; color:#1d4ed8; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; }
+.item-view-toggle.active { background:#1d4ed8; color:white; border-color:#1d4ed8; }
 .item-card-info { flex:1; text-align:center; }
 .item-card-title { font-size:18px; font-weight:800; color:white; display:block; line-height:1.2; text-shadow:0 1px 4px rgba(0,0,0,.4); }
 .item-card-count { font-size:12px; color:rgba(255,255,255,.55); font-weight:600; }
 .item-progress-bar { height:4px; background:#eee; margin:0 16px 12px; border-radius:2px; }
-.item-progress-fill { height:100%; background:#0f3460; border-radius:2px; transition:width .3s; }
+.item-progress-fill { height:100%; background:#1d4ed8; border-radius:2px; transition:width .3s; }
 .item-card-body { flex:1; overflow-y:auto; padding:0 16px 16px; }
 .item-status-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
 .item-status-btn { padding:16px 8px; border-radius:14px; border:2px solid #dde; background:#f8f9fa; font-size:16px; font-weight:700; cursor:pointer; transition:all .15s; color:#444; }
@@ -204,7 +204,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .item-status-btn.sel-maybe { background:#fff3cd; border-color:#d4a017; color:#856404; }
 .item-dots-row { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; padding:10px 16px 6px; }
 .item-dot { width:10px; height:10px; border-radius:50%; background:#dde; cursor:pointer; transition:all .15s; flex-shrink:0; }
-.item-dot.active { background:#0f3460; transform:scale(1.3); }
+.item-dot.active { background:#1d4ed8; transform:scale(1.3); }
 .item-dot.filled { background:#aac4e8; }
 /* ── Overview grid ── */
 .item-overview { flex:1; overflow-y:auto; padding:12px 16px 16px; display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; }
@@ -234,8 +234,8 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .photo-slot { border: 2px dashed #ddd; border-radius: 10px; overflow: hidden; background: #fafafa; }
 .photo-slot-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #888; padding: 8px 10px 4px; display: flex; align-items: center; justify-content: space-between; }
 .photo-slot-label .add-btns { display: flex; gap: 4px; }
-.add-btn { background: #0f3460; color: white; border: none; border-radius: 5px; font-size: 10px; font-weight: 700; padding: 2px 7px; cursor: pointer; }
-.add-btn.gold { background: #e2b04a; color: #1a1a2e; }
+.add-btn { background: #1d4ed8; color: white; border: none; border-radius: 5px; font-size: 10px; font-weight: 700; padding: 2px 7px; cursor: pointer; }
+.add-btn.gold { background: #f59e0b; color: #1a1a2e; }
 .photo-empty { display: flex; }
 .photo-empty-half { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 8px; gap: 4px; cursor: pointer; }
 .photo-empty-half:first-child { border-right: 1px solid #eee; }
@@ -253,17 +253,17 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .carousel-footer { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px 7px; background: #fafafa; }
 .carousel-dots { display: flex; gap: 4px; }
 .carousel-dot { width: 5px; height: 5px; border-radius: 50%; background: #ccc; transition: background .15s; }
-.carousel-dot.active { background: #0f3460; }
+.carousel-dot.active { background: #1d4ed8; }
 .carousel-count { font-size: 11px; color: #aaa; }
 .carousel-del { background: none; border: none; color: #ccc; font-size: 15px; cursor: pointer; padding: 2px; }
 .carousel-del:hover { color: #dc3545; }
 /* Video section */
 .video-upload-btn { width: 100%; border: 2px dashed #ddd; border-radius: 10px; padding: 18px; background: #fafafa; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all .2s; }
-.video-upload-btn:hover { border-color: #0f3460; background: #f4f7fb; }
+.video-upload-btn:hover { border-color: #1d4ed8; background: #f4f7fb; }
 .video-upload-btn span:first-child { font-size: 28px; }
 .video-upload-btn span:last-child { font-size: 13px; color: #aaa; }
 .video-progress { background: #f0f0f0; border-radius: 100px; height: 6px; margin: 8px 0; overflow: hidden; }
-.video-progress-fill { height: 6px; background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; transition: width .3s; }
+.video-progress-fill { height: 6px; background: linear-gradient(90deg, #1d4ed8, #f59e0b); border-radius: 100px; transition: width .3s; }
 .video-item { background: #f8f9fa; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
 .video-item video { width: 100%; display: block; max-height: 220px; background: #000; }
 .video-item-footer { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; }
@@ -273,9 +273,9 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 
 .progress-bar-wrap { background: white; margin: 0 12px 10px; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
 .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 6px; }
-.progress-label span:last-child { font-weight: 700; color: #0f3460; }
+.progress-label span:last-child { font-weight: 700; color: #1d4ed8; }
 .progress-track { background: #f0f2f5; border-radius: 100px; height: 6px; }
-.progress-fill { background: linear-gradient(90deg, #0f3460, #e2b04a); border-radius: 100px; height: 6px; transition: width .4s; }
+.progress-fill { background: linear-gradient(90deg, #1d4ed8, #f59e0b); border-radius: 100px; height: 6px; transition: width .4s; }
 
 /* ── Project stage ── */
 .stage-bar { display:flex; gap:8px; padding:12px 14px 0; }
@@ -292,12 +292,12 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .tasks-page { padding: 12px; }
 .tasks-add-row { display:flex; gap:8px; margin-bottom:14px; }
 .tasks-add-input { flex:1; border:2px solid #dde; border-radius:10px; padding:12px 14px; font-size:15px; outline:none; }
-.tasks-add-input:focus { border-color:#0f3460; }
-.tasks-add-btn { background:#0f3460; color:white; border:none; border-radius:10px; padding:12px 18px; font-size:18px; font-weight:700; cursor:pointer; flex-shrink:0; }
-.task-add-fab { display:flex; align-items:center; gap:8px; width:100%; padding:13px 16px; background:#0f3460; color:white; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:14px; justify-content:center; letter-spacing:.2px; }
+.tasks-add-input:focus { border-color:#1d4ed8; }
+.tasks-add-btn { background:#1d4ed8; color:white; border:none; border-radius:10px; padding:12px 18px; font-size:18px; font-weight:700; cursor:pointer; flex-shrink:0; }
+.task-add-fab { display:flex; align-items:center; gap:8px; width:100%; padding:13px 16px; background:#1d4ed8; color:white; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:14px; justify-content:center; letter-spacing:.2px; }
 .tasks-filters { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; padding-bottom:2px; }
 .task-filter { border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; background:#f0f2f5; color:#666; white-space:nowrap; }
-.task-filter.active { background:#0f3460; color:white; }
+.task-filter.active { background:#1d4ed8; color:white; }
 .task-card { background:white; border-radius:14px; border:1px solid #eef0f4; margin-bottom:8px; overflow:hidden; transition:all .15s; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.06); }
 .task-card:active { background:#f8f9fa; }
 .task-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.1); border-color:#dde; }
@@ -313,14 +313,14 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .task-toast { display:flex; align-items:center; justify-content:space-between; background:#1a1a2e; color:white; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:14px; font-weight:600; animation:fadeIn .2s ease; }
 .task-toast-undo { background:white; color:#1a1a2e; border:none; border-radius:6px; padding:4px 12px; font-size:13px; font-weight:700; cursor:pointer; }
 .task-urgent-pip { width:8px; height:8px; border-radius:50%; background:#dc3545; flex-shrink:0; }
-.task-assignee { font-size:11px; background:rgba(15,52,96,.12); color:#0f3460; border-radius:20px; padding:2px 8px; font-weight:600; border:1px solid rgba(15,52,96,.2); }
+.task-assignee { font-size:11px; background:rgba(29,78,216,.12); color:#1d4ed8; border-radius:20px; padding:2px 8px; font-weight:600; border:1px solid rgba(29,78,216,.2); }
 .task-tag { font-size:11px; background:#fff3cd; color:#856404; border-radius:20px; padding:2px 8px; font-weight:700; }
 .task-due-overdue { font-size:11px; color:#dc3545; font-weight:700; }
 .task-due-soon { font-size:11px; color:#d4a017; font-weight:700; }
 .task-due-ok { font-size:11px; color:#aaa; }
 .task-date { font-size:11px; color:#aaa; }
 .task-notes-input { width:100%; border:1.5px solid #eee; border-radius:8px; padding:8px 10px; font-size:13px; resize:none; outline:none; min-height:60px; font-family:inherit; }
-.task-notes-input:focus { border-color:#0f3460; }
+.task-notes-input:focus { border-color:#1d4ed8; }
 .task-assign-select { flex:1; border:1.5px solid #eee; border-radius:8px; padding:7px 10px; font-size:13px; outline:none; background:white; }
 .task-delete-btn { background:none; border:none; color:#ddd; font-size:18px; cursor:pointer; padding:4px; }
 .task-delete-btn:hover { color:#dc3545; }
@@ -329,10 +329,10 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .drawer-section { margin-bottom:18px; }
 .drawer-assignee-chips { display:flex; flex-wrap:wrap; gap:6px; }
 .drawer-assignee-chip { border:2px solid #dde; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:700; background:white; color:#666; cursor:pointer; transition:all .15s; }
-.drawer-assignee-chip.on { border-color:#0f3460; background:#0f3460; color:white; }
-.drawer-tag-chip { display:inline-flex; align-items:center; gap:4px; background:#e8f0fb; border:1.5px solid #aac4e8; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; color:#0f3460; cursor:pointer; }
+.drawer-assignee-chip.on { border-color:#1d4ed8; background:#1d4ed8; color:white; }
+.drawer-tag-chip { display:inline-flex; align-items:center; gap:4px; background:#e8f0fb; border:1.5px solid #aac4e8; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; color:#1d4ed8; cursor:pointer; }
 .drawer-due-input { width:100%; padding:9px 12px; border-radius:10px; border:1.5px solid #e0e0e0; font-size:14px; background:white; outline:none; }
-.drawer-due-input:focus { border-color:#0f3460; }
+.drawer-due-input:focus { border-color:#1d4ed8; }
 .drawer-delete-row { display:flex; justify-content:center; margin-top:8px; }
 .drawer-delete-link { background:none; border:none; color:#dc3545; font-size:13px; font-weight:600; cursor:pointer; padding:8px; opacity:.7; }
 .drawer-delete-link:hover { opacity:1; }
@@ -345,12 +345,12 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .budget-total-budget-label { font-size:13px; color:#666; }
 .budget-total-budget-val { font-size:15px; font-weight:700; color:#1a1a2e; }
 .budget-amount-input { width:110px; border:1.5px solid #e0e0e0; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:600; color:#1a1a2e; outline:none; background:white; font-family:inherit; text-align:right; }
-.budget-amount-input:focus { border-color:#0f3460; }
+.budget-amount-input:focus { border-color:#1d4ed8; }
 .budget-payment-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #f4f4f4; }
 .budget-payment-desc { flex:1; border:1.5px solid #e0e0e0; border-radius:8px; padding:6px 10px; font-size:13px; color:#1a1a2e; outline:none; background:white; font-family:inherit; }
-.budget-payment-desc:focus { border-color:#0f3460; }
+.budget-payment-desc:focus { border-color:#1d4ed8; }
 .budget-add-btn { background:none; border:1.5px dashed #ccc; border-radius:8px; padding:7px 14px; font-size:13px; color:#888; cursor:pointer; width:100%; margin-top:6px; }
-.budget-add-btn:hover { border-color:#0f3460; color:#0f3460; }
+.budget-add-btn:hover { border-color:#1d4ed8; color:#1d4ed8; }
 .budget-del-btn { background:none; border:none; color:#ddd; font-size:16px; cursor:pointer; padding:2px 6px; flex-shrink:0; }
 .budget-del-btn:hover { color:#dc3545; }
 .budget-subtotal { display:flex; justify-content:space-between; align-items:center; padding:8px 0 0; font-size:13px; color:#666; }
@@ -362,22 +362,22 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .budget-remaining-warn { color:#d4a017; font-weight:700; }
 .budget-remaining-over { color:#dc3545; font-weight:700; }
 .summary-textarea { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; resize: vertical; color: #1a1a2e; }
-.summary-textarea:focus { outline: none; border-color: #0f3460; }
+.summary-textarea:focus { outline: none; border-color: #1d4ed8; }
 .summary-textarea::placeholder { color: #bbb; }
 .priority-list { display: flex; flex-direction: column; gap: 6px; }
 .priority-item { display: flex; gap: 8px; align-items: flex-start; }
 .priority-item input[type=text] { flex: 1; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; color: #1a1a2e; }
-.priority-item input[type=text]:focus { outline: none; border-color: #0f3460; }
-.priority-num { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: #e2b04a; color: #1a1a2e; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 8px; }
+.priority-item input[type=text]:focus { outline: none; border-color: #1d4ed8; }
+.priority-num { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: #f59e0b; color: #1a1a2e; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 8px; }
 .priority-remove { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; padding: 4px; margin-top: 4px; }
 .priority-remove:hover { color: #e55; }
 .btn-add-priority { background: none; border: 2px dashed #ddd; border-radius: 8px; padding: 8px; font-size: 13px; color: #aaa; cursor: pointer; width: 100%; margin-top: 4px; }
-.btn-add-priority:hover { border-color: #0f3460; color: #0f3460; }
+.btn-add-priority:hover { border-color: #1d4ed8; color: #1d4ed8; }
 .budget-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .budget-field { display: flex; flex-direction: column; gap: 4px; }
 .budget-field label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; }
 .budget-field input { border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; color: #1a1a2e; }
-.budget-field input:focus { outline: none; border-color: #0f3460; }
+.budget-field input:focus { outline: none; border-color: #1d4ed8; }
 
 .participants-page { padding: 12px; }
 .activity-feed { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 10px; }
@@ -395,26 +395,26 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .modal-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .modal-field label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; }
 .modal-field input { border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; color: #1a1a2e; }
-.modal-field input:focus { outline: none; border-color: #0f3460; }
+.modal-field input:focus { outline: none; border-color: #1d4ed8; }
 .modal-field small { font-size: 11px; color: #aaa; line-height: 1.4; }
 .modal-btns { display: flex; gap: 10px; flex-direction: column; margin-top: 6px; }
-.btn-primary { background: #0f3460; color: white; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; letter-spacing: .1px; transition: all .2s; box-shadow: 0 4px 12px rgba(15,52,96,.3); }
-.btn-primary:hover { background: #0d2d52; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(15,52,96,.4); }
+.btn-primary { background: #1d4ed8; color: white; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; letter-spacing: .1px; transition: all .2s; box-shadow: 0 4px 12px rgba(29,78,216,.3); }
+.btn-primary:hover { background: #1e40af; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(29,78,216,.4); }
 .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
 .btn-secondary { background: #f0f0f0; color: #444; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: all .2s; }
 .btn-secondary:hover { background: #e4e4e4; }
-.btn-gold { background: #e2b04a; color: #1a1a2e; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; letter-spacing: .1px; transition: all .2s; box-shadow: 0 4px 12px rgba(226,176,74,.3); }
-.btn-gold:hover { background: #d4a03a; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(226,176,74,.4); }
+.btn-gold { background: #f59e0b; color: #1a1a2e; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; letter-spacing: .1px; transition: all .2s; box-shadow: 0 4px 12px rgba(245,158,11,.3); }
+.btn-gold:hover { background: #d97706; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.4); }
 .btn-danger { background: #dc3545; color: white; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; transition: all .2s; }
 .setup-step { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; color: #444; line-height: 1.5; }
-.setup-step strong { color: #0f3460; }
+.setup-step strong { color: #1d4ed8; }
 
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 300; display: flex; align-items: center; justify-content: center; }
 .lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
 .lightbox-close { position: fixed; top: 16px; right: 16px; background: rgba(255,255,255,.15); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; }
 
 /* ── Auth ── */
-.auth-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; background: linear-gradient(160deg, #1a1a2e 0%, #0f3460 70%); }
+.auth-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; background: linear-gradient(160deg, #1a1a2e 0%, #1d4ed8 70%); }
 .auth-card { background: white; border-radius: 28px; padding: 40px 32px 32px; width: 100%; max-width: 420px; box-shadow: 0 24px 80px rgba(0,0,0,.4); }
 .auth-logo { text-align: center; margin-bottom: 28px; }
 .auth-logo img { width: 72px; height: 72px; border-radius: 18px; }
@@ -423,32 +423,32 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .auth-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .auth-field label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .6px; }
 .auth-field input { border: 1.5px solid #e0e0e0; border-radius: 14px; padding: 14px 16px; font-size: 15px; font-family: inherit; color: #1a1a2e; transition: border-color .15s; }
-.auth-field input:focus { outline: none; border-color: #0f3460; }
+.auth-field input:focus { outline: none; border-color: #1d4ed8; }
 .auth-error { background: #fff5f5; color: #dc3545; border: 1px solid #f5c6cb; border-radius: 10px; padding: 11px 14px; font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
 .auth-switch { text-align: center; margin-top: 18px; font-size: 13px; color: #aaa; }
-.auth-switch button { background: none; border: none; color: #0f3460; font-weight: 700; cursor: pointer; font-size: 13px; text-decoration: underline; }
-.invite-banner { background: linear-gradient(135deg, #0f3460, #1a5276); color: white; border-radius: 14px; padding: 16px; margin-bottom: 22px; }
+.auth-switch button { background: none; border: none; color: #1d4ed8; font-weight: 700; cursor: pointer; font-size: 13px; text-decoration: underline; }
+.invite-banner { background: linear-gradient(135deg, #1d4ed8, #1a5276); color: white; border-radius: 14px; padding: 16px; margin-bottom: 22px; }
 .invite-banner h3 { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
 .invite-banner p { font-size: 13px; opacity: .8; line-height: 1.5; }
 
 /* Spinner */
 .spinner-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f0f2f5; }
-.spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #0f3460; border-radius: 50%; animation: spin .7s linear infinite; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #1d4ed8; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Team / members */
 .team-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 12px; }
 .team-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid #f0f0f0; }
 .team-card-header h3 { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; }
-.btn-invite { background: #0f3460; color: white; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
-.btn-invite:hover { background: #0d2d52; }
+.btn-invite { background: #1d4ed8; color: white; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.btn-invite:hover { background: #1e40af; }
 .member-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f8f8f8; }
 .member-row:last-child { border-bottom: none; }
 .member-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: white; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
 .member-info { flex: 1; min-width: 0; }
 .member-name { font-size: 14px; font-weight: 700; color: #1a1a2e; display: flex; align-items: center; gap: 5px; }
 .member-meta { font-size: 11px; color: #aaa; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.badge-you { font-size: 10px; font-weight: 700; background: #e2b04a; color: #1a1a2e; border-radius: 10px; padding: 1px 7px; }
+.badge-you { font-size: 10px; font-weight: 700; background: #f59e0b; color: #1a1a2e; border-radius: 10px; padding: 1px 7px; }
 .badge-owner { font-size: 10px; font-weight: 700; background: #d4edda; color: #155724; border-radius: 10px; padding: 1px 7px; }
 .btn-remove-member { background: none; border: none; color: #ddd; font-size: 20px; cursor: pointer; padding: 4px; line-height: 1; }
 .btn-remove-member:hover { color: #dc3545; }
@@ -456,49 +456,49 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 /* Invite modal */
 .invite-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .invite-input-row input { flex: 1; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 13px; font-size: 15px; font-family: inherit; color: #1a1a2e; }
-.invite-input-row input:focus { outline: none; border-color: #0f3460; }
+.invite-input-row input:focus { outline: none; border-color: #1d4ed8; }
 .invite-send-btns { display: flex; gap: 6px; margin-bottom: 10px; }
-.btn-sms { flex: 1; background: #0f3460; color: white; border: none; border-radius: 10px; padding: 11px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
-.btn-email-inv { flex: 1; background: #e2b04a; color: #1a1a2e; border: none; border-radius: 10px; padding: 11px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-sms { flex: 1; background: #1d4ed8; color: white; border: none; border-radius: 10px; padding: 11px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-email-inv { flex: 1; background: #f59e0b; color: #1a1a2e; border: none; border-radius: 10px; padding: 11px 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
 .invite-tabs { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
 .invite-tab { flex: 1; background: none; border: none; padding: 10px; font-size: 13px; font-weight: 600; color: #888; cursor: pointer; }
-.invite-tab.active { background: #0f3460; color: white; }
+.invite-tab.active { background: #1d4ed8; color: white; }
 .role-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
 .role-pill { background: #f0f0f0; border: 1.5px solid transparent; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: #555; cursor: pointer; transition: all .15s; }
-.role-pill.active { background: #e8f0fb; border-color: #0f3460; color: #0f3460; }
+.role-pill.active { background: #e8f0fb; border-color: #1d4ed8; color: #1d4ed8; }
 .project-select { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #1a1a2e; background: white; margin-bottom: 12px; }
 /* Team roster */
 .roster-member { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
 .roster-member:last-child { border-bottom: none; }
-.roster-avatar { width: 36px; height: 36px; border-radius: 50%; background: #e8f0fb; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #0f3460; flex-shrink: 0; }
+.roster-avatar { width: 36px; height: 36px; border-radius: 50%; background: #e8f0fb; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #1d4ed8; flex-shrink: 0; }
 .roster-info { flex: 1; min-width: 0; }
 .roster-name { font-size: 14px; font-weight: 600; color: #1a1a2e; }
 .roster-sub { font-size: 12px; color: #888; }
-.roster-role-badge { font-size: 11px; font-weight: 700; background: #e8f0fb; color: #0f3460; border-radius: 20px; padding: 3px 9px; white-space: nowrap; }
+.roster-role-badge { font-size: 11px; font-weight: 700; background: #e8f0fb; color: #1d4ed8; border-radius: 20px; padding: 3px 9px; white-space: nowrap; }
 .roster-remove { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; padding: 4px; }
 .roster-remove:hover { color: #dc3545; }
 .roster-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; background: white; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all .15s; }
-.roster-check.checked { background: #0f3460; border-color: #0f3460; color: white; }
-.assign-notify-btn { width: 100%; background: #0f3460; color: white; border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+.roster-check.checked { background: #1d4ed8; border-color: #1d4ed8; color: white; }
+.assign-notify-btn { width: 100%; background: #1d4ed8; color: white; border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; }
 .assign-notify-btn:disabled { opacity: .5; }
 .step-indicator { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
 .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #ddd; }
-.step-dot.active { background: #0f3460; }
+.step-dot.active { background: #1d4ed8; }
 .invite-sent { background: #f0f8f0; border: 1px solid #c3e6cb; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #155724; margin-bottom: 6px; }
 
 /* AI Analyzer */
-.ai-analyze-btn { width: 100%; background: linear-gradient(135deg,#1a1a2e,#0f3460); color: white; border: none; border-radius: 12px; padding: 16px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.ai-analyze-btn { width: 100%; background: linear-gradient(135deg,#1a1a2e,#1d4ed8); color: white; border: none; border-radius: 12px; padding: 16px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
 .ai-analyze-btn:disabled { opacity: .6; cursor: default; }
 .ai-step { text-align: center; padding: 20px 0; }
 .ai-step .ai-icon { font-size: 40px; margin-bottom: 12px; }
 .ai-step p { font-size: 14px; color: #666; line-height: 1.6; }
 .ai-progress { margin: 16px 0; }
 .ai-progress-bar { background: #f0f0f0; border-radius: 100px; height: 8px; overflow: hidden; margin-bottom: 8px; }
-.ai-progress-fill { height: 8px; background: linear-gradient(90deg,#0f3460,#e2b04a); border-radius: 100px; transition: width .4s; }
+.ai-progress-fill { height: 8px; background: linear-gradient(90deg,#1d4ed8,#f59e0b); border-radius: 100px; transition: width .4s; }
 .ai-progress-label { font-size: 12px; color: #888; text-align: center; }
 .ai-result-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
 .ai-result-item:last-child { border-bottom: none; }
-.ai-result-cat { font-size: 11px; font-weight: 700; color: #0f3460; background: #e8f0fb; border-radius: 20px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.ai-result-cat { font-size: 11px; font-weight: 700; color: #1d4ed8; background: #e8f0fb; border-radius: 20px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
 .ai-result-text { font-size: 13px; color: #333; line-height: 1.4; }
 .ai-result-label { font-weight: 600; }
 
@@ -715,7 +715,7 @@ const CATEGORIES = [
 const STATUSES      = [{id:'keep',label:'✓ Keep',cls:'keep'},{id:'replace',label:'↺ Replace',cls:'replace'},{id:'maybe',label:'? Check',cls:'maybe'}];
 const STATUS_LABELS = {keep:'✓ Keep',replace:'↺ Replace',maybe:'? Check'};
 const STATUS_COLORS = {keep:'#d4edda',replace:'#f8d7da',maybe:'#fff3cd'};
-const AVATAR_COLORS = ['#0f3460','#e2b04a','#28a745','#dc3545','#6f42c1','#17a2b8','#fd7e14','#20c997'];
+const AVATAR_COLORS = ['#1d4ed8','#f59e0b','#28a745','#dc3545','#6f42c1','#17a2b8','#fd7e14','#20c997'];
 
 function avatarColor(name){let h=0;for(let c of(name||'?'))h=c.charCodeAt(0)+((h<<5)-h);return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length];}
 function initials(name){return(name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
@@ -888,7 +888,7 @@ function PhotoSlot({label,photos,onAdd,onAddBatch,onRemove,onView}){
         </div>
       </div>
       {uploading&&(
-        <div style={{background:'#f0f4ff',borderRadius:10,padding:'10px 14px',marginBottom:8,fontSize:13,color:'#0f3460',textAlign:'center'}}>
+        <div style={{background:'#f0f4ff',borderRadius:10,padding:'10px 14px',marginBottom:8,fontSize:13,color:'#1d4ed8',textAlign:'center'}}>
           ⏳ Processing {uploading.done}/{uploading.total} photo{uploading.total>1?'s':''}…
         </div>
       )}
@@ -1148,7 +1148,7 @@ function VideoSection({propId,videos,onChange,uploadedBy}){
       ))}
       {progress!==null&&(
         <div style={{marginBottom:10}}>
-          <div style={{fontSize:12,color:'#0f3460',marginBottom:4}}>Uploading… {progress}%</div>
+          <div style={{fontSize:12,color:'#1d4ed8',marginBottom:4}}>Uploading… {progress}%</div>
           <div className="video-progress"><div className="video-progress-fill" style={{width:progress+'%'}}/></div>
         </div>
       )}
@@ -1226,7 +1226,7 @@ function VideoAnalyzer({onApply,onClose,isOwner}){
               <p>Upload a walkthrough video and AI will automatically fill in your scope of work checklist based on what it sees.</p>
             </div>
             {err==='NO_KEY'?(
-              <div style={{background:'#fff8e6',border:'1px solid #e2b04a',borderRadius:10,padding:14,marginBottom:14}}>
+              <div style={{background:'#fff8e6',border:'1px solid #f59e0b',borderRadius:10,padding:14,marginBottom:14}}>
                 <p style={{fontSize:13,fontWeight:700,color:'#b8860b',marginBottom:8}}>⚠️ Gemini API key not set</p>
                 {isOwner?(
                   <>
@@ -1330,7 +1330,7 @@ function SummaryPage({summary,onChange,onView,propId,address,currentUser,onApply
           onAddBatch={srcs=>onChange({...s,photos:[...(s.photos||[]),...srcs]})}
           onRemove={i=>onChange({...s,photos:(s.photos||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
       </div>
-      <div className="summary-card" style={{border:'2px solid #e2b04a'}}>
+      <div className="summary-card" style={{border:'2px solid #f59e0b'}}>
         <h3 style={{color:'#b8860b'}}>🤖 AI Vision Renderings</h3>
         <p style={{fontSize:13,color:'#888',marginBottom:12,lineHeight:1.5}}>Upload your AI-generated renderings.</p>
         <PhotoSlot label="AI Renderings" photos={s.aiVision||[]}
@@ -1338,8 +1338,8 @@ function SummaryPage({summary,onChange,onView,propId,address,currentUser,onApply
           onAddBatch={srcs=>onChange({...s,aiVision:[...(s.aiVision||[]),...srcs]})}
           onRemove={i=>onChange({...s,aiVision:(s.aiVision||[]).filter((_,idx)=>idx!==i)})} onView={onView}/>
       </div>
-      <div className="summary-card" style={{border:'2px solid #0f3460'}}>
-        <h3 style={{color:'#0f3460'}}>📐 Final Floor Plan Vision</h3>
+      <div className="summary-card" style={{border:'2px solid #1d4ed8'}}>
+        <h3 style={{color:'#1d4ed8'}}>📐 Final Floor Plan Vision</h3>
         <PhotoSlot label="Final Floor Plan" photos={s.floorPlan||[]}
           onAdd={src=>onChange({...s,floorPlan:[...(s.floorPlan||[]),src]})}
           onAddBatch={srcs=>onChange({...s,floorPlan:[...(s.floorPlan||[]),...srcs]})}
@@ -1364,7 +1364,7 @@ function buildReport(prop,data){
   const sum=data._summary||{};
   const{done,total}=totalProgress(data);
   const prioritiesHtml=(sum.priorities||[]).filter(Boolean).map((p,i)=>
-    `<tr><td style="width:32px;padding:5px 0"><div style="width:22px;height:22px;border-radius:50%;background:#e2b04a;color:#1a1a2e;font-size:11px;font-weight:800;text-align:center;line-height:22px">${i+1}</div></td><td style="padding:5px 0 5px 10px;font-size:14px;color:#333">${p}</td></tr>`
+    `<tr><td style="width:32px;padding:5px 0"><div style="width:22px;height:22px;border-radius:50%;background:#f59e0b;color:#1a1a2e;font-size:11px;font-weight:800;text-align:center;line-height:22px">${i+1}</div></td><td style="padding:5px 0 5px 10px;font-size:14px;color:#333">${p}</td></tr>`
   ).join('');
   function photoGrid(arr,label){
     if(!arr?.length)return'';
@@ -1386,27 +1386,27 @@ function buildReport(prop,data){
       </div>`;
     });
     if(!rows)return;
-    catSections+=`<div style="margin-bottom:30px;page-break-inside:avoid"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:3px solid #e2b04a"><span style="font-size:20px">${cat.icon}</span><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0">${cat.label}</h2></div>${rows}</div>`;
+    catSections+=`<div style="margin-bottom:30px;page-break-inside:avoid"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:3px solid #f59e0b"><span style="font-size:20px">${cat.icon}</span><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0">${cat.label}</h2></div>${rows}</div>`;
   });
   // Summary photos section
   let summaryPhotos='';
   if(sum.photos?.length||sum.aiVision?.length||sum.floorPlan?.length){
-    summaryPhotos=`<div style="margin-bottom:30px"><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0 0 12px;padding-bottom:8px;border-bottom:3px solid #e2b04a">📸 Property Photos</h2>`;
+    summaryPhotos=`<div style="margin-bottom:30px"><h2 style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0 0 12px;padding-bottom:8px;border-bottom:3px solid #f59e0b">📸 Property Photos</h2>`;
     if(sum.photos?.length)summaryPhotos+=photoGrid(sum.photos,'Overview Photos');
     if(sum.aiVision?.length)summaryPhotos+=photoGrid(sum.aiVision,'AI Vision Renderings');
     if(sum.floorPlan?.length)summaryPhotos+=photoGrid(sum.floorPlan,'Floor Plan');
     summaryPhotos+=`</div>`;
   }
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Scope of Work — ${prop.address||'Property'}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#f0f2f5;color:#1a1a2e}.page{max-width:860px;margin:0 auto;padding:24px 20px 60px}@media print{body{background:white}.page{padding:0}.no-print{display:none!important}.cover{page-break-after:always}}</style></head><body><div class="page">
-<div class="no-print" style="text-align:right;margin-bottom:16px"><button onclick="window.print()" style="background:#0f3460;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 Print / Save as PDF</button></div>
-<div class="cover" style="background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white;border-radius:16px;padding:40px;margin-bottom:24px">
+<div class="no-print" style="text-align:right;margin-bottom:16px"><button onclick="window.print()" style="background:#1d4ed8;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 Print / Save as PDF</button></div>
+<div class="cover" style="background:linear-gradient(135deg,#1a1a2e,#1d4ed8);color:white;border-radius:16px;padding:40px;margin-bottom:24px">
   <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-bottom:12px">Scope of Work</div>
   <h1 style="font-size:28px;font-weight:900;margin-bottom:8px">${prop.address||'Property'}</h1>
   <div style="opacity:.6;font-size:14px;margin-bottom:24px">${prop.sqft?prop.sqft+' sq ft  ·  ':''}${date}</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
     ${sum.budget?`<div style="background:rgba(255,255,255,.1);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Budget</div><div style="font-size:20px;font-weight:800">${sum.budget}</div></div>`:''}
     ${sum.timeline?`<div style="background:rgba(255,255,255,.1);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Timeline</div><div style="font-size:20px;font-weight:800">${sum.timeline}</div></div>`:''}
-    <div style="background:rgba(226,176,74,.2);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Items Documented</div><div style="font-size:20px;font-weight:800">${done} / ${total}</div></div>
+    <div style="background:rgba(245,158,11,.2);border-radius:10px;padding:14px"><div style="font-size:10px;text-transform:uppercase;opacity:.6;margin-bottom:4px">Items Documented</div><div style="font-size:20px;font-weight:800">${done} / ${total}</div></div>
   </div>
   ${sum.overview?`<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:16px;margin-top:20px"><p style="font-size:14px;line-height:1.7;opacity:.9">${sum.overview.replace(/\n/g,'<br>')}</p></div>`:''}
 </div>
@@ -1633,7 +1633,7 @@ function InviteModal({prop,properties,currentUser,onClose}){
               const justAdded=!!addedFromRoster[m.id];
               return(
                 <div key={m.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:'1px solid #f0f0f0'}}>
-                  <div style={{width:34,height:34,borderRadius:'50%',background:'#e8f0fb',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:14,color:'#0f3460',flexShrink:0}}>{m.name[0].toUpperCase()}</div>
+                  <div style={{width:34,height:34,borderRadius:'50%',background:'#e8f0fb',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:14,color:'#1d4ed8',flexShrink:0}}>{m.name[0].toUpperCase()}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:14,fontWeight:600,color:'#1a1a2e'}}>{m.name}</div>
                     <div style={{fontSize:12,color:'#888'}}>{m.role}</div>
@@ -1643,7 +1643,7 @@ function InviteModal({prop,properties,currentUser,onClose}){
                   ):justAdded?(
                     <span style={{fontSize:12,color:'#27ae60',padding:'5px 12px',fontWeight:700}}>✓ Added</span>
                   ):(
-                    <button onClick={()=>addFromRoster(m)} style={{background:'#0f3460',border:'none',borderRadius:8,color:'white',fontSize:13,fontWeight:600,padding:'6px 16px',cursor:'pointer'}}>Add</button>
+                    <button onClick={()=>addFromRoster(m)} style={{background:'#1d4ed8',border:'none',borderRadius:8,color:'white',fontSize:13,fontWeight:600,padding:'6px 16px',cursor:'pointer'}}>Add</button>
                   )}
                 </div>
               );
@@ -1986,7 +1986,7 @@ function TeamModal({currentUser,onClose}){
               placeholder="Old name or email on tasks…"
               style={{flex:1,border:'1px solid #ffc107',borderRadius:6,padding:'6px 10px',fontSize:13,background:'white'}}/>
             <button onClick={()=>syncTasks(roster[id])} disabled={!!syncing}
-              style={{background:'#e2b04a',border:'none',borderRadius:6,color:'white',fontWeight:700,fontSize:13,padding:'6px 14px',cursor:'pointer',whiteSpace:'nowrap'}}>
+              style={{background:'#f59e0b',border:'none',borderRadius:6,color:'white',fontWeight:700,fontSize:13,padding:'6px 14px',cursor:'pointer',whiteSpace:'nowrap'}}>
               {syncing===id?'Syncing…':'Update'}
             </button>
           </div>
@@ -2061,7 +2061,7 @@ function ProfileModal({currentUser,onClose}){
         <h2>👤 My Profile</h2>
 
         <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20,padding:'14px',background:'#f8f9fa',borderRadius:12}}>
-          <div style={{width:54,height:54,borderRadius:'50%',background:'#0f3460',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:700,color:'white',flexShrink:0}}>
+          <div style={{width:54,height:54,borderRadius:'50%',background:'#1d4ed8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:700,color:'white',flexShrink:0}}>
             {(name||currentUser.email||'?')[0].toUpperCase()}
           </div>
           <div>
@@ -2256,7 +2256,7 @@ function MigrationModal({currentUser,onDone}){
       <h2>📦 Import Existing Data</h2>
       <p>We found {oldProps.length} {oldProps.length===1?'property':'properties'} saved locally. Checklists, notes, and project details will be imported. Photos stay on this device (re-upload from the app to share with your team).</p>
       {oldProps.map(p=><div key={p.id} className="migration-item">🏠 {p.address}</div>)}
-      {progress&&<div style={{fontSize:13,color:'#0f3460',margin:'10px 0'}}>⏳ {progress}</div>}
+      {progress&&<div style={{fontSize:13,color:'#1d4ed8',margin:'10px 0'}}>⏳ {progress}</div>}
       {err&&<div style={{fontSize:12,color:'#dc3545',margin:'10px 0',lineHeight:1.5}}>⚠️ {err}</div>}
       <div className="modal-btns" style={{marginTop:16}}>
         <button className="btn-primary" onClick={migrate} disabled={migrating}>{migrating?'Importing…':'Import to My Account'}</button>
@@ -2370,8 +2370,8 @@ function BudgetSection({propId}){
       segs.push({dash,offset,color});
       offset+=dash;
     }
-    if(laborSpent>0) addSeg(laborSpent,'#0f3460');
-    if(matSpent>0) addSeg(matSpent,'#e2b04a');
+    if(laborSpent>0) addSeg(laborSpent,'#1d4ed8');
+    if(matSpent>0) addSeg(matSpent,'#f59e0b');
     if(otherSpentNum>0) addSeg(otherSpentNum,'#28a745');
     if(remaining>0) addSeg(remaining,'#e8f0fb');
     if(remaining<0) addSeg(Math.abs(remaining),'#dc3545');
@@ -2405,7 +2405,7 @@ function BudgetSection({propId}){
       <input className="budget-amount-input" type="number" min="0" placeholder="0"
         value={local} onChange={e=>setLocal(e.target.value)}
         onBlur={e=>dbUpdate(base,{totalBudget:e.target.value})}
-        style={{fontSize:18,fontWeight:800,width:130,borderColor:'#0f3460'}}/>
+        style={{fontSize:18,fontWeight:800,width:130,borderColor:'#1d4ed8'}}/>
     );
   }
 
@@ -2461,10 +2461,10 @@ function BudgetSection({propId}){
           <DonutChart/>
           <div style={{display:'flex',flexDirection:'column',gap:4,marginTop:6}}>
             <div style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#555'}}>
-              <span style={{width:10,height:10,borderRadius:2,background:'#0f3460',display:'inline-block',flexShrink:0}}/>Labor
+              <span style={{width:10,height:10,borderRadius:2,background:'#1d4ed8',display:'inline-block',flexShrink:0}}/>Labor
             </div>
             <div style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#555'}}>
-              <span style={{width:10,height:10,borderRadius:2,background:'#e2b04a',display:'inline-block',flexShrink:0}}/>Materials
+              <span style={{width:10,height:10,borderRadius:2,background:'#f59e0b',display:'inline-block',flexShrink:0}}/>Materials
             </div>
             <div style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#555'}}>
               <span style={{width:10,height:10,borderRadius:2,background:'#28a745',display:'inline-block',flexShrink:0}}/>Other
@@ -2600,7 +2600,7 @@ function BudgetSection({propId}){
       <hr className="budget-divider"/>
       <div style={{marginTop:4}}>
         <button onClick={()=>setShowSync(s=>!s)} style={{background:'none',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:6,width:'100%'}}>
-          <span style={{fontSize:13,fontWeight:700,color:'#0f3460'}}>🔗 Google Sheet Sync</span>
+          <span style={{fontSize:13,fontWeight:700,color:'#1d4ed8'}}>🔗 Google Sheet Sync</span>
           {lastSync&&<span style={{fontSize:11,color:'#aaa',marginLeft:'auto'}}>Last sync: {new Date(lastSync).toLocaleDateString()}</span>}
           {sheetTab&&!lastSync&&<span style={{fontSize:11,color:'#28a745',marginLeft:'auto'}}>Connected</span>}
           <span style={{fontSize:12,color:'#aaa'}}>{showSync?'▲':'▼'}</span>
@@ -2637,7 +2637,7 @@ function BudgetSection({propId}){
                 if(!res.ok){const t=await res.text();throw new Error(t);}
               }catch(e){setSyncError(e.message);}
               finally{setSyncing(false);}
-            }} style={{width:'100%',padding:'9px',background:syncing?'#aaa':'#0f3460',color:'white',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:syncing?'default':'pointer'}}>
+            }} style={{width:'100%',padding:'9px',background:syncing?'#aaa':'#1d4ed8',color:'white',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:syncing?'default':'pointer'}}>
               {syncing?'Syncing…':'⟳ Sync Now'}
             </button>
             <div style={{fontSize:11,color:'#aaa',marginTop:8,lineHeight:1.4}}>
@@ -2882,13 +2882,13 @@ function TaskEditDrawer({task, propId, basePath: basePathProp, address, currentU
           {/* CTA */}
           {isNew?(
             <button onClick={create} disabled={saving||!t.title.trim()}
-              style={{width:'100%',padding:'14px',background:t.title.trim()?'#0f3460':'#ccc',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:t.title.trim()?'pointer':'default',marginBottom:8}}>
+              style={{width:'100%',padding:'14px',background:t.title.trim()?'#1d4ed8':'#ccc',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:t.title.trim()?'pointer':'default',marginBottom:8}}>
               {saving?'Adding…':'Add Task'}
             </button>
           ):(
             <>
               {t.status!=='done'?(
-                <button onClick={markDone} style={{width:'100%',padding:'14px',background:'#0f3460',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',marginBottom:8}}>
+                <button onClick={markDone} style={{width:'100%',padding:'14px',background:'#1d4ed8',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',marginBottom:8}}>
                   ✅ Mark as Done
                 </button>
               ):(
@@ -2977,7 +2977,7 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
           <div style={{fontSize:12,color:'#888',fontWeight:600,marginTop:2}}>Not tied to a property</div>
         </div>
         <button onClick={()=>setAddingGeneral(true)}
-          style={{background:'#0f3460',color:'white',border:'none',borderRadius:20,padding:'5px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:20,padding:'5px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
           + Add
         </button>
       </div>
@@ -2988,7 +2988,7 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
           onClick={()=>setEditingGeneral(task)}>
           <button className={`all-tasks-urgent-btn${task.urgent?' on':''}`}
             onClick={e=>{e.stopPropagation();dbUpdate(`${generalBasePath}/${task.id}`,{urgent:!task.urgent,updatedAt:Date.now()});}}>!</button>
-          <div className="all-tasks-dot" style={{background:task.urgent?'#dc3545':task.assignedTo?'#0f3460':'#ddd'}}/>
+          <div className="all-tasks-dot" style={{background:task.urgent?'#dc3545':task.assignedTo?'#1d4ed8':'#ddd'}}/>
           <span className="all-tasks-title">{task.title}</span>
           {task.assignedTo&&<span className="all-tasks-assignee">👤 {task.assignedTo}</span>}
           <span style={{color:'#ccc',fontSize:14,flexShrink:0}}>✎</span>
@@ -3064,7 +3064,7 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <div style={{fontSize:13,color:'#888',fontWeight:600}}>{totalOpen} open task{totalOpen!==1?'s':''} across {propsWithTasks.length} propert{propsWithTasks.length!==1?'ies':'y'}</div>
             <button onClick={startAdd}
-              style={{background:'#0f3460',color:'white',border:'none',borderRadius:20,padding:'5px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+              style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:20,padding:'5px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
               + Add
             </button>
           </div>
@@ -3084,7 +3084,7 @@ function AllTasksPage({currentUser,properties,onOpenProp}){
                 <div key={task.id} className={`all-tasks-row${task.urgent?' urgent':''}`} onClick={()=>setEditingTask({task,propId:prop.id,address:prop.address})}>
                   <button className={`all-tasks-urgent-btn${task.urgent?' on':''}`}
                     onClick={e=>{e.stopPropagation();dbUpdate(`projects/${prop.id}/tasks/${task.id}`,{urgent:!task.urgent,updatedAt:Date.now()});}}>!</button>
-                  <div className="all-tasks-dot" style={{background:task.urgent?'#dc3545':task.assignedTo?'#0f3460':'#ddd'}}/>
+                  <div className="all-tasks-dot" style={{background:task.urgent?'#dc3545':task.assignedTo?'#1d4ed8':'#ddd'}}/>
                   <span className="all-tasks-title">{task.title}</span>
                   {task.assignedTo&&<span className="all-tasks-assignee">👤 {task.assignedTo}</span>}
                   <span style={{color:'#ccc',fontSize:14,flexShrink:0}}>✎</span>
@@ -3387,9 +3387,9 @@ function PropertyList({currentUser,onOpen}){
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div className="list-header-logo">
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="10" fill="#e2b04a" fillOpacity=".15"/>
-              <path d="M18 7L6 16h3v13h7v-8h4v8h7V16h3L18 7z" stroke="#e2b04a" strokeWidth="1.8" strokeLinejoin="round" fill="none"/>
-              <path d="M14 36V24h8v12" stroke="#e2b04a" strokeWidth="1.8" strokeLinecap="round"/>
+              <rect width="36" height="36" rx="10" fill="#f59e0b" fillOpacity=".15"/>
+              <path d="M18 7L6 16h3v13h7v-8h4v8h7V16h3L18 7z" stroke="#f59e0b" strokeWidth="1.8" strokeLinejoin="round" fill="none"/>
+              <path d="M14 36V24h8v12" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
             <h1>Zanco</h1>
           </div>
@@ -3411,7 +3411,7 @@ function PropertyList({currentUser,onOpen}){
             <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Properties</div>
           </div>
           <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
-            <div style={{fontSize:22,fontWeight:800,color:openTasksTotal>0?'#e2b04a':'rgba(255,255,255,.9)',letterSpacing:'-.5px'}}>{openTasksTotal??'—'}</div>
+            <div style={{fontSize:22,fontWeight:800,color:openTasksTotal>0?'#f59e0b':'rgba(255,255,255,.9)',letterSpacing:'-.5px'}}>{openTasksTotal??'—'}</div>
             <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Open Tasks</div>
           </div>
           <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
@@ -3441,7 +3441,7 @@ function PropertyList({currentUser,onOpen}){
             <div className="home-nav-sep"/>
             <button className={`view-toggle-btn${viewMode==='kanban'?' active':''}`} onClick={toggleView} title={viewMode==='list'?'Switch to Kanban':'Switch to List'}>
               {viewMode==='list'?(
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={viewMode==='kanban'?'#e2b04a':'rgba(255,255,255,.5)'} strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="18"/><rect x="17" y="3" width="5" height="18"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={viewMode==='kanban'?'#f59e0b':'rgba(255,255,255,.5)'} strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="18"/><rect x="17" y="3" width="5" height="18"/></svg>
               ):(
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2.2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               )}
@@ -3451,10 +3451,10 @@ function PropertyList({currentUser,onOpen}){
       </nav>
 
       {notifBanner&&(
-        <div style={{background:'rgba(226,176,74,.1)',borderBottom:'1px solid rgba(226,176,74,.2)',padding:'12px 16px',display:'flex',alignItems:'center',gap:'10px'}}>
+        <div style={{background:'rgba(245,158,11,.1)',borderBottom:'1px solid rgba(245,158,11,.2)',padding:'12px 16px',display:'flex',alignItems:'center',gap:'10px'}}>
           <span style={{fontSize:'18px'}}>🔔</span>
           <span style={{flex:1,fontSize:'13px',color:'rgba(255,255,255,.7)'}}>Enable push notifications for task alerts</span>
-          <button onClick={enableNotifications} style={{background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:'8px',padding:'6px 12px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>Enable</button>
+          <button onClick={enableNotifications} style={{background:'#f59e0b',color:'#1a1a2e',border:'none',borderRadius:'8px',padding:'6px 12px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>Enable</button>
           <button onClick={()=>setNotifBanner(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'18px',cursor:'pointer',lineHeight:1}}>×</button>
         </div>
       )}
@@ -3524,7 +3524,7 @@ function PropertyList({currentUser,onOpen}){
         </button>
       </nav>
       {/* Quick-add task FAB */}
-      <button onClick={()=>setFabOpen(true)} style={{position:'fixed',bottom:80+16,right:20,width:52,height:52,borderRadius:'50%',background:'#e2b04a',border:'none',color:'#1a1a2e',fontSize:26,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(226,176,74,.4)',zIndex:150,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>＋</button>
+      <button onClick={()=>setFabOpen(true)} style={{position:'fixed',bottom:80+16,right:20,width:52,height:52,borderRadius:'50%',background:'#f59e0b',border:'none',color:'#1a1a2e',fontSize:26,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(245,158,11,.4)',zIndex:150,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>＋</button>
 
       {fabOpen&&(
         <div className="modal-overlay" onClick={()=>setFabOpen(false)}>
@@ -3596,7 +3596,7 @@ function ScopeOverviewPage({data,onOpenCat}){
                 {cat.items.map(item=>{
                   const d=(data[cat.id]||{})[item.id]||{};
                   const s=d.status;
-                  const dot=s==='good'?'#5bbfb5':s==='fair'?'#e2b04a':s==='poor'?'#dc3545':'rgba(255,255,255,.2)';
+                  const dot=s==='good'?'#5bbfb5':s==='fair'?'#f59e0b':s==='poor'?'#dc3545':'rgba(255,255,255,.2)';
                   return(
                     <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
                       <div style={{width:8,height:8,borderRadius:'50%',background:dot,flexShrink:0}}/>
@@ -3771,12 +3771,12 @@ function AIPicturesPage({propId, currentUser}){
     <div className="content">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0 12px'}}>
         <div style={{fontSize:13,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#888'}}>🖼 AI Pictures</div>
-        <button onClick={()=>setAdding(true)} style={{background:'#e2b04a',color:'#000',border:'none',borderRadius:8,padding:'7px 14px',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Add Item</button>
+        <button onClick={()=>setAdding(true)} style={{background:'#f59e0b',color:'#000',border:'none',borderRadius:8,padding:'7px 14px',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Add Item</button>
       </div>
 
       {adding&&(
         <div style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:12,padding:16,marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:600,color:'#e2b04a',marginBottom:10}}>New Item</div>
+          <div style={{fontSize:13,fontWeight:600,color:'#f59e0b',marginBottom:10}}>New Item</div>
           <input
             autoFocus
             value={newTitle} onChange={e=>setNewTitle(e.target.value)}
@@ -3785,7 +3785,7 @@ function AIPicturesPage({propId, currentUser}){
             style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'white',fontSize:14,boxSizing:'border-box',marginBottom:10}}
           />
           <div style={{display:'flex',gap:8}}>
-            <button onClick={addItem} style={{background:'#e2b04a',color:'#000',border:'none',borderRadius:8,padding:'7px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>Add</button>
+            <button onClick={addItem} style={{background:'#f59e0b',color:'#000',border:'none',borderRadius:8,padding:'7px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>Add</button>
             <button onClick={()=>{setAdding(false);setNewTitle('');}} style={{background:'rgba(255,255,255,.1)',color:'white',border:'none',borderRadius:8,padding:'7px 16px',fontSize:13,cursor:'pointer'}}>Cancel</button>
           </div>
         </div>
@@ -3793,7 +3793,7 @@ function AIPicturesPage({propId, currentUser}){
 
       {items.length===0&&!adding&&(
         <div style={{textAlign:'center',padding:'60px 0',color:'rgba(255,255,255,.35)',fontSize:14}}>
-          No pictures yet.<br/>Tap <strong style={{color:'#e2b04a'}}>+ Add Item</strong> to create your first one.
+          No pictures yet.<br/>Tap <strong style={{color:'#f59e0b'}}>+ Add Item</strong> to create your first one.
         </div>
       )}
 
@@ -3899,7 +3899,7 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
                 style={{width:120,flexShrink:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
               />
               {link.url&&(
-                <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:6,padding:'5px 8px',color:'#e2b04a',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
+                <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.3)',borderRadius:6,padding:'5px 8px',color:'#f59e0b',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
               )}
               <button onClick={()=>removeLink(i)} style={{flexShrink:0,background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 2px',lineHeight:1}}>×</button>
             </div>
