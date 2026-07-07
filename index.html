@@ -3244,6 +3244,200 @@ function KanbanView({properties, onOpen, onMoveStage}){
   );
 }
 
+function RentalsPage({currentUser}){
+  const [rentals,setRentals]=React.useState([]);
+  const [expandedId,setExpandedId]=React.useState(null);
+  const [showAdd,setShowAdd]=React.useState(false);
+  const [editingId,setEditingId]=React.useState(null);
+  const [form,setForm]=React.useState({address:'',tenant:'',rent:'',leaseStart:'',leaseEnd:'',status:'occupied'});
+
+  React.useEffect(()=>{
+    return dbListen(`rentals/${currentUser.uid}`,val=>{
+      if(!val) return setRentals([]);
+      setRentals(Object.values(val).sort((a,b)=>a.createdAt-b.createdAt));
+    });
+  },[currentUser.uid]);
+
+  function openAdd(){setForm({address:'',tenant:'',rent:'',leaseStart:'',leaseEnd:'',status:'occupied'});setEditingId(null);setShowAdd(true);}
+  function openEdit(r){setForm({address:r.address||'',tenant:r.tenant||'',rent:r.rent||'',leaseStart:r.leaseStart||'',leaseEnd:r.leaseEnd||'',status:r.status||'occupied'});setEditingId(r.id);setShowAdd(true);}
+
+  async function save(){
+    const id=editingId||uid();
+    await dbSet(`rentals/${currentUser.uid}/${id}`,{id,...form,rent:parseFloat(form.rent)||0,createdAt:editingId?(rentals.find(r=>r.id===editingId)?.createdAt||Date.now()):Date.now()});
+    setShowAdd(false);setEditingId(null);
+  }
+
+  async function del(id){
+    if(!confirm('Delete this rental?')) return;
+    await dbRemove(`rentals/${currentUser.uid}/${id}`);
+    if(expandedId===id) setExpandedId(null);
+  }
+
+  const STATUS={
+    occupied:{label:'Occupied',color:'#22c55e',bg:'rgba(34,197,94,.15)'},
+    vacant:  {label:'Vacant',  color:'#f59e0b',bg:'rgba(245,158,11,.15)'},
+    maintenance:{label:'Maintenance',color:'#ef4444',bg:'rgba(239,68,68,.15)'},
+  };
+
+  function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${m}/${day}/${y}`;}
+  function fmtRent(r){if(!r)return'—';return'$'+Number(r).toLocaleString()+'/mo';}
+
+  function leaseStatus(leaseEnd){
+    if(!leaseEnd)return null;
+    const days=Math.round((new Date(leaseEnd+' 12:00')-new Date())/(1000*60*60*24));
+    if(days<0)return{label:'Expired',color:'#ef4444'};
+    if(days<=60)return{label:`${days}d left`,color:'#f59e0b'};
+    return null;
+  }
+
+  const inputStyle={width:'100%',background:'rgba(0,0,0,.04)',border:'1px solid #e5e7eb',borderRadius:8,padding:'9px 12px',color:'#111',fontSize:14,boxSizing:'border-box'};
+  const labelStyle={fontSize:12,fontWeight:600,color:'#666',marginBottom:4,display:'block'};
+
+  return(
+    <div style={{paddingBottom:80}}>
+      {/* Summary strip */}
+      {rentals.length>0&&(
+        <div style={{display:'flex',gap:10,padding:'14px 16px 0',flexWrap:'wrap'}}>
+          <div style={{flex:'1 1 70px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
+            <div style={{fontSize:20,fontWeight:800,color:'white'}}>{rentals.length}</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.5px',marginTop:1}}>Units</div>
+          </div>
+          <div style={{flex:'1 1 70px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
+            <div style={{fontSize:20,fontWeight:800,color:'#22c55e'}}>{rentals.filter(r=>r.status==='occupied').length}</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.5px',marginTop:1}}>Occupied</div>
+          </div>
+          <div style={{flex:'1 1 70px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
+            <div style={{fontSize:20,fontWeight:800,color:'#f59e0b'}}>{rentals.filter(r=>r.status==='vacant').length}</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.5px',marginTop:1}}>Vacant</div>
+          </div>
+          <div style={{flex:'1 1 70px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
+            <div style={{fontSize:20,fontWeight:800,color:'white'}}>${Math.round(rentals.filter(r=>r.status==='occupied').reduce((s,r)=>s+(r.rent||0),0)/1000*10)/10}k</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.5px',marginTop:1}}>Monthly</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{padding:'14px 12px 0'}}>
+        {rentals.length===0&&(
+          <div style={{textAlign:'center',padding:'60px 0',color:'rgba(255,255,255,.3)',fontSize:14'}}>
+            <div style={{fontSize:36,marginBottom:12}}>🏘</div>
+            <div style={{fontWeight:600,marginBottom:6}}>No rental properties yet</div>
+            <div style={{fontSize:13}}>Tap below to add your first unit</div>
+          </div>
+        )}
+
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>
+          {rentals.map(r=>{
+            const st=STATUS[r.status]||STATUS.occupied;
+            const exp=expandedId===r.id;
+            const ls=leaseStatus(r.leaseEnd);
+            return(
+              <div key={r.id} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.09)',borderRadius:14,overflow:'hidden'}}>
+                {/* Card header */}
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',cursor:'pointer'}} onClick={()=>setExpandedId(exp?null:r.id)}>
+                  <div style={{width:10,height:10,borderRadius:5,background:st.color,flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:700,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.address||'Untitled'}</div>
+                    <div style={{fontSize:12,color:'rgba(255,255,255,.45)',marginTop:2,display:'flex',gap:8,flexWrap:'wrap'}}>
+                      <span>{r.tenant||'No tenant'}</span>
+                      <span>·</span>
+                      <span>{fmtRent(r.rent)}</span>
+                      {ls&&<><span>·</span><span style={{color:ls.color,fontWeight:600}}>{ls.label}</span></>}
+                    </div>
+                  </div>
+                  <span style={{background:st.bg,color:st.color,fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,flexShrink:0}}>{st.label}</span>
+                  <span style={{color:'rgba(255,255,255,.3)',fontSize:14,transition:'transform .2s',transform:exp?'rotate(90deg)':'none',flexShrink:0}}>›</span>
+                </div>
+
+                {/* Expanded details */}
+                {exp&&(
+                  <div style={{borderTop:'1px solid rgba(255,255,255,.07)',padding:'12px 14px'}}>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px 16px',marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Tenant</div>
+                        <div style={{fontSize:13,color:'white'}}>{r.tenant||'—'}</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Monthly Rent</div>
+                        <div style={{fontSize:13,color:'white'}}>{fmtRent(r.rent)}</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Lease Start</div>
+                        <div style={{fontSize:13,color:'white'}}>{fmtDate(r.leaseStart)}</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Lease End</div>
+                        <div style={{fontSize:13,color:ls?ls.color:'white'}}>{fmtDate(r.leaseEnd)}{ls&&` (${ls.label})`}</div>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={()=>openEdit(r)} style={{flex:1,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.3)',borderRadius:8,padding:'8px',color:'#f59e0b',fontSize:13,fontWeight:600,cursor:'pointer'}}>✏️ Edit</button>
+                      <button onClick={()=>del(r.id)} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,padding:'8px 14px',color:'#ef4444',fontSize:13,cursor:'pointer'}}>🗑</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button onClick={openAdd} style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:12,padding:'12px',color:'rgba(255,255,255,.5)',fontSize:14,fontWeight:600,cursor:'pointer'}}>＋ Add Rental Property</button>
+      </div>
+
+      {/* Add / Edit modal */}
+      {showAdd&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:9000,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={()=>setShowAdd(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:500,padding:'24px 20px 40px',maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <h2 style={{fontSize:18,fontWeight:800,color:'#111',margin:0}}>{editingId?'Edit Rental':'Add Rental Property'}</h2>
+              <button onClick={()=>setShowAdd(false)} style={{background:'none',border:'none',fontSize:22,color:'#999',cursor:'pointer'}}>×</button>
+            </div>
+
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <div>
+                <label style={labelStyle}>Address</label>
+                <input value={form.address} onChange={e=>setForm(f=>({...f,address:e.target.value}))} placeholder="123 Main St, City, ST" style={inputStyle}/>
+              </div>
+              <div>
+                <label style={labelStyle}>Tenant Name</label>
+                <input value={form.tenant} onChange={e=>setForm(f=>({...f,tenant:e.target.value}))} placeholder="John Smith" style={inputStyle}/>
+              </div>
+              <div>
+                <label style={labelStyle}>Monthly Rent ($)</label>
+                <input value={form.rent} onChange={e=>setForm(f=>({...f,rent:e.target.value}))} placeholder="1500" type="number" style={inputStyle}/>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <div>
+                  <label style={labelStyle}>Lease Start</label>
+                  <input value={form.leaseStart} onChange={e=>setForm(f=>({...f,leaseStart:e.target.value}))} type="date" style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={labelStyle}>Lease End</label>
+                  <input value={form.leaseEnd} onChange={e=>setForm(f=>({...f,leaseEnd:e.target.value}))} type="date" style={inputStyle}/>
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <div style={{display:'flex',gap:8}}>
+                  {Object.entries(STATUS).map(([key,s])=>(
+                    <button key={key} onClick={()=>setForm(f=>({...f,status:key}))} style={{flex:1,padding:'9px 4px',borderRadius:9,border:`2px solid ${form.status===key?s.color:'#e5e7eb'}`,background:form.status===key?s.bg:'white',color:form.status===key?s.color:'#666',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button onClick={save} disabled={!form.address.trim()} style={{width:'100%',marginTop:22,background:'#f59e0b',color:'#000',border:'none',borderRadius:12,padding:'14px',fontSize:15,fontWeight:800,cursor:'pointer',opacity:form.address.trim()?1:.5}}>
+              {editingId?'Save Changes':'Add Property'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PropertyList({currentUser,onOpen}){
   const[properties,setProperties]=React.useState([]);
   const[loading,setLoading]=React.useState(true);
@@ -3444,6 +3638,11 @@ function PropertyList({currentUser,onOpen}){
           Tasks
         </button>
         <div className="home-nav-sep"/>
+        <button className={`home-nav-btn${homeTab==='rentals'?' active':''}`} onClick={()=>setHomeTab('rentals')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/><circle cx="19" cy="8" r="3"/></svg>
+          Rentals
+        </button>
+        <div className="home-nav-sep"/>
         <button className={`home-nav-btn${homeTab==='owner'?' active':''}`} onClick={()=>setHomeTab('owner')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           Private
@@ -3472,6 +3671,7 @@ function PropertyList({currentUser,onOpen}){
       )}
 
       {homeTab==='owner'&&<GlobalOwnerPage currentUser={currentUser}/>}
+      {homeTab==='rentals'&&<RentalsPage currentUser={currentUser}/>}
       {homeTab==='properties'&&viewMode==='kanban'&&(
         <KanbanView properties={properties} onOpen={onOpen} onMoveStage={moveStage}/>
       )}
