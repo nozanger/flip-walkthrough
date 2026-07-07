@@ -3376,10 +3376,11 @@ function PropertyList({currentUser,onOpen}){
           <div style={{color:'rgba(255,255,255,.4)',fontSize:16,transition:'transform .2s',transform:expanded?'rotate(90deg)':'rotate(0deg)',flexShrink:0}}>›</div>
         </div>
 
+        {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
+
         {/* Expanded section */}
         {expanded&&(
           <>
-            {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
             <div className="prop-actions">
               <button className="prop-action-btn open" onClick={()=>onOpen(prop)}>↗ Open</button>
               <div className="prop-action-sep"/>
