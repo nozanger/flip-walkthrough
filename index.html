@@ -1750,6 +1750,14 @@ function TasksPage({propId,address,currentUser,members,inline}){
         ))}
       </div>
       {list.length===0&&<div className="tasks-empty">{Object.keys(tasks).length===0?'No tasks yet — tap Add Task to get started.':'No tasks in this filter.'}</div>}
+      {list.length>1&&(
+        <button onClick={async()=>{
+          if(!confirm(`Mark all ${list.length} tasks as done?`)) return;
+          await Promise.all(list.map(t=>dbRemove(`projects/${propId}/tasks/${t.id}`)));
+        }} style={{width:'100%',background:'rgba(40,167,69,.1)',border:'1px solid rgba(40,167,69,.3)',borderRadius:10,padding:'9px',color:'#28a745',fontSize:13,fontWeight:700,cursor:'pointer',marginBottom:10}}>
+          ✓ Mark all {list.length} tasks done
+        </button>
+      )}
       {list.map(task=>{
         const tagged=Object.keys(task.tagged||{});
         const photos=task.photos||[];
@@ -3248,6 +3256,12 @@ function PropertyList({currentUser,onOpen}){
   const[notifBanner,setNotifBanner]=React.useState(false);
   const[homeTab,setHomeTab]=React.useState('properties'); // 'properties' | 'tasks' | 'owner'
   const[viewMode,setViewMode]=React.useState(()=>localStorage.getItem('zanco_view')||'list'); // 'list' | 'kanban'
+  const[openTasksTotal,setOpenTasksTotal]=React.useState(null);
+  const[portfolioBudget,setPortfolioBudget]=React.useState(0);
+  const[search,setSearch]=React.useState('');
+  const[fabOpen,setFabOpen]=React.useState(false);
+  const[fabPropId,setFabPropId]=React.useState('');
+  const[fabTitle,setFabTitle]=React.useState('');
   function toggleView(){setViewMode(v=>{const n=v==='list'?'kanban':'list';localStorage.setItem('zanco_view',n);return n;});}
 
   React.useEffect(()=>{
@@ -3275,6 +3289,27 @@ function PropertyList({currentUser,onOpen}){
     });
     return unsub;
   },[currentUser.uid]);
+
+  React.useEffect(()=>{
+    if(!properties.length){setOpenTasksTotal(0);setPortfolioBudget(0);return;}
+    Promise.all(properties.map(p=>dbGet(`projects/${p.id}/tasks`))).then(allTasks=>{
+      const count=allTasks.reduce((sum,tasks)=>sum+(tasks?Object.values(tasks).filter(t=>t.status!=='done').length:0),0);
+      setOpenTasksTotal(count);
+    });
+    Promise.all(properties.map(p=>dbGet(`projects/${p.id}/budget`))).then(allBudgets=>{
+      const total=allBudgets.reduce((sum,b)=>sum+(parseFloat(b?.totalBudget)||0),0);
+      setPortfolioBudget(total);
+    });
+  },[properties]);
+
+  async function fabAddTask(){
+    const title=fabTitle.trim();
+    if(!title||!fabPropId) return;
+    const id=uid();
+    const username=currentUser.displayName||currentUser.email?.split('@')[0]||'Unknown';
+    await dbSet(`projects/${fabPropId}/tasks/${id}`,{id,title,status:'todo',notes:'',assignedTo:'',urgent:false,createdBy:username,createdAt:Date.now(),updatedAt:Date.now(),updatedBy:username});
+    setFabTitle('');setFabOpen(false);
+  }
 
   async function addProperty(prop){
     const meta={...prop,ownerId:currentUser.uid,ownerName:currentUser.displayName||currentUser.email,updatedAt:Date.now()};
@@ -3369,6 +3404,23 @@ function PropertyList({currentUser,onOpen}){
         <p>Welcome back, {currentUser.displayName||currentUser.email?.split('@')[0]}</p>
       </div>
 
+      {properties.length>0&&(
+        <div style={{display:'flex',gap:10,padding:'0 16px 16px',flexWrap:'wrap'}}>
+          <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
+            <div style={{fontSize:22,fontWeight:800,color:'white',letterSpacing:'-.5px'}}>{properties.length}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Properties</div>
+          </div>
+          <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
+            <div style={{fontSize:22,fontWeight:800,color:openTasksTotal>0?'#e2b04a':'rgba(255,255,255,.9)',letterSpacing:'-.5px'}}>{openTasksTotal??'—'}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Open Tasks</div>
+          </div>
+          <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
+            <div style={{fontSize:22,fontWeight:800,color:'white',letterSpacing:'-.5px'}}>{portfolioBudget>0?'$'+Math.round(portfolioBudget/1000)+'k':'—'}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Total Budget</div>
+          </div>
+        </div>
+      )}
+
       <nav className="home-nav">
         <button className={`home-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -3413,11 +3465,20 @@ function PropertyList({currentUser,onOpen}){
       )}
       {homeTab==='properties'&&viewMode==='list'?(
         <div className="list-content" style={{paddingTop:14}}>
+          <div style={{position:'relative',marginBottom:12}}>
+            <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',opacity:.4}} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Search properties…"
+              style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'10px 14px 10px 36px',color:'white',fontSize:14,outline:'none',boxSizing:'border-box'}}
+            />
+            {search&&<button onClick={()=>setSearch('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:18,cursor:'pointer',lineHeight:1}}>×</button>}
+          </div>
           {properties.length===0&&(
             <div className="empty-state"><div className="icon">🏠</div><h2>No properties yet</h2><p style={{color:'rgba(255,255,255,.3)'}}>Add your first property to get started</p></div>
           )}
           {STAGES.map(s=>{
-            const group=properties.filter(p=>(p.stage||'walkthrough')===s.id);
+            const group=properties.filter(p=>(p.stage||'walkthrough')===s.id&&(!search||p.address?.toLowerCase().includes(search.toLowerCase())));
             if(group.length===0)return null;
             return(
               <div key={s.id} className={`stage-section stage-section-${s.id}`}>
@@ -3462,6 +3523,33 @@ function PropertyList({currentUser,onOpen}){
           More
         </button>
       </nav>
+      {/* Quick-add task FAB */}
+      <button onClick={()=>setFabOpen(true)} style={{position:'fixed',bottom:80+16,right:20,width:52,height:52,borderRadius:'50%',background:'#e2b04a',border:'none',color:'#1a1a2e',fontSize:26,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 20px rgba(226,176,74,.4)',zIndex:150,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>＋</button>
+
+      {fabOpen&&(
+        <div className="modal-overlay" onClick={()=>setFabOpen(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <h2>Quick Add Task</h2>
+            <p>Add a task to any property</p>
+            <div className="modal-field">
+              <label>Property</label>
+              <select value={fabPropId} onChange={e=>setFabPropId(e.target.value)} style={{border:'1.5px solid #e0e0e0',borderRadius:8,padding:'10px 12px',fontSize:14,color:'#1a1a2e',background:'white',width:'100%',outline:'none'}}>
+                <option value="">Select property…</option>
+                {properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}
+              </select>
+            </div>
+            <div className="modal-field">
+              <label>Task</label>
+              <input autoFocus value={fabTitle} onChange={e=>setFabTitle(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')fabAddTask();if(e.key==='Escape')setFabOpen(false);}} placeholder="What needs to be done?" style={{border:'1.5px solid #e0e0e0',borderRadius:8,padding:'10px 12px',fontSize:14,color:'#1a1a2e',width:'100%',outline:'none',boxSizing:'border-box'}}/>
+            </div>
+            <div className="modal-btns">
+              <button className="btn-gold" onClick={fabAddTask} disabled={!fabTitle.trim()||!fabPropId}>Add Task</button>
+              <button className="btn-secondary" onClick={()=>setFabOpen(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAdd&&<AddPropertyModal onAdd={addProperty} currentUser={currentUser} onClose={()=>setShowAdd(false)}/>}
       {showTeam&&<TeamModal currentUser={currentUser} onClose={()=>setShowTeam(false)}/>}
       {showProfile&&<ProfileModal currentUser={currentUser} onClose={()=>setShowProfile(false)}/>}
@@ -3969,6 +4057,10 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
   }
 
   async function saveStage(s){
+    const labels={walkthrough:'Walkthrough',contract:'Under Contract',renovation:'Renovation'};
+    const current=labels[stage]||stage;
+    const next=labels[s]||s;
+    if(!confirm(`Move "${prop.address}" from ${current} to ${next}?`)) return;
     setStage(s);
     await dbUpdate(`projects/${prop.id}/meta`,{stage:s});
     onPropUpdate({...prop,stage:s});
