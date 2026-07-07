@@ -3827,9 +3827,11 @@ function AIPicturesPage({propId, currentUser}){
 }
 
 function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteItem, onUpdateTitle, onUpdateLinks, onLightbox}){
+  const [open, setOpen] = React.useState(false);
   const [editingTitle, setEditingTitle] = React.useState(false);
   const [titleVal, setTitleVal] = React.useState(item.title);
   const [links, setLinks] = React.useState(toArr(item.materialLinks));
+  const [editingLinks, setEditingLinks] = React.useState(false);
   const fileRef = React.useRef();
   const photos = toArr(item.photos);
   const canAdd = photos.length < 5;
@@ -3861,80 +3863,134 @@ function AIPictureItem({item, uploading, onAddPhotos, onDeletePhoto, onDeleteIte
     onUpdateLinks(next);
   }
 
+  const validLinks = links.filter(l=>l.url);
+
   return(
-    <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:16}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <span style={{color:'rgba(255,255,255,.2)',fontSize:18,cursor:'grab',flexShrink:0,marginRight:10,userSelect:'none'}}>⠿</span>
+    <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:16,overflow:'hidden'}}>
+
+      {/* Header row — always visible */}
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'13px 14px',cursor:'pointer'}} onClick={()=>setOpen(o=>!o)}>
+        <span onClick={e=>e.stopPropagation()} style={{color:'rgba(255,255,255,.25)',fontSize:18,cursor:'grab',flexShrink:0,userSelect:'none'}}>⠿</span>
+
         {editingTitle?(
           <input
             autoFocus value={titleVal} onChange={e=>setTitleVal(e.target.value)}
-            onBlur={saveTitle} onKeyDown={e=>{if(e.key==='Enter')saveTitle();if(e.key==='Escape'){setTitleVal(item.title);setEditingTitle(false);}}}
-            style={{background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:7,padding:'5px 10px',color:'white',fontSize:15,fontWeight:600,flex:1,marginRight:8}}
+            onBlur={saveTitle}
+            onKeyDown={e=>{if(e.key==='Enter')saveTitle();if(e.key==='Escape'){setTitleVal(item.title);setEditingTitle(false);}}}
+            onClick={e=>e.stopPropagation()}
+            style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.25)',borderRadius:7,padding:'5px 10px',color:'white',fontSize:15,fontWeight:600}}
           />
         ):(
-          <div onClick={()=>{setTitleVal(item.title);setEditingTitle(true);}} style={{fontSize:15,fontWeight:700,color:'white',cursor:'pointer',flex:1}} title="Tap to edit">
-            {item.title} <span style={{fontSize:11,color:'rgba(255,255,255,.3)',fontWeight:400}}>✏️</span>
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+            <span style={{fontSize:15,fontWeight:700,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</span>
+            <span onClick={e=>{e.stopPropagation();setTitleVal(item.title);setEditingTitle(true);}} style={{fontSize:11,color:'rgba(255,255,255,.3)',cursor:'pointer',flexShrink:0}}>✏️</span>
           </div>
         )}
-        <button onClick={onDeleteItem} style={{background:'rgba(220,53,69,.15)',border:'none',borderRadius:7,padding:'5px 10px',color:'#dc3545',fontSize:12,cursor:'pointer',flexShrink:0}}>🗑 Delete</button>
-      </div>
 
-      <div style={{marginBottom:12}}>
-        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#888',marginBottom:8}}>🔗 Material Links</div>
-        <SortableList
-          items={links}
-          onReorder={next=>{setLinks(next);onUpdateLinks(next);}}
-          gap={7}
-          renderItem={(link,i)=>(
-            <div style={{display:'flex',gap:6,alignItems:'center'}}>
-              <span style={{color:'rgba(255,255,255,.25)',fontSize:14,cursor:'grab',flexShrink:0,userSelect:'none'}}>⠿</span>
-              <input
-                value={link.title} onChange={e=>updateLinkField(i,'title',e.target.value)}
-                placeholder="Title (e.g. Tiles)"
-                style={{width:100,flexShrink:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12}}
-              />
-              <input
-                value={link.url} onChange={e=>updateLinkField(i,'url',e.target.value)}
-                placeholder="Paste URL"
-                style={{width:120,flexShrink:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 8px',color:'white',fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
-              />
-              {link.url&&(
-                <a href={link.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,background:'rgba(245,158,11,.15)',border:'1px solid rgba(245,158,11,.3)',borderRadius:6,padding:'5px 8px',color:'#f59e0b',fontSize:11,fontWeight:600,textDecoration:'none'}}>↗</a>
-              )}
-              <button onClick={()=>removeLink(i)} style={{flexShrink:0,background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 2px',lineHeight:1}}>×</button>
-            </div>
+        {/* Badges */}
+        <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
+          {photos.length>0&&(
+            <span style={{background:'rgba(255,255,255,.1)',borderRadius:20,padding:'2px 8px',fontSize:11,color:'rgba(255,255,255,.6)',fontWeight:600}}>📷 {photos.length}</span>
           )}
-        />
-        {links.length<6&&(
-          <button onClick={addLink} style={{background:'rgba(255,255,255,.06)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:7,padding:'6px 12px',color:'rgba(255,255,255,.45)',fontSize:12,cursor:'pointer'}}>+ Add Link</button>
-        )}
+          {validLinks.length>0&&(
+            <span style={{background:'rgba(245,158,11,.15)',borderRadius:20,padding:'2px 8px',fontSize:11,color:'#f59e0b',fontWeight:600}}>🔗 {validLinks.length}</span>
+          )}
+          <span style={{color:'rgba(255,255,255,.3)',fontSize:13,marginLeft:2}}>{open?'▲':'▼'}</span>
+        </div>
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:8,marginBottom:canAdd||uploading?12:0}}>
-        {photos.map((p,i)=>(
-          <div key={i} style={{position:'relative',borderRadius:9,overflow:'hidden',aspectRatio:'1',background:'rgba(255,255,255,.05)'}}>
-            <img src={p.url} onClick={()=>onLightbox(p.url)} style={{width:'100%',height:'100%',objectFit:'cover',cursor:'pointer',display:'block'}}/>
-            <div style={{position:'absolute',top:4,right:4,display:'flex',gap:4}}>
-              <a href={p.url} download={p.name||`photo-${i+1}.jpg`} style={{background:'rgba(0,0,0,.6)',borderRadius:'50%',width:22,height:22,color:'white',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',textDecoration:'none'}} title="Download">⬇</a>
-              <button onClick={()=>onDeletePhoto(i)} style={{background:'rgba(0,0,0,.6)',border:'none',borderRadius:'50%',width:22,height:22,color:'white',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+      {/* Expanded body */}
+      {open&&(
+        <div style={{borderTop:'1px solid rgba(255,255,255,.07)'}}>
+
+          {/* Photos strip */}
+          <div style={{padding:'14px 14px 0'}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#666',marginBottom:10}}>Photos</div>
+            <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:10}}>
+              {photos.map((p,i)=>(
+                <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',flexShrink:0,width:110,height:110,background:'rgba(255,255,255,.07)'}}>
+                  <img src={p.url} onClick={()=>onLightbox(p.url)} style={{width:'100%',height:'100%',objectFit:'cover',cursor:'pointer',display:'block'}}/>
+                  <div style={{position:'absolute',bottom:0,left:0,right:0,display:'flex',justifyContent:'space-between',padding:'4px 5px',background:'linear-gradient(transparent,rgba(0,0,0,.7))'}}>
+                    <a href={p.url} download={p.name||`photo-${i+1}.jpg`} onClick={e=>e.stopPropagation()} style={{background:'rgba(0,0,0,.5)',borderRadius:5,padding:'3px 6px',color:'white',fontSize:10,textDecoration:'none'}} title="Download">⬇</a>
+                    <button onClick={()=>onDeletePhoto(i)} style={{background:'rgba(220,53,69,.7)',border:'none',borderRadius:5,padding:'3px 7px',color:'white',fontSize:10,cursor:'pointer'}}>✕</button>
+                  </div>
+                </div>
+              ))}
+              {uploading&&(
+                <div style={{flexShrink:0,width:110,height:110,borderRadius:10,background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>⏳</div>
+              )}
+              {canAdd&&!uploading&&(
+                <>
+                  <input ref={fileRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>{onAddPhotos(e.target.files);e.target.value='';}}/>
+                  <div onClick={()=>fileRef.current.click()} style={{flexShrink:0,width:110,height:110,borderRadius:10,border:'2px dashed rgba(255,255,255,.18)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,cursor:'pointer',color:'rgba(255,255,255,.4)',fontSize:11,fontWeight:600}}>
+                    <span style={{fontSize:22}}>📷</span>
+                    <span>{photos.length}/5</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        ))}
-        {uploading&&(
-          <div style={{borderRadius:9,aspectRatio:'1',background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>⏳</div>
-        )}
-      </div>
 
-      {canAdd&&!uploading&&(
-        <>
-          <input ref={fileRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>{onAddPhotos(e.target.files);e.target.value='';}}/>
-          <button onClick={()=>fileRef.current.click()} style={{background:'rgba(255,255,255,.08)',border:'1px dashed rgba(255,255,255,.2)',borderRadius:9,padding:'8px 14px',color:'rgba(255,255,255,.6)',fontSize:13,cursor:'pointer',width:'100%'}}>
-            📷 Add Photo{photos.length>0?` (${photos.length}/5)`:''}
-          </button>
-        </>
-      )}
-      {photos.length===5&&(
-        <div style={{fontSize:12,color:'rgba(255,255,255,.3)',textAlign:'center',marginTop:4}}>5/5 photos — max reached</div>
+          {/* Material Links */}
+          <div style={{padding:'4px 14px 14px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#666'}}>Material Links</div>
+              <button onClick={()=>setEditingLinks(e=>!e)} style={{background:'none',border:'none',color:'#f59e0b',fontSize:12,cursor:'pointer',fontWeight:600,padding:0}}>
+                {editingLinks?'Done':'Edit'}
+              </button>
+            </div>
+
+            {!editingLinks?(
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {validLinks.length===0&&(
+                  <div style={{fontSize:12,color:'rgba(255,255,255,.3)',fontStyle:'italic'}}>No links yet — tap Edit to add</div>
+                )}
+                {links.map((link,i)=>link.url?(
+                  <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" style={{display:'flex',alignItems:'center',gap:10,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.09)',borderRadius:9,padding:'9px 12px',textDecoration:'none'}}>
+                    <span style={{fontSize:16,flexShrink:0}}>🔗</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{link.title||'Untitled Link'}</div>
+                      <div style={{fontSize:11,color:'rgba(255,255,255,.35)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:1}}>{link.url}</div>
+                    </div>
+                    <span style={{color:'#f59e0b',fontSize:14,flexShrink:0}}>↗</span>
+                  </a>
+                ):null)}
+              </div>
+            ):(
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <SortableList
+                  items={links}
+                  onReorder={next=>{setLinks(next);onUpdateLinks(next);}}
+                  gap={7}
+                  renderItem={(link,i)=>(
+                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      <span style={{color:'rgba(255,255,255,.25)',fontSize:14,cursor:'grab',flexShrink:0,userSelect:'none'}}>⠿</span>
+                      <input
+                        value={link.title} onChange={e=>updateLinkField(i,'title',e.target.value)}
+                        placeholder="Label (e.g. Tiles)"
+                        style={{width:90,flexShrink:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'7px 8px',color:'white',fontSize:12}}
+                      />
+                      <input
+                        value={link.url} onChange={e=>updateLinkField(i,'url',e.target.value)}
+                        placeholder="Paste URL"
+                        style={{flex:1,minWidth:0,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'7px 8px',color:'white',fontSize:12}}
+                      />
+                      <button onClick={()=>removeLink(i)} style={{flexShrink:0,background:'rgba(220,53,69,.15)',border:'none',borderRadius:6,padding:'6px 9px',color:'#dc3545',fontSize:13,cursor:'pointer'}}>✕</button>
+                    </div>
+                  )}
+                />
+                {links.length<6&&(
+                  <button onClick={addLink} style={{background:'rgba(255,255,255,.06)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:8,padding:'8px 12px',color:'rgba(255,255,255,.5)',fontSize:12,cursor:'pointer',textAlign:'left'}}>+ Add Link</button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer actions */}
+          <div style={{borderTop:'1px solid rgba(255,255,255,.06)',padding:'10px 14px',display:'flex',justifyContent:'flex-end'}}>
+            <button onClick={onDeleteItem} style={{background:'rgba(220,53,69,.12)',border:'1px solid rgba(220,53,69,.2)',borderRadius:8,padding:'6px 14px',color:'#dc3545',fontSize:12,fontWeight:600,cursor:'pointer'}}>🗑 Delete Item</button>
+          </div>
+        </div>
       )}
     </div>
   );
