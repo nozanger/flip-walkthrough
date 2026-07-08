@@ -4725,22 +4725,34 @@ function ProjectSchedulePage({propId}){
     await dbSet(`projects/${propId}/weekplan/startDate`,mon.toISOString().split('T')[0]);
   }
 
-  function getWeek(catId,itemId){
-    return((plan.assignments||{})[catId]||{})[itemId]||null;
+  // assignments[catId][itemId] = { 1: true, 3: true } — set of weeks
+  function getWeeks(catId,itemId){
+    const val=((plan.assignments||{})[catId]||{})[itemId];
+    if(!val)return{};
+    // migrate legacy: if stored as plain number, convert
+    if(typeof val==='number')return{[val]:true};
+    return val;
   }
 
+  function inWeek(catId,itemId,n){return!!getWeeks(catId,itemId)[n];}
+
   async function toggleItem(catId,itemId){
-    const cur=getWeek(catId,itemId);
-    if(cur===activeWeek){
-      await dbRemove(`projects/${propId}/weekplan/assignments/${catId}/${itemId}`);
+    const already=inWeek(catId,itemId,activeWeek);
+    if(already){
+      await dbRemove(`projects/${propId}/weekplan/assignments/${catId}/${itemId}/${activeWeek}`);
     }else{
-      await dbSet(`projects/${propId}/weekplan/assignments/${catId}/${itemId}`,activeWeek);
+      await dbSet(`projects/${propId}/weekplan/assignments/${catId}/${itemId}/${activeWeek}`,true);
     }
   }
 
   function weekCount(n){
     let c=0;
-    Object.values(plan.assignments||{}).forEach(ca=>Object.values(ca||{}).forEach(w=>{if(w===n)c++;}));
+    Object.values(plan.assignments||{}).forEach(ca=>{
+      Object.values(ca||{}).forEach(weeks=>{
+        const w=typeof weeks==='number'?{[weeks]:true}:(weeks||{});
+        if(w[n])c++;
+      });
+    });
     return c;
   }
 
@@ -4748,7 +4760,11 @@ function ProjectSchedulePage({propId}){
     const out=[];
     CATEGORIES.forEach(cat=>{
       const ca=(plan.assignments||{})[cat.id]||{};
-      cat.items.forEach(item=>{if(ca[item.id]===n)out.push({catLabel:cat.label,label:item.label});});
+      cat.items.forEach(item=>{
+        const weeks=ca[item.id];
+        const w=typeof weeks==='number'?{[weeks]:true}:(weeks||{});
+        if(w[n])out.push({label:item.label});
+      });
     });
     return out;
   }
@@ -4837,15 +4853,14 @@ function ProjectSchedulePage({propId}){
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:3}}>
               {cat.items.map(item=>{
-                const assigned=getWeek(cat.id,item.id);
-                const isHere=assigned===activeWeek;
-                const isElsewhere=assigned&&!isHere;
+                const weeks=getWeeks(cat.id,item.id);
+                const isHere=!!weeks[activeWeek];
+                const otherWeeks=Object.keys(weeks).map(Number).filter(w=>w!==activeWeek).sort((a,b)=>a-b);
                 return(
                   <div key={item.id} onClick={()=>toggleItem(cat.id,item.id)}
                     style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,cursor:'pointer',
                       background:isHere?'rgba(226,176,74,.12)':'rgba(255,255,255,.04)',
-                      border:isHere?'1px solid rgba(226,176,74,.3)':'1px solid rgba(255,255,255,.06)',
-                      opacity:isElsewhere?0.5:1}}>
+                      border:isHere?'1px solid rgba(226,176,74,.3)':'1px solid rgba(255,255,255,.06)'}}>
                     <div style={{width:20,height:20,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
                       background:isHere?'#e2b04a':'transparent',
                       border:isHere?'none':'2px solid rgba(255,255,255,.2)'}}>
@@ -4854,10 +4869,12 @@ function ProjectSchedulePage({propId}){
                     <span style={{flex:1,fontSize:13,color:isHere?'white':'rgba(255,255,255,.7)',fontWeight:isHere?600:400}}>
                       {item.label}
                     </span>
-                    {isElsewhere&&(
-                      <span style={{fontSize:10,fontWeight:700,background:'rgba(255,255,255,.08)',borderRadius:20,padding:'2px 8px',color:'rgba(255,255,255,.35)'}}>
-                        Wk {assigned}
-                      </span>
+                    {otherWeeks.length>0&&(
+                      <div style={{display:'flex',gap:3}}>
+                        {otherWeeks.map(w=>(
+                          <span key={w} style={{fontSize:10,fontWeight:700,background:'rgba(255,255,255,.1)',borderRadius:20,padding:'2px 7px',color:'rgba(255,255,255,.35)'}}>W{w}</span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 );
