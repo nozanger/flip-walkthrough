@@ -3457,6 +3457,7 @@ function PropertyList({currentUser,onOpen}){
   const[fabPropId,setFabPropId]=React.useState('');
   const[fabTitle,setFabTitle]=React.useState('');
   const[expandedIds,setExpandedIds]=React.useState(new Set());
+  const[showMoreSheet,setShowMoreSheet]=React.useState(false);
   function toggleExpand(id){setExpandedIds(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next;});}
   function toggleView(){setViewMode(v=>{const n=v==='list'?'kanban':'list';localStorage.setItem('zanco_view',n);return n;});}
 
@@ -3627,39 +3628,6 @@ function PropertyList({currentUser,onOpen}){
         </div>
       )}
 
-      <nav className="home-nav">
-        <button className={`home-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Properties
-        </button>
-        <div className="home-nav-sep"/>
-        <button className={`home-nav-btn${homeTab==='tasks'?' active':''}`} onClick={()=>setHomeTab('tasks')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          Tasks
-        </button>
-        <div className="home-nav-sep"/>
-        <button className={`home-nav-btn${homeTab==='rentals'?' active':''}`} onClick={()=>setHomeTab('rentals')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/><circle cx="19" cy="8" r="3"/></svg>
-          Rentals
-        </button>
-        <div className="home-nav-sep"/>
-        <button className={`home-nav-btn${homeTab==='owner'?' active':''}`} onClick={()=>setHomeTab('owner')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          Private
-        </button>
-        {homeTab==='properties'&&(
-          <>
-            <div className="home-nav-sep"/>
-            <button className={`view-toggle-btn${viewMode==='kanban'?' active':''}`} onClick={toggleView} title={viewMode==='list'?'Switch to Kanban':'Switch to List'}>
-              {viewMode==='list'?(
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={viewMode==='kanban'?'#f59e0b':'rgba(255,255,255,.5)'} strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="18"/><rect x="17" y="3" width="5" height="18"/></svg>
-              ):(
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2.2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              )}
-            </button>
-          </>
-        )}
-      </nav>
 
       {notifBanner&&(
         <div style={{background:'rgba(245,158,11,.1)',borderBottom:'1px solid rgba(245,158,11,.2)',padding:'12px 16px',display:'flex',alignItems:'center',gap:'10px'}}>
@@ -3706,10 +3674,12 @@ function PropertyList({currentUser,onOpen}){
               </div>
             );
           })}
-          <div style={{marginTop:6}}>
+          <div style={{marginTop:6,display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
             <button className="btn-add-prop" onClick={()=>setShowAdd(true)}>＋ Add Property</button>
-            <button className="btn-add-prop" onClick={()=>setShowTeam(true)}>👥 My Team</button>
-            <button className="btn-add-prop" onClick={()=>setShowInvite(true)}>📲 Invite to Project</button>
+            <button className="btn-add-prop" onClick={()=>setShowInvite(true)}>📲 Invite</button>
+            <button onClick={toggleView} style={{marginLeft:'auto',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.12)',borderRadius:9,padding:'7px 12px',color:'rgba(255,255,255,.6)',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+              {viewMode==='list'?'⊞ Kanban':'☰ List'}
+            </button>
           </div>
         </div>
       ):null}
@@ -3718,20 +3688,16 @@ function PropertyList({currentUser,onOpen}){
       )}
 
       <nav className="bottom-nav">
-        <button className="bottom-nav-btn active">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-          Home
-        </button>
-        <button className="bottom-nav-btn" onClick={()=>setHomeTab('properties')}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <button className={`bottom-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Properties
         </button>
-        <button className="bottom-nav-btn" onClick={()=>setHomeTab('tasks')}>
+        <button className={`bottom-nav-btn${homeTab==='tasks'?' active':''}`} onClick={()=>setHomeTab('tasks')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           Tasks
         </button>
-        <button className="bottom-nav-btn" onClick={()=>setShowTeam(true)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75"/><path d="M21 21v-2a4 4 0 00-3-3.85"/></svg>
+        <button className={`bottom-nav-btn${showMoreSheet||homeTab==='rentals'||homeTab==='owner'?' active':''}`} onClick={()=>setShowMoreSheet(true)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
           More
         </button>
       </nav>
@@ -3765,6 +3731,30 @@ function PropertyList({currentUser,onOpen}){
       {showAdd&&<AddPropertyModal onAdd={addProperty} currentUser={currentUser} onClose={()=>setShowAdd(false)}/>}
       {showTeam&&<TeamModal currentUser={currentUser} onClose={()=>setShowTeam(false)}/>}
       {showProfile&&<ProfileModal currentUser={currentUser} onClose={()=>setShowProfile(false)}/>}
+
+      {/* More sheet */}
+      {showMoreSheet&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:900,display:'flex',alignItems:'flex-end'}} onClick={()=>setShowMoreSheet(false)}>
+          <div style={{background:'#0d1829',borderRadius:'20px 20px 0 0',width:'100%',paddingBottom:'env(safe-area-inset-bottom,16px)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{width:36,height:4,borderRadius:2,background:'rgba(255,255,255,.2)',margin:'12px auto 20px'}}/>
+            {[
+              {icon:'🏘',label:'Rentals',action:()=>{setHomeTab('rentals');setShowMoreSheet(false);}},
+              {icon:'🔒',label:'Private Notes',action:()=>{setHomeTab('owner');setShowMoreSheet(false);}},
+              {icon:'👥',label:'My Team',action:()=>{setShowTeam(true);setShowMoreSheet(false);}},
+              {icon:'👤',label:'Profile',action:()=>{setShowProfile(true);setShowMoreSheet(false);}},
+            ].map(item=>(
+              <button key={item.label} onClick={item.action} style={{display:'flex',alignItems:'center',gap:14,width:'100%',padding:'16px 24px',background:'none',border:'none',color:'white',fontSize:16,cursor:'pointer',textAlign:'left',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+                <span style={{fontSize:20,width:28}}>{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+            <button onClick={()=>{signOut();setShowMoreSheet(false);}} style={{display:'flex',alignItems:'center',gap:14,width:'100%',padding:'16px 24px',background:'none',border:'none',color:'#ef4444',fontSize:16,cursor:'pointer',textAlign:'left'}}>
+              <span style={{fontSize:20,width:28}}>↩</span>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
       {showInvite&&<InviteModal properties={properties} currentUser={currentUser} onClose={()=>setShowInvite(false)}/>}
       {showMigration&&<MigrationModal currentUser={currentUser} onDone={()=>setShowMigration(false)}/>}
       {deleteId&&(
@@ -4350,9 +4340,9 @@ function HandoffPage({propId, currentUser}){
 }
 
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_SUMMARY=-1,TAB_TEAM=-2,TAB_TASKS=-3,TAB_MGMT=-4,TAB_SCOPE=-5,TAB_OWNER=-6,TAB_PICS=-7,TAB_HANDOFF=-8;
+  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4;
   const initStage=prop.stage||'walkthrough';
-  const[activeTab,setActiveTab]=React.useState(initStage==='contract'||initStage==='renovation'?TAB_TASKS:TAB_SUMMARY);
+  const[activeTab,setActiveTab]=React.useState(TAB_TASKS);
   const[data,setData]=React.useState({});
   const[members,setMembers]=React.useState({});
   const[stage,setStage]=React.useState(prop.stage||'walkthrough');
@@ -4552,107 +4542,78 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           {syncStatus==='syncing'?'Syncing…':'All changes saved · Live sync on'}
         </div>
         <div className="tabs">
-          {(stage==='contract'||stage==='renovation')?(
-            <>
-              <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
-                ✅ Tasks
-              </div>
-              <div className={`tab${activeTab===TAB_PICS?' active':''}`} onClick={()=>setActiveTab(TAB_PICS)}>
-                🖼 AI Pictures
-              </div>
-              <div className={`tab${activeTab===TAB_MGMT?' active':''}`} onClick={()=>setActiveTab(TAB_MGMT)}>
-                🏗 Project
-              </div>
-              <div className={`tab${activeTab===TAB_SCOPE?' active':''}`} onClick={()=>setActiveTab(TAB_SCOPE)}>
-                📐 Scope of Work
-              </div>
-              <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
-                📋 Summary{sumFilled&&<span className="tab-count">✓</span>}
-              </div>
-              {stage==='renovation'&&(
-                <div className={`tab${activeTab===TAB_HANDOFF?' active':''}`} onClick={()=>setActiveTab(TAB_HANDOFF)}>
-                  ✔️ Handoff
-                </div>
-              )}
-              <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
-                👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
-              </div>
-              {canSeeOwner&&(
-                <div className={`tab${activeTab===TAB_OWNER?' active':''}`} onClick={()=>setActiveTab(TAB_OWNER)}>
-                  🔒 Owner
-                </div>
-              )}
-            </>
-          ):(
-            <>
-              <div className={`tab${activeTab===TAB_SUMMARY?' active':''}`} onClick={()=>setActiveTab(TAB_SUMMARY)}>
-                📋 Summary{sumFilled&&<span className="tab-count">✓</span>}
-              </div>
-              {CATEGORIES.map((c,i)=>{
-                const unread=catUnread(c.id);
-                const rev=countReviewed(data,c.id);
-                return(
-                  <div key={c.id} className={`tab${activeTab===i?' active':''}`} onClick={()=>setActiveTab(i)}>
-                    {c.icon} {c.label}
-                    {unread>0?<span className="notif-badge">{unread}</span>:rev>0?<span className="tab-count">{rev}</span>:null}
-                  </div>
-                );
-              })}
-              <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
-                ✅ Tasks
-              </div>
-              <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
-                👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
-              </div>
-              {canSeeOwner&&(
-                <div className={`tab${activeTab===TAB_OWNER?' active':''}`} onClick={()=>setActiveTab(TAB_OWNER)}>
-                  🔒 Owner
-                </div>
-              )}
-            </>
-          )}
+          <div className={`tab${activeTab===TAB_TASKS?' active':''}`} onClick={()=>setActiveTab(TAB_TASKS)}>
+            ✅ Tasks
+          </div>
+          <div className={`tab${activeTab===TAB_SCOPE||activeTab>=0?' active':''}`} onClick={()=>setActiveTab(TAB_SCOPE)}>
+            📐 Scope
+          </div>
+          <div className={`tab${activeTab===TAB_INFO?' active':''}`} onClick={()=>setActiveTab(TAB_INFO)}>
+            📋 Info{sumFilled&&<span className="tab-count">✓</span>}
+          </div>
+          <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
+            👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
+          </div>
         </div>
       </div>
 
-      {activeTab>=0&&(
-        <div style={{padding:'12px 12px 0'}}>
-          <div className="progress-bar-wrap">
-            <div className="progress-label"><span>Walkthrough progress</span><span>{done} of {total} items · {pct}%</span></div>
-            <div className="progress-track"><div className="progress-fill" style={{width:pct+'%'}}/></div>
-          </div>
+      {activeTab===TAB_TASKS&&(
+        <div>
+          <TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>
+          {stage==='renovation'&&(
+            <div style={{margin:'0 12px 12px'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#666',letterSpacing:'.5px',marginBottom:10,marginTop:4}}>✔️ Handoff Checklist</div>
+              <HandoffPage propId={prop.id} currentUser={currentUser}/>
+            </div>
+          )}
         </div>
       )}
 
-      {activeTab===TAB_OWNER&&canSeeOwner&&<OwnerSection propId={prop.id} currentUser={currentUser} members={members}/>}
-      {activeTab===TAB_SUMMARY&&<SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} address={prop.address} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner} members={members}/>}
-      {activeTab===TAB_TEAM&&<ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>}
-      {activeTab===TAB_TASKS&&<TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>}
-      {activeTab===TAB_SCOPE&&<ScopeOverviewPage data={data} onOpenCat={i=>{setActiveTab(i);}}/>}
-      {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
-      {activeTab===TAB_HANDOFF&&stage==='renovation'&&<HandoffPage propId={prop.id} currentUser={currentUser}/>}
-      {activeTab===TAB_MGMT&&(
-        <div className="content">
-          <div style={{padding:'12px 0 4px'}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#888',letterSpacing:'.5px',marginBottom:8}}>
-              {stage==='contract'?'📝 Under Contract — Project Management':'🔨 Ongoing Renovation — Project Management'}
-            </div>
+      {(activeTab===TAB_SCOPE||activeTab>=0)&&(
+        activeTab>=0&&cat?(
+          <div className="content" style={{padding:0,display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+            <ItemCardView
+              propId={prop.id} cat={cat} data={data} mergedRef={mergedRef}
+              username={username} updateItem={updateItem} setLightbox={setLightbox}
+              onPrevCat={()=>setActiveTab(t=>Math.max(t-1,0))}
+              onNextCat={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))}/>
           </div>
-          <div style={{display:'flex',gap:12,alignItems:'flex-start',flexWrap:'wrap'}}>
-            <div style={{flex:'1 1 300px',minWidth:0}}>
+        ):(
+          <>
+            <div style={{padding:'12px 12px 0'}}>
+              <div className="progress-bar-wrap">
+                <div className="progress-label"><span>Walkthrough progress</span><span>{done} of {total} items · {pct}%</span></div>
+                <div className="progress-track"><div className="progress-fill" style={{width:pct+'%'}}/></div>
+              </div>
+            </div>
+            <ScopeOverviewPage data={data} onOpenCat={i=>setActiveTab(i)}/>
+          </>
+        )
+      )}
+
+      {activeTab===TAB_INFO&&(
+        <div>
+          <SummaryPage summary={data._summary} onChange={updateSummary} onView={src=>setLightbox(src)} propId={prop.id} address={prop.address} currentUser={currentUser} onApplyAI={applyAIScope} isOwner={isOwner} members={members}/>
+          {(stage==='contract'||stage==='renovation')&&(
+            <div className="content" style={{paddingTop:0}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#666',letterSpacing:'.5px',marginBottom:10}}>💰 Budget</div>
               <BudgetSection propId={prop.id}/>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#666',letterSpacing:'.5px',margin:'20px 0 10px'}}>🖼 AI Pictures</div>
+              <AIPicturesPage propId={prop.id} currentUser={currentUser}/>
             </div>
-            <div style={{flex:'1 1 300px',minWidth:0}}>{/* future content */}</div>
-          </div>
-          <TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>
+          )}
         </div>
       )}
-      {activeTab>=0&&cat&&(
-        <div className="content" style={{padding:0,display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
-          <ItemCardView
-            propId={prop.id} cat={cat} data={data} mergedRef={mergedRef}
-            username={username} updateItem={updateItem} setLightbox={setLightbox}
-            onPrevCat={()=>setActiveTab(t=>t<=0?TAB_SUMMARY:t-1)}
-            onNextCat={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))}/>
+
+      {activeTab===TAB_TEAM&&(
+        <div>
+          <ParticipantsPage prop={prop} data={data} currentUser={currentUser} isOwner={isOwner}/>
+          {canSeeOwner&&(
+            <div style={{margin:'0 12px 20px'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#666',letterSpacing:'.5px',marginBottom:10}}>🔒 Owner Notes</div>
+              <OwnerSection propId={prop.id} currentUser={currentUser} members={members}/>
+            </div>
+          )}
         </div>
       )}
 
