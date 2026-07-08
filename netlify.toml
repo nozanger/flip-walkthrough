@@ -13,6 +13,16 @@
 [functions."sync-budget"]
   schedule = "0 12 * * *"
 
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/firebase-messaging-sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
 [[redirects]]
   from = "/firebase-messaging-sw.js"
   to = "/firebase-messaging-sw.js"
