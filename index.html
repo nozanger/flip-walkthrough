@@ -4706,14 +4706,21 @@ function ProjectSchedulePage({propId}){
 
   async function applyTemplate(){
     const templates=[
-      {title:'Demo & Rough Framing',notes:'Demolition of existing fixtures, rough framing for layout changes'},
-      {title:'Rough Plumbing & HVAC',notes:'Rough-in plumbing, ductwork, and HVAC installation'},
-      {title:'Rough Electrical',notes:'Rough-in electrical, panel upgrades, recessed lighting'},
-      {title:'Insulation & Drywall',notes:'Insulation in walls/ceilings, hang and tape drywall'},
-      {title:'Drywall Finish & Paint',notes:'Mud, sand, prime, and paint all walls and ceilings'},
-      {title:'Flooring',notes:'Install hardwood, tile, or LVP throughout'},
-      {title:'Cabinets, Fixtures & Trim',notes:'Kitchen/bath cabinets, trim work, doors, and hardware'},
-      {title:'Final Finishes & Punch List',notes:'Countertops, appliances, touch-ups, and final inspection'},
+      {title:'Demo',notes:'Full demolition — remove fixtures, flooring, drywall as needed'},
+      {title:'Rough In Framing',notes:'Structural and layout framing changes'},
+      {title:'Rough In Plumbing & Tub Installation',notes:'Rough-in plumbing supply and drain lines, set tub/shower pan'},
+      {title:'Rough In Electric',notes:'Rough-in wiring, panel upgrade, recessed light rough-ins'},
+      {title:'Windows Replacement',notes:'Remove old windows, install new windows and flash openings'},
+      {title:'Drywall Hanging',notes:'Hang drywall on all walls and ceilings'},
+      {title:'Drywall Mudding & Sanding',notes:'Tape, mud, sand — repeat until smooth and ready for paint'},
+      {title:'Paint',notes:'Prime and paint all walls, ceilings, and trim'},
+      {title:'Flooring',notes:'Install hardwood, LVP, or tile throughout living areas'},
+      {title:'Bathroom Tile',notes:'Set floor and shower/tub tile in all bathrooms'},
+      {title:'Kitchen Cabinets',notes:'Install upper and lower cabinets, crown molding'},
+      {title:'Finish Bathrooms',notes:'Vanities, toilets, mirrors, accessories, shower doors'},
+      {title:'Electric Trim',notes:'Install outlets, switches, fixtures, plates, and panel final'},
+      {title:'Plumbing Trim',notes:'Install faucets, sinks, disposal, water heater connections'},
+      {title:'Final Touchups',notes:'Paint touchups, punch list items, deep clean, and final walk'},
     ];
     const writes={};
     templates.forEach((t,i)=>{
