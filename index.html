@@ -3550,8 +3550,8 @@ function PropertyList({currentUser,onOpen}){
     const expanded=expandedIds.has(prop.id);
     return(
       <div className={`prop-card stage-${stage}`}>
-        {/* Always-visible header row */}
-        <div className="prop-card-body" onClick={()=>toggleExpand(prop.id)} style={{cursor:'pointer'}}>
+        {/* Always-visible header row — click opens property */}
+        <div className="prop-card-body" onClick={()=>onOpen(prop)} style={{cursor:'pointer'}}>
           <div className="prop-thumb">
             {stage==='renovation'?(
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -3568,21 +3568,18 @@ function PropertyList({currentUser,onOpen}){
               {s.label}{prop.sqft?'  ·  '+prop.sqft+' sq ft':''}{dateStr?'  ·  '+dateStr:''}
             </div>
           </div>
-          <div style={{color:'rgba(255,255,255,.4)',fontSize:16,transition:'transform .2s',transform:expanded?'rotate(90deg)':'rotate(0deg)',flexShrink:0}}>›</div>
+          {/* ⋯ button toggles edit/delete menu without opening property */}
+          <button onClick={e=>{e.stopPropagation();toggleExpand(prop.id);}} style={{background:'none',border:'none',color:'rgba(255,255,255,.35)',fontSize:20,cursor:'pointer',padding:'4px 6px',flexShrink:0,lineHeight:1}}>⋯</button>
         </div>
 
         {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
 
-        {/* Expanded section */}
+        {/* Expanded actions */}
         {expanded&&(
-          <>
-            <div className="prop-actions">
-              <button className="prop-action-btn open" onClick={()=>onOpen(prop)}>↗ Open</button>
-              <div className="prop-action-sep"/>
-              <button className="prop-action-btn" onClick={()=>onOpen(prop)} title="Edit">✏️ Edit</button>
-              {prop.ownerId===currentUser.uid&&<><div className="prop-action-sep"/><button className="prop-action-btn danger" onClick={e=>{e.stopPropagation();setDeleteId(prop.id);}} title="Delete">🗑 Delete</button></>}
-            </div>
-          </>
+          <div className="prop-actions">
+            <button className="prop-action-btn" onClick={()=>onOpen(prop)} title="Edit">✏️ Edit</button>
+            {prop.ownerId===currentUser.uid&&<><div className="prop-action-sep"/><button className="prop-action-btn danger" onClick={e=>{e.stopPropagation();setDeleteId(prop.id);}} title="Delete">🗑 Delete</button></>}
+          </div>
         )}
       </div>
     );
