@@ -5231,26 +5231,32 @@ function App(){
   // Auth state listener
   React.useEffect(()=>{
     if(!firebaseReady){setAuthUser(null);return;}
-    const unsub=getAuth().onAuthStateChanged(async user=>{
-      if(user&&inviteToken&&inviteInfo){
-        const memberName=user.displayName||user.email;
-        const memberRole=inviteInfo.role||'Member';
-        // Process invite: add user to project
-        await dbSet(`projects/${inviteInfo.projectId}/members/${user.uid}`,{
-          name:memberName,email:user.email,role:memberRole,addedAt:Date.now()
-        });
-        await dbSet(`userProjects/${user.uid}/${inviteInfo.projectId}`,true);
-        // Save to owner's roster so they appear in future project assignments
-        await dbSet(`roster/${inviteInfo.createdBy}/${user.uid}`,{
-          id:user.uid,name:memberName,email:user.email,role:memberRole,addedAt:Date.now()
-        });
-        // Clear token from URL
-        const url=new URL(window.location);url.searchParams.delete('join');window.history.replaceState({},'',url);
-        setInviteInfo(null);
-      }
-      setAuthUser(user||null);
+    const auth=getAuth();
+    if(!auth){setAuthUser(null);return;}
+    let settled=false;
+    const settle=u=>{if(!settled){settled=true;setAuthUser(u||null);}};
+    // Timeout fallback: if Firebase auth doesn't respond in 12s, show login page
+    const timer=setTimeout(()=>settle(null),12000);
+    const unsub=auth.onAuthStateChanged(async user=>{
+      try{
+        if(user&&inviteToken&&inviteInfo){
+          const memberName=user.displayName||user.email;
+          const memberRole=inviteInfo.role||'Member';
+          await dbSet(`projects/${inviteInfo.projectId}/members/${user.uid}`,{
+            name:memberName,email:user.email,role:memberRole,addedAt:Date.now()
+          });
+          await dbSet(`userProjects/${user.uid}/${inviteInfo.projectId}`,true);
+          await dbSet(`roster/${inviteInfo.createdBy}/${user.uid}`,{
+            id:user.uid,name:memberName,email:user.email,role:memberRole,addedAt:Date.now()
+          });
+          const url=new URL(window.location);url.searchParams.delete('join');window.history.replaceState({},'',url);
+          setInviteInfo(null);
+        }
+      }catch(e){console.error('Invite processing error:',e);}
+      clearTimeout(timer);
+      settle(user);
     });
-    return unsub;
+    return ()=>{unsub();clearTimeout(timer);};
   },[firebaseReady,inviteToken,inviteInfo]);
 
   if(authUser===undefined)return<div className="spinner-page"><div className="spinner"/></div>;
