@@ -4698,15 +4698,35 @@ function ProjectSchedulePage({propId}){
   const[form,setForm]=React.useState(null);
   const[saving,setSaving]=React.useState(false);
   const[newMat,setNewMat]=React.useState('');
+  const[startInput,setStartInput]=React.useState('');
 
   React.useEffect(()=>dbListen(`projects/${propId}/schedule`,d=>{
-    const arr=d?Object.values(d).sort((a,b)=>{
+    const arr=d?Object.values(d).filter(v=>v&&v.id).sort((a,b)=>{
       if(!a.startDate&&!b.startDate)return(a.createdAt||0)-(b.createdAt||0);
       if(!a.startDate)return 1;if(!b.startDate)return -1;
       return a.startDate>b.startDate?1:-1;
     }):[];
     setWeeks(arr);
+    // Pre-fill start input from first dated phase
+    const first=arr.find(w=>w.startDate);
+    if(first&&!startInput)setStartInput(first.startDate);
   }),[propId]);
+
+  function addDays(dateStr,n){
+    const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];
+  }
+
+  async function autoSchedule(fromDate){
+    if(!fromDate||!weeks.length)return;
+    const updates={};
+    weeks.forEach((w,i)=>{
+      const s=addDays(fromDate,i*7);
+      const e=addDays(fromDate,i*7+6);
+      updates[`${w.id}/startDate`]=s;
+      updates[`${w.id}/endDate`]=e;
+    });
+    await dbUpdate(`projects/${propId}/schedule`,updates);
+  }
 
   async function applyTemplate(){
     const templates=[
@@ -4824,6 +4844,22 @@ function ProjectSchedulePage({propId}){
 
   return(
     <div style={{paddingBottom:80}}>
+
+      {/* ── Start Date Auto-Scheduler ── */}
+      {weeks.length>0&&(
+        <div style={{margin:'12px 12px 0',background:'rgba(226,176,74,.08)',border:'1px solid rgba(226,176,74,.25)',borderRadius:14,padding:'12px 14px'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#e2b04a',marginBottom:8}}>📅 Project Start Date</div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input type="date" value={startInput} onChange={e=>setStartInput(e.target.value)}
+              style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.2)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,boxSizing:'border-box'}}/>
+            <button onClick={()=>autoSchedule(startInput)} disabled={!startInput}
+              style={{background:'#e2b04a',color:'#000',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer',opacity:startInput?1:0.4,whiteSpace:'nowrap'}}>
+              Auto-schedule
+            </button>
+          </div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,.35)',marginTop:6}}>Sets each phase to 7 days, back-to-back starting from this date</div>
+        </div>
+      )}
 
       {/* Summary tiles */}
       {weeks.length>0&&totalScheduled>0&&(
@@ -4948,22 +4984,22 @@ function ProjectSchedulePage({propId}){
                   <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Phase title" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
                   <div style={{display:'flex',gap:8}}>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Start</div>
-                      <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-                    </div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>End</div>
-                      <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-                    </div>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <div style={{flex:1}}>
                       <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Payment ($)</div>
                       <input type="number" value={form.payment} onChange={e=>setForm(f=>({...f,payment:e.target.value}))} placeholder="0" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
                     </div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Pay to</div>
                       <input value={form.paymentNote} onChange={e=>setForm(f=>({...f,paymentNote:e.target.value}))} placeholder="e.g. Mike GC" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Start date <span style={{color:'rgba(255,255,255,.2)'}}>(override)</span></div>
+                      <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>End date <span style={{color:'rgba(255,255,255,.2)'}}>(override)</span></div>
+                      <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
                     </div>
                   </div>
                   <div>
