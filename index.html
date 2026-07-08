@@ -4695,10 +4695,14 @@ function PropEventsBar({propId}){
 function ProjectSchedulePage({propId}){
   const[plan,setPlan]=React.useState({startDate:'',assignments:{}});
   const[activeWeek,setActiveWeek]=React.useState(1);
+  const[dateInput,setDateInput]=React.useState('');
   const NUM_WEEKS=8;
 
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,d=>{
-    setPlan(d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{}});
+    const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{}};
+    setPlan(p);
+    // Only sync the input if user isn't actively editing (input is empty or matches)
+    setDateInput(prev=>prev===''?p.startDate||'':prev);
   }),[propId]);
 
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -4760,9 +4764,9 @@ function ProjectSchedulePage({propId}){
       <div style={{padding:'12px 12px 0'}}>
         <div style={{background:'rgba(226,176,74,.08)',border:'1px solid rgba(226,176,74,.22)',borderRadius:12,padding:'12px 14px'}}>
           <div style={{fontSize:11,fontWeight:700,color:'#e2b04a',marginBottom:8,textTransform:'uppercase',letterSpacing:'.5px'}}>Renovation Start Date</div>
-          <input type="date" defaultValue={plan.startDate||''} key={plan.startDate}
-            onBlur={e=>setStartDate(e.target.value)}
-            onChange={e=>setStartDate(e.target.value)}
+          <input type="date" value={dateInput}
+            onChange={e=>setDateInput(e.target.value)}
+            onBlur={e=>{if(e.target.value)setStartDate(e.target.value);}}
             style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.18)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
           {plan.startDate&&<div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:5}}>
             Mon starts each week · Week 8 ends {fmtD(weekStartDate(NUM_WEEKS)&&new Date(weekStartDate(NUM_WEEKS).getTime()+6*864e5))}
