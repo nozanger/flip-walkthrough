@@ -4340,7 +4340,7 @@ function HandoffPage({propId, currentUser}){
 }
 
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4;
+  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5;
   const initStage=prop.stage||'walkthrough';
   const[activeTab,setActiveTab]=React.useState(TAB_TASKS);
   const[data,setData]=React.useState({});
@@ -4551,6 +4551,11 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_INFO?' active':''}`} onClick={()=>setActiveTab(TAB_INFO)}>
             📋 Info{sumFilled&&<span className="tab-count">✓</span>}
           </div>
+          {(stage==='contract'||stage==='renovation')&&(
+            <div className={`tab${activeTab===TAB_PICS?' active':''}`} onClick={()=>setActiveTab(TAB_PICS)}>
+              🖼 AI Pictures
+            </div>
+          )}
           <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
             👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
@@ -4598,12 +4603,11 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
             <div className="content" style={{paddingTop:0}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#666',letterSpacing:'.5px',marginBottom:10}}>💰 Budget</div>
               <BudgetSection propId={prop.id}/>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',color:'#666',letterSpacing:'.5px',margin:'20px 0 10px'}}>🖼 AI Pictures</div>
-              <AIPicturesPage propId={prop.id} currentUser={currentUser}/>
             </div>
           )}
         </div>
       )}
+      {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
 
       {activeTab===TAB_TEAM&&(
         <div>
