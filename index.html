@@ -4908,6 +4908,32 @@ function ProjectSchedulePage({propId}){
 
   if(!calMode)return planView;
 
+  // ── helpers for calendar grouping ──────────────────────────────
+  // Group consecutive weeks that span the same calendar month so we
+  // can render a month-header above each group.
+  function buildMonthGroups(){
+    const groups=[];
+    let cur=null;
+    Array.from({length:numWeeks},(_,i)=>i+1).forEach(n=>{
+      const wsd=weekStartDate(n);
+      const key=wsd?`${wsd.getFullYear()}-${wsd.getMonth()}`:null;
+      if(!cur||cur.key!==key){
+        cur={key,month:wsd?MONTHS[wsd.getMonth()]+' '+wsd.getFullYear():'Week '+n,weeks:[]};
+        groups.push(cur);
+      }
+      cur.weeks.push(n);
+    });
+    return groups;
+  }
+  const DAY_LABELS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const ITEM_COLORS=['#e2b04a','#4a9fe2','#4ae2b0','#e24a7a','#b04ae2','#e27a4a','#7ae24a'];
+
+  // assign a stable color index per catId
+  const catColorIdx={};
+  CATEGORIES.forEach((c,i)=>{catColorIdx[c.id]=i%ITEM_COLORS.length;});
+
+  const monthGroups=buildMonthGroups();
+
   // ── Calendar view ──────────────────────────────────────────────
   return(
     <div style={{paddingBottom:100}}>
@@ -4916,32 +4942,33 @@ function ProjectSchedulePage({propId}){
       {editingItem&&(()=>{
         const allWeeks=getWeeks(editingItem.catId,editingItem.itemId);
         return(
-          <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'flex-end'}}
+          <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,.65)',display:'flex',alignItems:'flex-end'}}
             onClick={e=>{if(e.target===e.currentTarget)setEditingItem(null);}}>
-            <div style={{width:'100%',background:'#0d1829',borderRadius:'20px 20px 0 0',padding:'20px 16px 40px',maxHeight:'75vh',overflowY:'auto'}}>
-              <div style={{width:36,height:4,background:'rgba(255,255,255,.2)',borderRadius:2,margin:'0 auto 16px'}}/>
-              <div style={{fontSize:15,fontWeight:700,color:'white',marginBottom:4}}>{editingItem.label}</div>
-              <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginBottom:16}}>Tap weeks to assign / remove</div>
+            <div style={{width:'100%',background:'#0d1829',borderRadius:'20px 20px 0 0',padding:'20px 16px 44px',maxHeight:'80vh',overflowY:'auto'}}>
+              <div style={{width:36,height:4,background:'rgba(255,255,255,.2)',borderRadius:2,margin:'0 auto 18px'}}/>
+              <div style={{fontSize:15,fontWeight:700,color:'white',marginBottom:3}}>{editingItem.label}</div>
+              <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:18}}>Tap a week to add or remove this task</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
                 {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
                   const on=!!allWeeks[n];
                   const wsd=weekStartDate(n);
                   return(
                     <div key={n} onClick={async()=>{
-                      if(on){await dbRemove(`projects/${propId}/weekplan/assignments/${editingItem.catId}/${editingItem.itemId}/${n}`);}
-                      else{await dbSet(`projects/${propId}/weekplan/assignments/${editingItem.catId}/${editingItem.itemId}/${n}`,true);}
+                      if(on)await dbRemove(`projects/${propId}/weekplan/assignments/${editingItem.catId}/${editingItem.itemId}/${n}`);
+                      else await dbSet(`projects/${propId}/weekplan/assignments/${editingItem.catId}/${editingItem.itemId}/${n}`,true);
                     }}
-                    style={{borderRadius:12,padding:'12px 8px',textAlign:'center',cursor:'pointer',
-                      background:on?'rgba(226,176,74,.2)':'rgba(255,255,255,.05)',
+                    style={{borderRadius:12,padding:'11px 6px',textAlign:'center',cursor:'pointer',
+                      background:on?'rgba(226,176,74,.18)':'rgba(255,255,255,.05)',
                       border:on?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.1)'}}>
-                      <div style={{fontSize:12,fontWeight:700,color:on?'#e2b04a':'rgba(255,255,255,.5)'}}>Wk {n}</div>
-                      {wsd&&<div style={{fontSize:9,color:'rgba(255,255,255,.3)',marginTop:2}}>{fmtD(wsd)}</div>}
+                      <div style={{fontSize:12,fontWeight:700,color:on?'#e2b04a':'rgba(255,255,255,.4)'}}>Wk {n}</div>
+                      {wsd&&<div style={{fontSize:9,color:'rgba(255,255,255,.28)',marginTop:2}}>{fmtD(wsd)}</div>}
+                      {on&&<div style={{marginTop:5,fontSize:9,color:'#e2b04a',fontWeight:700}}>✓</div>}
                     </div>
                   );
                 })}
               </div>
               <button onClick={()=>setEditingItem(null)}
-                style={{marginTop:20,width:'100%',padding:'13px',background:'rgba(255,255,255,.08)',border:'none',borderRadius:12,color:'white',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                style={{marginTop:20,width:'100%',padding:'14px',background:'#e2b04a',border:'none',borderRadius:12,color:'#000',fontSize:14,fontWeight:700,cursor:'pointer'}}>
                 Done
               </button>
             </div>
@@ -4950,56 +4977,116 @@ function ProjectSchedulePage({propId}){
       })()}
 
       {/* Header */}
-      <div style={{padding:'14px 12px 8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div style={{padding:'14px 12px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{fontSize:17,fontWeight:700,color:'white'}}>Renovation Schedule</div>
         <button onClick={()=>setCalMode(false)}
           style={{background:'rgba(226,176,74,.12)',border:'1px solid rgba(226,176,74,.3)',borderRadius:10,color:'#e2b04a',padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
-          Edit Plan
+          ✎ Edit Plan
         </button>
       </div>
-
-      {plan.startDate&&(
-        <div style={{padding:'0 12px 10px',fontSize:12,color:'rgba(255,255,255,.35)'}}>
-          Starts {fmtD(mondayOf(plan.startDate))} · {numWeeks} weeks
+      {!plan.startDate&&(
+        <div style={{padding:'0 12px 10px',fontSize:12,color:'rgba(255,255,255,.3)',fontStyle:'italic'}}>
+          Set a start date in Edit Plan to see real dates
         </div>
       )}
 
-      {/* Week blocks */}
+      {/* Day-of-week header row */}
       <div style={{padding:'0 12px'}}>
-        {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
-          const wsd=weekStartDate(n);
-          const wed=wsd?new Date(wsd.getTime()+6*864e5):null;
-          const items=itemsForWeek(n);
-          return(
-            <div key={n} style={{marginBottom:10,borderRadius:14,overflow:'hidden',border:'1px solid rgba(255,255,255,.08)',background:'rgba(255,255,255,.03)'}}>
-              {/* Week header */}
-              <div style={{padding:'10px 14px',background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
-                  <div style={{background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:8,padding:'4px 10px',fontSize:12,fontWeight:700,color:'#e2b04a'}}>
-                    Wk {n}
-                  </div>
-                  {wsd&&<div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>{fmtD(wsd)} – {fmtD(wed)}</div>}
-                </div>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.25)',fontWeight:600}}>{items.length} item{items.length!==1?'s':''}</div>
-              </div>
-              {/* Items */}
-              {items.length===0?(
-                <div style={{padding:'14px',fontSize:12,color:'rgba(255,255,255,.18)',fontStyle:'italic'}}>Nothing scheduled</div>
-              ):(
-                <div style={{padding:'8px 10px',display:'flex',flexDirection:'column',gap:6}}>
-                  {items.map((it,i)=>(
-                    <div key={i} onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
-                      style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:10,cursor:'pointer',
-                        background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)'}}>
-                      <span style={{fontSize:13,color:'white',fontWeight:500}}>{it.label}</span>
-                      <span style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>✎</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+        <div style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:0}}>
+          <div/>
+          {DAY_LABELS.map(d=>(
+            <div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',padding:'6px 0',letterSpacing:'.5px'}}>
+              {d}
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* Month groups */}
+        {monthGroups.map((mg,gi)=>(
+          <div key={gi} style={{marginBottom:8}}>
+            {/* Month label */}
+            <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:'1px',padding:'8px 2px 4px'}}>
+              {mg.month}
+            </div>
+
+            {/* Week rows */}
+            {mg.weeks.map(n=>{
+              const wsd=weekStartDate(n);
+              const items=itemsForWeek(n);
+              // build 7 day cells Mon–Sun
+              const days=Array.from({length:7},(_,di)=>{
+                if(!wsd)return{date:null,dayItems:[]};
+                const d=new Date(wsd.getTime()+di*864e5);
+                return{date:d,dayItems:[]};
+              });
+              return(
+                <div key={n} style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:2,minHeight:items.length>0?undefined:52}}>
+                  {/* Week label */}
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',paddingTop:6,gap:2}}>
+                    <div style={{fontSize:9,fontWeight:800,color:'rgba(226,176,74,.7)',textTransform:'uppercase'}}>W{n}</div>
+                  </div>
+                  {/* 7 day cells */}
+                  {days.map((day,di)=>{
+                    const isWeekend=di>=5;
+                    return(
+                      <div key={di} style={{
+                        borderTop:'1px solid rgba(255,255,255,.07)',
+                        borderLeft:di===0?'1px solid rgba(255,255,255,.07)':'none',
+                        borderRight:'1px solid rgba(255,255,255,.07)',
+                        borderBottom: n===mg.weeks[mg.weeks.length-1]?'1px solid rgba(255,255,255,.07)':'none',
+                        background:isWeekend?'rgba(255,255,255,.015)':'transparent',
+                        minHeight:items.length>0?Math.max(52,20+items.length*22):48,
+                        padding:'5px 3px',
+                        position:'relative',
+                      }}>
+                        {day.date&&(
+                          <div style={{fontSize:10,fontWeight:600,color:isWeekend?'rgba(255,255,255,.2)':'rgba(255,255,255,.35)',textAlign:'center',marginBottom:3}}>
+                            {day.date.getDate()}
+                          </div>
+                        )}
+                        {/* Show items only in the Monday cell (di===0) spanning the row */}
+                        {di===0&&items.length>0&&(
+                          <div style={{position:'absolute',left:0,top:24,right:0,padding:'0 2px',display:'flex',flexDirection:'column',gap:2,zIndex:1,
+                            // span all 7 columns by making width = 7 * cell width
+                            width:'700%',
+                          }}>
+                            {items.map((it,ii)=>{
+                              const color=ITEM_COLORS[catColorIdx[it.catId]||0];
+                              return(
+                                <div key={ii} onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
+                                  style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'pointer',
+                                    background:color+'22',borderLeft:`3px solid ${color}`,
+                                  }}>
+                                  <span style={{fontSize:10,fontWeight:600,color:color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'90%'}}>{it.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Color legend */}
+      <div style={{padding:'12px 12px 0'}}>
+        <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'1px',marginBottom:8}}>Categories</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+          {CATEGORIES.map(cat=>{
+            const color=ITEM_COLORS[catColorIdx[cat.id]||0];
+            return(
+              <div key={cat.id} style={{display:'flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:20,background:color+'18',border:`1px solid ${color}44`}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:color,flexShrink:0}}/>
+                <span style={{fontSize:11,color:color,fontWeight:600}}>{cat.label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
