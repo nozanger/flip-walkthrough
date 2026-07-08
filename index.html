@@ -5259,7 +5259,7 @@ function App(){
     return ()=>{unsub();clearTimeout(timer);};
   },[firebaseReady,inviteToken,inviteInfo]);
 
-  if(authUser===undefined)return<div className="spinner-page"><div className="spinner"/></div>;
+  if(authUser===undefined)return<div className="spinner-page"><div className="spinner"/><div style={{marginTop:20,color:'rgba(255,255,255,.4)',fontSize:12,textAlign:'center'}}>v2.1 loading…</div></div>;
   if(!authUser){
     return showSignup
       ?<SignupPage onSwitch={()=>setShowSignup(false)} inviteInfo={inviteInfo}/>
