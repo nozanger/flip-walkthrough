@@ -3612,15 +3612,15 @@ function PropertyList({currentUser,onOpen}){
 
       {properties.length>0&&(
         <div style={{display:'flex',gap:10,padding:'0 16px 16px',flexWrap:'wrap'}}>
-          <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
+          <div onClick={()=>setHomeTab('properties')} style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px',cursor:'pointer'}}>
             <div style={{fontSize:22,fontWeight:800,color:'white',letterSpacing:'-.5px'}}>{properties.length}</div>
             <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Properties</div>
           </div>
-          <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
+          <div onClick={()=>setHomeTab('tasks')} style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px',cursor:'pointer'}}>
             <div style={{fontSize:22,fontWeight:800,color:openTasksTotal>0?'#f59e0b':'rgba(255,255,255,.9)',letterSpacing:'-.5px'}}>{openTasksTotal??'—'}</div>
             <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Open Tasks</div>
           </div>
-          <div style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px'}}>
+          <div onClick={()=>setHomeTab('properties')} style={{flex:'1 1 80px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'12px 14px',cursor:'pointer'}}>
             <div style={{fontSize:22,fontWeight:800,color:'white',letterSpacing:'-.5px'}}>{portfolioBudget>0?'$'+Math.round(portfolioBudget/1000)+'k':'—'}</div>
             <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:600,marginTop:2,textTransform:'uppercase',letterSpacing:'.5px'}}>Total Budget</div>
           </div>
