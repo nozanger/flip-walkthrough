@@ -4693,395 +4693,174 @@ function PropEventsBar({propId}){
 }
 
 function ProjectSchedulePage({propId}){
-  const[weeks,setWeeks]=React.useState([]);
-  const[expanded,setExpanded]=React.useState(null);
-  const[form,setForm]=React.useState(null);
-  const[saving,setSaving]=React.useState(false);
-  const[newMat,setNewMat]=React.useState('');
-  const[startInput,setStartInput]=React.useState('');
+  const[plan,setPlan]=React.useState({startDate:'',assignments:{}});
+  const[activeWeek,setActiveWeek]=React.useState(1);
+  const NUM_WEEKS=8;
 
-  React.useEffect(()=>dbListen(`projects/${propId}/schedule`,d=>{
-    const arr=d?Object.values(d).filter(v=>v&&v.id).sort((a,b)=>{
-      if(!a.startDate&&!b.startDate)return(a.createdAt||0)-(b.createdAt||0);
-      if(!a.startDate)return 1;if(!b.startDate)return -1;
-      return a.startDate>b.startDate?1:-1;
-    }):[];
-    setWeeks(arr);
-    // Pre-fill start input from first dated phase
-    const first=arr.find(w=>w.startDate);
-    if(first&&!startInput)setStartInput(first.startDate);
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,d=>{
+    setPlan(d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{}});
   }),[propId]);
 
-  function addDays(dateStr,n){
-    const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];
-  }
-
-  async function autoSchedule(fromDate){
-    if(!fromDate||!weeks.length)return;
-    const updates={};
-    weeks.forEach((w,i)=>{
-      const s=addDays(fromDate,i*7);
-      const e=addDays(fromDate,i*7+6);
-      updates[`${w.id}/startDate`]=s;
-      updates[`${w.id}/endDate`]=e;
-    });
-    await dbUpdate(`projects/${propId}/schedule`,updates);
-  }
-
-  async function applyTemplate(){
-    const templates=[
-      {title:'Demo',notes:'Full demolition — remove fixtures, flooring, drywall as needed'},
-      {title:'Rough In Framing',notes:'Structural and layout framing changes'},
-      {title:'Rough In Plumbing & Tub Installation',notes:'Rough-in plumbing supply and drain lines, set tub/shower pan'},
-      {title:'Rough In Electric',notes:'Rough-in wiring, panel upgrade, recessed light rough-ins'},
-      {title:'Windows Replacement',notes:'Remove old windows, install new windows and flash openings'},
-      {title:'Drywall Hanging',notes:'Hang drywall on all walls and ceilings'},
-      {title:'Drywall Mudding & Sanding',notes:'Tape, mud, sand — repeat until smooth and ready for paint'},
-      {title:'Paint',notes:'Prime and paint all walls, ceilings, and trim'},
-      {title:'Flooring',notes:'Install hardwood, LVP, or tile throughout living areas'},
-      {title:'Bathroom Tile',notes:'Set floor and shower/tub tile in all bathrooms'},
-      {title:'Kitchen Cabinets',notes:'Install upper and lower cabinets, crown molding'},
-      {title:'Finish Bathrooms',notes:'Vanities, toilets, mirrors, accessories, shower doors'},
-      {title:'Electric Trim',notes:'Install outlets, switches, fixtures, plates, and panel final'},
-      {title:'Plumbing Trim',notes:'Install faucets, sinks, disposal, water heater connections'},
-      {title:'Final Touchups',notes:'Paint touchups, punch list items, deep clean, and final walk'},
-    ];
-    const writes={};
-    templates.forEach((t,i)=>{
-      const id=uid();
-      writes[id]={id,title:t.title,startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:t.notes,materials:{},createdAt:Date.now()+i};
-    });
-    await dbUpdate(`projects/${propId}/schedule`,writes);
-  }
-
-  function openEdit(w){setForm({...w,materials:w.materials||{}});setExpanded(w.id);}
-
-  async function save(){
-    if(!form.title.trim())return;
-    setSaving(true);
-    await dbSet(`projects/${propId}/schedule/${form.id}`,{...form,createdAt:form.createdAt||Date.now()});
-    setSaving(false);setExpanded(null);setForm(null);
-  }
-
-  async function deleteWeek(id){
-    if(!confirm('Delete this phase?'))return;
-    await dbRemove(`projects/${propId}/schedule/${id}`);
-    if(expanded===id){setExpanded(null);setForm(null);}
-  }
-
-  async function toggleMat(matId){
-    const cur=form.materials[matId];
-    const updated={...form,materials:{...form.materials,[matId]:{...cur,checked:!cur.checked}}};
-    setForm(updated);
-    await dbUpdate(`projects/${propId}/schedule/${form.id}/materials/${matId}`,{checked:!cur.checked});
-  }
-
-  async function addMat(){
-    if(!newMat.trim())return;
-    const matId=uid();const mat={id:matId,text:newMat.trim(),checked:false};
-    setForm(f=>({...f,materials:{...f.materials,[matId]:mat}}));
-    setNewMat('');
-    await dbSet(`projects/${propId}/schedule/${form.id}/materials/${matId}`,mat);
-  }
-
-  async function removeMat(matId){
-    const mats={...form.materials};delete mats[matId];
-    setForm(f=>({...f,materials:mats}));
-    await dbRemove(`projects/${propId}/schedule/${form.id}/materials/${matId}`);
-  }
-
-  // ── Gantt helpers ──
-  const COL_W=50;
-  function toDate(s){return new Date(s+'T12:00:00');}
-  function dateStr(d){return d.toISOString().split('T')[0];}
-  function mondayOf(d){const day=d.getDay(),diff=day===0?-6:1-day,m=new Date(d);m.setDate(m.getDate()+diff);return m;}
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function fmtD(s){if(!s)return'';const p=s.split('-');return MONTHS[parseInt(p[1])-1]+' '+parseInt(p[2]);}
-  function fmtMoney(n){const v=parseFloat(n);return v>0?'$'+v.toLocaleString():'';}
 
-  const datedWeeks=weeks.filter(w=>w.startDate);
-  const todayStr=dateStr(new Date());
+  function mondayOf(dateStr){
+    const d=new Date(dateStr+'T12:00:00');
+    const day=d.getDay(),diff=day===0?-6:1-day;
+    d.setDate(d.getDate()+diff);return d;
+  }
+  function weekStartDate(n){
+    if(!plan.startDate)return null;
+    const d=mondayOf(plan.startDate);
+    d.setDate(d.getDate()+(n-1)*7);return d;
+  }
+  function fmtD(d){if(!d)return'';return MONTHS[d.getMonth()]+' '+d.getDate();}
 
-  let weekStarts=[],ganttStartStr='',monthLabels=[];
-  if(datedWeeks.length){
-    const allStarts=datedWeeks.map(w=>w.startDate);
-    const allEnds=datedWeeks.map(w=>w.endDate||w.startDate);
-    const minD=allStarts.reduce((m,d)=>d<m?d:m,allStarts[0]);
-    const maxD=allEnds.reduce((m,d)=>d>m?d:m,allEnds[0]);
-    const startMon=mondayOf(toDate(minD));
-    const endBuffer=mondayOf(toDate(maxD));
-    endBuffer.setDate(endBuffer.getDate()+14);
-    ganttStartStr=dateStr(startMon);
-    const cur=new Date(startMon);
-    while(dateStr(cur)<=dateStr(endBuffer)){weekStarts.push(dateStr(cur));cur.setDate(cur.getDate()+7);}
-    // Month labels
-    let lastM=-1,lastY=-1;
-    weekStarts.forEach((ws,i)=>{
-      const d=toDate(ws);const m=d.getMonth(),y=d.getFullYear();
-      if(m!==lastM||y!==lastY){
-        if(monthLabels.length)monthLabels[monthLabels.length-1].span=i-monthLabels[monthLabels.length-1].col;
-        monthLabels.push({label:MONTHS[m]+' '+y,col:i,span:0});
-        lastM=m;lastY=y;
-      }
+  async function setStartDate(val){
+    if(!val)return;
+    const mon=mondayOf(val);
+    await dbSet(`projects/${propId}/weekplan/startDate`,mon.toISOString().split('T')[0]);
+  }
+
+  function getWeek(catId,itemId){
+    return((plan.assignments||{})[catId]||{})[itemId]||null;
+  }
+
+  async function toggleItem(catId,itemId){
+    const cur=getWeek(catId,itemId);
+    if(cur===activeWeek){
+      await dbRemove(`projects/${propId}/weekplan/assignments/${catId}/${itemId}`);
+    }else{
+      await dbSet(`projects/${propId}/weekplan/assignments/${catId}/${itemId}`,activeWeek);
+    }
+  }
+
+  function weekCount(n){
+    let c=0;
+    Object.values(plan.assignments||{}).forEach(ca=>Object.values(ca||{}).forEach(w=>{if(w===n)c++;}));
+    return c;
+  }
+
+  function itemsForWeek(n){
+    const out=[];
+    CATEGORIES.forEach(cat=>{
+      const ca=(plan.assignments||{})[cat.id]||{};
+      cat.items.forEach(item=>{if(ca[item.id]===n)out.push({catLabel:cat.label,label:item.label});});
     });
-    if(monthLabels.length)monthLabels[monthLabels.length-1].span=weekStarts.length-monthLabels[monthLabels.length-1].col;
+    return out;
   }
 
-  function colOf(s){
-    if(!ganttStartStr||!s)return 0;
-    return Math.max(0,Math.round((toDate(s)-toDate(ganttStartStr))/(7*864e5)));
-  }
-  function spanOf(w){
-    if(!w.endDate||!w.startDate)return 1;
-    return Math.max(1,Math.round((toDate(w.endDate)-toDate(w.startDate))/(7*864e5))+1);
-  }
-
-  const statusColor={upcoming:'rgba(255,255,255,.22)',active:'#e2b04a',done:'#5bbfb5'};
-  const statusLabel={upcoming:'Upcoming',active:'In Progress',done:'Done'};
-  const totalScheduled=weeks.reduce((s,w)=>s+(parseFloat(w.payment)||0),0);
-  const totalPaid=weeks.filter(w=>w.status==='done').reduce((s,w)=>s+(parseFloat(w.payment)||0),0);
-  const todayCol=ganttStartStr?colOf(dateStr(mondayOf(new Date()))):null;
+  const ws=weekStartDate(activeWeek);
+  const we=ws?new Date(ws.getTime()+6*864e5):null;
+  const weekItems=itemsForWeek(activeWeek);
 
   return(
-    <div style={{paddingBottom:80}}>
+    <div style={{paddingBottom:100}}>
 
-      {/* ── Start Date Auto-Scheduler ── */}
-      {weeks.length>0&&(
-        <div style={{margin:'12px 12px 0',background:'rgba(226,176,74,.08)',border:'1px solid rgba(226,176,74,.25)',borderRadius:14,padding:'12px 14px'}}>
-          <div style={{fontSize:12,fontWeight:700,color:'#e2b04a',marginBottom:8}}>📅 Project Start Date</div>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <input type="date" value={startInput} onChange={e=>setStartInput(e.target.value)}
-              style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.2)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,boxSizing:'border-box'}}/>
-            <button onClick={()=>autoSchedule(startInput)} disabled={!startInput}
-              style={{background:'#e2b04a',color:'#000',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer',opacity:startInput?1:0.4,whiteSpace:'nowrap'}}>
-              Auto-schedule
-            </button>
-          </div>
-          <div style={{fontSize:11,color:'rgba(255,255,255,.35)',marginTop:6}}>Sets each phase to 7 days, back-to-back starting from this date</div>
+      {/* Start date */}
+      <div style={{padding:'12px 12px 0'}}>
+        <div style={{background:'rgba(226,176,74,.08)',border:'1px solid rgba(226,176,74,.22)',borderRadius:12,padding:'12px 14px'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#e2b04a',marginBottom:8,textTransform:'uppercase',letterSpacing:'.5px'}}>Renovation Start Date</div>
+          <input type="date" defaultValue={plan.startDate||''} key={plan.startDate}
+            onBlur={e=>setStartDate(e.target.value)}
+            onChange={e=>setStartDate(e.target.value)}
+            style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.18)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
+          {plan.startDate&&<div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:5}}>
+            Mon starts each week · Week 8 ends {fmtD(weekStartDate(NUM_WEEKS)&&new Date(weekStartDate(NUM_WEEKS).getTime()+6*864e5))}
+          </div>}
+        </div>
+      </div>
+
+      {/* 8-week Gantt grid */}
+      <div style={{padding:'10px 12px 0',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div style={{display:'flex',gap:5,minWidth:NUM_WEEKS*72}}>
+          {Array.from({length:NUM_WEEKS},(_,i)=>i+1).map(n=>{
+            const active=activeWeek===n;
+            const wsd=weekStartDate(n);
+            const cnt=weekCount(n);
+            return(
+              <div key={n} onClick={()=>setActiveWeek(n)} style={{flex:1,minWidth:64,background:active?'rgba(226,176,74,.18)':'rgba(255,255,255,.04)',border:active?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'9px 6px',cursor:'pointer',textAlign:'center'}}>
+                <div style={{fontSize:10,fontWeight:700,color:active?'#e2b04a':'rgba(255,255,255,.35)',textTransform:'uppercase'}}>Wk {n}</div>
+                {wsd&&<div style={{fontSize:9,color:'rgba(255,255,255,.25)',marginTop:1}}>{fmtD(wsd)}</div>}
+                <div style={{marginTop:5,minHeight:20,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {cnt>0?(
+                    <div style={{background:active?'#e2b04a':'rgba(255,255,255,.12)',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:700,color:active?'#000':'rgba(255,255,255,.5)'}}>{cnt}</div>
+                  ):(
+                    <div style={{width:16,height:2,background:'rgba(255,255,255,.08)',borderRadius:1}}/>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Active week header */}
+      <div style={{padding:'12px 12px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div>
+          <span style={{fontSize:15,fontWeight:700,color:'white'}}>Week {activeWeek}</span>
+          {ws&&<span style={{fontSize:12,color:'rgba(255,255,255,.4)',marginLeft:8}}>{fmtD(ws)} – {fmtD(we)}</span>}
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>setActiveWeek(w=>Math.max(1,w-1))} disabled={activeWeek===1}
+            style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:8,color:'white',padding:'6px 12px',cursor:'pointer',opacity:activeWeek===1?0.3:1,fontSize:14}}>‹</button>
+          <button onClick={()=>setActiveWeek(w=>Math.min(NUM_WEEKS,w+1))} disabled={activeWeek===NUM_WEEKS}
+            style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:8,color:'white',padding:'6px 12px',cursor:'pointer',opacity:activeWeek===NUM_WEEKS?0.3:1,fontSize:14}}>›</button>
+        </div>
+      </div>
+
+      {/* Assigned items chips for this week */}
+      {weekItems.length>0&&(
+        <div style={{padding:'0 12px 8px',display:'flex',flexWrap:'wrap',gap:5}}>
+          {weekItems.map((it,i)=>(
+            <div key={i} style={{background:'rgba(226,176,74,.14)',border:'1px solid rgba(226,176,74,.3)',borderRadius:20,padding:'4px 11px',fontSize:11,color:'#e2b04a',fontWeight:600}}>
+              {it.label}
+            </div>
+          ))}
+        </div>
+      )}
+      {weekItems.length===0&&(
+        <div style={{padding:'0 12px 8px'}}>
+          <div style={{fontSize:12,color:'rgba(255,255,255,.2)',fontStyle:'italic'}}>Nothing assigned yet — tap items below</div>
         </div>
       )}
 
-      {/* Summary tiles */}
-      {weeks.length>0&&totalScheduled>0&&(
-        <div style={{display:'flex',gap:8,padding:'12px 12px 0'}}>
-          <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:12,padding:'10px 14px'}}>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:2}}>Budget</div>
-            <div style={{fontSize:16,fontWeight:700,color:'#e2b04a'}}>${totalScheduled.toLocaleString()}</div>
-          </div>
-          <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:12,padding:'10px 14px'}}>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:2}}>Paid</div>
-            <div style={{fontSize:16,fontWeight:700,color:'#5bbfb5'}}>${totalPaid.toLocaleString()}</div>
-          </div>
-          <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:12,padding:'10px 14px'}}>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:2}}>Left</div>
-            <div style={{fontSize:16,fontWeight:700,color:'white'}}>${(totalScheduled-totalPaid).toLocaleString()}</div>
-          </div>
-        </div>
-      )}
-
-      {/* ── GANTT CHART ── */}
-      {datedWeeks.length>0&&(
-        <div style={{margin:'12px 12px 0',background:'rgba(255,255,255,.04)',borderRadius:14,overflow:'hidden',border:'1px solid rgba(255,255,255,.1)'}}>
-          <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-            <div style={{minWidth:weekStarts.length*COL_W,position:'relative'}}>
-
-              {/* Month header */}
-              <div style={{display:'flex',height:26,borderBottom:'1px solid rgba(255,255,255,.1)'}}>
-                {monthLabels.map((ml,i)=>(
-                  <div key={i} style={{width:ml.span*COL_W,flexShrink:0,paddingLeft:8,fontSize:10,fontWeight:700,color:'rgba(255,255,255,.5)',display:'flex',alignItems:'center',borderRight:'1px solid rgba(255,255,255,.08)',textTransform:'uppercase',letterSpacing:'.5px',background:i%2===0?'rgba(255,255,255,.02)':'transparent'}}>
-                    {ml.label}
-                  </div>
-                ))}
-              </div>
-
-              {/* Week date header */}
-              <div style={{display:'flex',height:20,borderBottom:'1px solid rgba(255,255,255,.1)'}}>
-                {weekStarts.map((ws,i)=>{
-                  const d=toDate(ws);
-                  const isToday=todayCol===i;
-                  return(
-                    <div key={i} style={{width:COL_W,flexShrink:0,fontSize:9,color:isToday?'#e2b04a':'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',borderRight:'1px solid rgba(255,255,255,.04)',fontWeight:isToday?700:400,background:isToday?'rgba(226,176,74,.1)':'transparent'}}>
-                      {d.getDate()}/{d.getMonth()+1}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Phase rows */}
-              {weeks.map((w,i)=>{
-                const hasDate=!!w.startDate;
-                const col=hasDate?colOf(w.startDate):0;
-                const span=hasDate?spanOf(w):0;
-                const color=statusColor[w.status||'upcoming'];
-                const isOpen=expanded===w.id;
-                const textDark=w.status==='active'||w.status==='done';
+      {/* Scope items by category */}
+      <div style={{padding:'0 12px'}}>
+        {CATEGORIES.map(cat=>(
+          <div key={cat.id} style={{marginBottom:4}}>
+            <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'1px',padding:'10px 4px 5px',display:'flex',alignItems:'center',gap:6}}>
+              <span>{cat.icon}</span><span>{cat.label}</span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:3}}>
+              {cat.items.map(item=>{
+                const assigned=getWeek(cat.id,item.id);
+                const isHere=assigned===activeWeek;
+                const isElsewhere=assigned&&!isHere;
                 return(
-                  <div key={w.id} onClick={()=>isOpen?(setExpanded(null),setForm(null)):openEdit(w)}
-                    style={{height:34,position:'relative',borderBottom:'1px solid rgba(255,255,255,.04)',cursor:'pointer',background:isOpen?'rgba(255,255,255,.06)':'transparent'}}>
-                    {/* Grid lines */}
-                    {weekStarts.map((_,j)=>(
-                      <div key={j} style={{position:'absolute',left:j*COL_W,top:0,bottom:0,width:1,background:'rgba(255,255,255,.03)'}}/>
-                    ))}
-                    {/* Today column highlight */}
-                    {todayCol!==null&&todayCol<weekStarts.length&&(
-                      <div style={{position:'absolute',left:todayCol*COL_W,top:0,bottom:0,width:COL_W,background:'rgba(226,176,74,.06)'}}/>
-                    )}
-                    {/* Phase bar */}
-                    {hasDate?(
-                      <div style={{position:'absolute',left:col*COL_W+2,top:5,height:24,width:Math.max(span*COL_W-4,COL_W-4),borderRadius:6,background:color,display:'flex',alignItems:'center',paddingLeft:8,paddingRight:6,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.3)'}}>
-                        <span style={{fontSize:10,fontWeight:700,color:textDark?'rgba(0,0,0,.8)':'rgba(255,255,255,.7)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                          {i+1}. {w.title}
-                        </span>
-                      </div>
-                    ):(
-                      <div style={{position:'absolute',left:4,top:10,right:4,height:12,borderRadius:4,border:'1px dashed rgba(255,255,255,.12)',display:'flex',alignItems:'center',paddingLeft:6}}>
-                        <span style={{fontSize:9,color:'rgba(255,255,255,.25)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{i+1}. {w.title}</span>
-                      </div>
+                  <div key={item.id} onClick={()=>toggleItem(cat.id,item.id)}
+                    style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,cursor:'pointer',
+                      background:isHere?'rgba(226,176,74,.12)':'rgba(255,255,255,.04)',
+                      border:isHere?'1px solid rgba(226,176,74,.3)':'1px solid rgba(255,255,255,.06)',
+                      opacity:isElsewhere?0.5:1}}>
+                    <div style={{width:20,height:20,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
+                      background:isHere?'#e2b04a':'transparent',
+                      border:isHere?'none':'2px solid rgba(255,255,255,.2)'}}>
+                      {isHere&&<span style={{fontSize:11,color:'#000',fontWeight:900}}>✓</span>}
+                    </div>
+                    <span style={{flex:1,fontSize:13,color:isHere?'white':'rgba(255,255,255,.7)',fontWeight:isHere?600:400}}>
+                      {item.label}
+                    </span>
+                    {isElsewhere&&(
+                      <span style={{fontSize:10,fontWeight:700,background:'rgba(255,255,255,.08)',borderRadius:20,padding:'2px 8px',color:'rgba(255,255,255,.35)'}}>
+                        Wk {assigned}
+                      </span>
                     )}
                   </div>
                 );
               })}
-
-              {/* Today line */}
-              {todayCol!==null&&todayCol<weekStarts.length&&(
-                <div style={{position:'absolute',left:todayCol*COL_W+COL_W/2,top:0,bottom:0,width:2,background:'rgba(226,176,74,.6)',pointerEvents:'none',zIndex:10}}/>
-              )}
-
             </div>
           </div>
-          <div style={{padding:'6px 12px',fontSize:10,color:'rgba(255,255,255,.25)',borderTop:'1px solid rgba(255,255,255,.06)'}}>
-            Tap a phase row to edit  •  Scroll to see full timeline
-          </div>
-        </div>
-      )}
-
-      {/* ── PHASE CARDS ── */}
-      <div style={{padding:'12px 12px 0'}}>
-        {weeks.map((w,i)=>{
-          const isOpen=expanded===w.id;
-          const mats=w.materials?Object.values(w.materials):[];
-          const matDone=mats.filter(m=>m.checked).length;
-          return(
-            <div key={w.id} style={{background:'rgba(255,255,255,.06)',borderRadius:14,marginBottom:8,overflow:'hidden',border:'1px solid rgba(255,255,255,.08)',borderLeft:`3px solid ${statusColor[w.status||'upcoming']}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:10,padding:'11px 14px',cursor:'pointer'}} onClick={()=>{if(isOpen){setExpanded(null);setForm(null);}else openEdit(w);}}>
-                <div style={{width:24,height:24,borderRadius:'50%',background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.5)',flexShrink:0}}>{i+1}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{w.title||'Untitled'}</div>
-                  <div style={{fontSize:11,color:'rgba(255,255,255,.35)',marginTop:1}}>
-                    {w.startDate?(fmtD(w.startDate)+(w.endDate?' – '+fmtD(w.endDate):'')):'No date set'}
-                    {parseFloat(w.payment)>0&&' · '+fmtMoney(w.payment)}
-                  </div>
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
-                  {mats.length>0&&<span style={{fontSize:10,color:'rgba(255,255,255,.3)'}}>{matDone}/{mats.length}</span>}
-                  <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:20,background:statusColor[w.status||'upcoming'],color:w.status==='upcoming'?'rgba(255,255,255,.6)':'#000'}}>{statusLabel[w.status||'upcoming']}</span>
-                  <span style={{fontSize:14,color:'rgba(255,255,255,.3)'}}>{isOpen?'▲':'▼'}</span>
-                </div>
-              </div>
-
-              {isOpen&&form&&form.id===w.id&&(
-                <div style={{borderTop:'1px solid rgba(255,255,255,.08)',padding:14,display:'flex',flexDirection:'column',gap:11}}>
-                  <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Phase title" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
-                  <div style={{display:'flex',gap:8}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Payment ($)</div>
-                      <input type="number" value={form.payment} onChange={e=>setForm(f=>({...f,payment:e.target.value}))} placeholder="0" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-                    </div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Pay to</div>
-                      <input value={form.paymentNote} onChange={e=>setForm(f=>({...f,paymentNote:e.target.value}))} placeholder="e.g. Mike GC" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-                    </div>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Start date <span style={{color:'rgba(255,255,255,.2)'}}>(override)</span></div>
-                      <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-                    </div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>End date <span style={{color:'rgba(255,255,255,.2)'}}>(override)</span></div>
-                      <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>Status</div>
-                    <div style={{display:'flex',gap:6}}>
-                      {['upcoming','active','done'].map(s=>(
-                        <button key={s} onClick={()=>setForm(f=>({...f,status:s}))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:form.status===s?statusColor[s]:'rgba(255,255,255,.08)',color:form.status===s&&s!=='upcoming'?'#000':'rgba(255,255,255,.8)',opacity:form.status===s?1:.6}}>{statusLabel[s]}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notes…" rows={2} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:13,resize:'vertical',width:'100%',boxSizing:'border-box'}}/>
-
-                  {/* Materials */}
-                  <div>
-                    <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:7}}>Materials</div>
-                    {Object.values(form.materials||{}).map(m=>(
-                      <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
-                        <input type="checkbox" checked={m.checked||false} onChange={()=>toggleMat(m.id)} style={{width:16,height:16,accentColor:'#5bbfb5',cursor:'pointer',flexShrink:0}}/>
-                        <span style={{flex:1,fontSize:13,color:m.checked?'rgba(255,255,255,.3)':'white',textDecoration:m.checked?'line-through':'none'}}>{m.text}</span>
-                        <button onClick={()=>removeMat(m.id)} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 4px',lineHeight:1}}>×</button>
-                      </div>
-                    ))}
-                    <div style={{display:'flex',gap:8,marginTop:8}}>
-                      <input value={newMat} onChange={e=>setNewMat(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addMat()} placeholder="Add material…" style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'7px 10px',color:'#fff',fontSize:13}}/>
-                      <button onClick={addMat} style={{background:'rgba(255,255,255,.1)',border:'none',borderRadius:8,color:'white',fontSize:13,fontWeight:600,padding:'7px 14px',cursor:'pointer'}}>Add</button>
-                    </div>
-                  </div>
-
-                  <div style={{display:'flex',gap:8,marginTop:2}}>
-                    <button onClick={save} disabled={saving||!form.title.trim()} style={{flex:1,background:'#e2b04a',color:'#000',border:'none',borderRadius:10,padding:'11px 0',fontWeight:700,fontSize:14,cursor:'pointer',opacity:saving||!form.title.trim()?0.5:1}}>{saving?'Saving…':'Save'}</button>
-                    <button onClick={()=>deleteWeek(w.id)} style={{background:'rgba(220,53,69,.15)',border:'1px solid rgba(220,53,69,.3)',borderRadius:10,color:'#dc3545',padding:'11px 16px',fontWeight:600,fontSize:13,cursor:'pointer'}}>Delete</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Add phase / template */}
-        <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:4}}>
-          {weeks.length===0&&(
-            <button onClick={applyTemplate} style={{width:'100%',background:'rgba(91,191,181,.12)',border:'1px dashed rgba(91,191,181,.5)',borderRadius:14,padding:'16px 13px',color:'#5bbfb5',fontSize:14,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              <span style={{fontSize:18}}>📋</span> Start with 15-phase renovation template
-            </button>
-          )}
-          <button onClick={()=>{const id=uid();setForm({id,title:'',startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:'',materials:{}});setExpanded('__new');}} style={{width:'100%',background:'rgba(226,176,74,.1)',border:'1px dashed rgba(226,176,74,.4)',borderRadius:14,padding:'13px',color:'#e2b04a',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-            + Add Phase
-          </button>
-        </div>
-
-        {/* New phase inline form */}
-        {expanded==='__new'&&form&&(
-          <div style={{background:'rgba(255,255,255,.06)',borderRadius:14,border:'1px solid rgba(226,176,74,.3)',padding:14,display:'flex',flexDirection:'column',gap:11,marginTop:8}}>
-            <div style={{fontSize:13,fontWeight:700,color:'#e2b04a'}}>New Phase</div>
-            <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Phase title" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
-            <div style={{display:'flex',gap:8}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Start</div>
-                <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>End</div>
-                <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-              </div>
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Payment ($)</div>
-                <input type="number" value={form.payment} onChange={e=>setForm(f=>({...f,payment:e.target.value}))} placeholder="0" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Pay to</div>
-                <input value={form.paymentNote} onChange={e=>setForm(f=>({...f,paymentNote:e.target.value}))} placeholder="e.g. Mike GC" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
-              </div>
-            </div>
-            <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notes…" rows={2} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:13,resize:'vertical',width:'100%',boxSizing:'border-box'}}/>
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={save} disabled={saving||!form.title.trim()} style={{flex:1,background:'#e2b04a',color:'#000',border:'none',borderRadius:10,padding:'11px 0',fontWeight:700,fontSize:14,cursor:'pointer',opacity:saving||!form.title.trim()?0.5:1}}>{saving?'Saving…':'Add Phase'}</button>
-              <button onClick={()=>{setExpanded(null);setForm(null);}} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:10,color:'white',padding:'11px 16px',fontWeight:600,fontSize:13,cursor:'pointer'}}>Cancel</button>
-            </div>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
