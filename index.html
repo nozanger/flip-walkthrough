@@ -1564,6 +1564,8 @@ function InviteModal({prop,properties,currentUser,onClose}){
   async function addFromRoster(m){
     if(!activeProp)return;
     await dbSet(`projects/${activeProp.id}/members/${m.id}`,{name:m.name,email:m.email,role:m.role,addedAt:Date.now()});
+    // Give them access on their home screen
+    await dbSet(`userProjects/${m.id}/${activeProp.id}`,true);
     // Also save to roster so they appear in future
     await dbSet(`roster/${currentUser.uid}/${m.id}`,{id:m.id,name:m.name,email:m.email,role:m.role,addedAt:Date.now()});
     setAddedFromRoster(s=>({...s,[m.id]:true}));
@@ -2116,7 +2118,7 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
       assignedMembers.forEach(m=>{
         fetch('/.netlify/functions/notify-property-added',{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:username}),
+          body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:currentUser.displayName||currentUser.email}),
         }).catch(e=>console.warn('notify-property-added failed:',e));
       });
     }
@@ -3186,8 +3188,9 @@ function KanbanCard({prop, onOpen, onMoveStage}){
   const nextStage=STAGES[stageIdx+1];
   const nextLabel=nextStage==='contract'?'Under Contract':nextStage==='renovation'?'Renovation':null;
 
+  const sumPay=obj=>obj?Object.values(obj).reduce((s,p)=>s+(parseFloat(p.amount)||0),0):0;
   const totalBudget=parseFloat(budget?.totalBudget)||0;
-  const laborSpent=parseFloat(budget?.laborSpent)||0;
+  const laborSpent=sumPay(budget?.gcPayments)+sumPay(budget?.extraPayments);
   const matSpent=parseFloat(budget?.materialsSpent)||0;
   const otherSpent=parseFloat(budget?.otherSpent)||0;
   const totalSpent=laborSpent+matSpent+otherSpent;
@@ -3784,13 +3787,21 @@ function PropertyList({currentUser,onOpen}){
   }
 
   async function deleteProperty(id){
-    // Only owner can delete
-    await dbRemove(`projects/${id}/meta`);
-    await dbRemove(`projects/${id}/data`);
-    await dbRemove(`projects/${id}/members`);
-    // Remove from all members' userProjects
+    // Read members BEFORE removing so we can clean up userProjects
     const members=await dbGet(`projects/${id}/members`)||{};
-    await Promise.all(Object.keys(members).map(uid=>dbRemove(`userProjects/${uid}/${id}`)));
+    await Promise.all([
+      dbRemove(`projects/${id}/meta`),
+      dbRemove(`projects/${id}/data`),
+      dbRemove(`projects/${id}/photos`),
+      dbRemove(`projects/${id}/tasks`),
+      dbRemove(`projects/${id}/budget`),
+      dbRemove(`projects/${id}/events`),
+      dbRemove(`projects/${id}/handoff`),
+      dbRemove(`projects/${id}/aiPictures`),
+      dbRemove(`projects/${id}/members`),
+      dbRemove(`userProjects/${currentUser.uid}/${id}`),
+      ...Object.keys(members).map(uid=>dbRemove(`userProjects/${uid}/${id}`)),
+    ]);
     setDeleteId(null);
   }
 
@@ -4094,7 +4105,7 @@ function ScopeOverviewPage({data,onOpenCat}){
                 {cat.items.map(item=>{
                   const d=(data[cat.id]||{})[item.id]||{};
                   const s=d.status;
-                  const dot=s==='good'?'#5bbfb5':s==='fair'?'#f59e0b':s==='poor'?'#dc3545':'rgba(255,255,255,.2)';
+                  const dot=s==='keep'?'#5bbfb5':s==='maybe'?'#f59e0b':s==='replace'?'#dc3545':'rgba(255,255,255,.2)';
                   return(
                     <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
                       <div style={{width:8,height:8,borderRadius:'50%',background:dot,flexShrink:0}}/>
@@ -4626,7 +4637,7 @@ function HandoffPage({propId, currentUser}){
             placeholder="e.g. Return keys to property manager"
             style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:13}}
           />
-          <button onClick={addItem} disabled={saving||!newText.trim()} style={{background:'#f59e0b',color:'#000',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer',opacity:saving||!newText.trim()?.5:1}}>
+          <button onClick={addItem} disabled={saving||!newText.trim()} style={{background:'#f59e0b',color:'#000',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer',opacity:saving||!newText.trim()?0.5:1}}>
             {saving?'…':'Add'}
           </button>
         </div>
@@ -4681,8 +4692,220 @@ function PropEventsBar({propId}){
   );
 }
 
+function ProjectSchedulePage({propId}){
+  const[weeks,setWeeks]=React.useState([]);
+  const[expanded,setExpanded]=React.useState(null);
+  const[form,setForm]=React.useState(null);
+  const[saving,setSaving]=React.useState(false);
+  const[newMat,setNewMat]=React.useState('');
+
+  React.useEffect(()=>dbListen(`projects/${propId}/schedule`,d=>{
+    const arr=d?Object.values(d).sort((a,b)=>a.startDate>b.startDate?1:-1):[];
+    setWeeks(arr);
+  }),[propId]);
+
+  function openNew(){
+    const id=uid();
+    const f={id,title:'',startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:'',materials:{}};
+    setForm(f);setExpanded(id);
+  }
+
+  function openEdit(w){
+    setForm({...w,materials:w.materials||{}});
+    setExpanded(w.id);
+  }
+
+  async function save(){
+    if(!form.title.trim()||!form.startDate)return;
+    setSaving(true);
+    await dbSet(`projects/${propId}/schedule/${form.id}`,{...form,createdAt:form.createdAt||Date.now()});
+    setSaving(false);
+    setExpanded(null);setForm(null);
+  }
+
+  async function deleteWeek(id){
+    if(!confirm('Delete this week?'))return;
+    await dbRemove(`projects/${propId}/schedule/${id}`);
+    if(expanded===id){setExpanded(null);setForm(null);}
+  }
+
+  async function toggleMat(matId){
+    const cur=form.materials[matId];
+    const updated={...form,materials:{...form.materials,[matId]:{...cur,checked:!cur.checked}}};
+    setForm(updated);
+    await dbUpdate(`projects/${propId}/schedule/${form.id}/materials/${matId}`,{checked:!cur.checked});
+  }
+
+  async function addMat(){
+    if(!newMat.trim())return;
+    const matId=uid();
+    const mat={id:matId,text:newMat.trim(),checked:false};
+    const updated={...form,materials:{...form.materials,[matId]:mat}};
+    setForm(updated);
+    setNewMat('');
+    await dbSet(`projects/${propId}/schedule/${form.id}/materials/${matId}`,mat);
+  }
+
+  async function removeMat(matId){
+    const mats={...form.materials};delete mats[matId];
+    setForm({...form,materials:mats});
+    await dbRemove(`projects/${propId}/schedule/${form.id}/materials/${matId}`);
+  }
+
+  const statusColor={upcoming:'rgba(255,255,255,.25)',active:'#e2b04a',done:'#5bbfb5'};
+  const statusLabel={upcoming:'Upcoming',active:'In Progress',done:'Done'};
+
+  function fmtMoney(n){var v=parseFloat(n);return v>0?'$'+v.toLocaleString('en-US',{minimumFractionDigits:0}):'-';}
+  function fmtDate(d){if(!d)return'';var parts=d.split('-');var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return months[parseInt(parts[1])-1]+' '+parseInt(parts[2]);}
+
+  const totalPaid=weeks.filter(w=>w.status==='done').reduce((s,w)=>s+(parseFloat(w.payment)||0),0);
+  const totalScheduled=weeks.reduce((s,w)=>s+(parseFloat(w.payment)||0),0);
+
+  return(
+    <div style={{padding:'12px 12px 80px'}}>
+      {weeks.length>0&&(
+        <div style={{display:'flex',gap:8,marginBottom:16}}>
+          <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:12,padding:'10px 14px'}}>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:2}}>Total Budget</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#e2b04a'}}>${totalScheduled.toLocaleString()}</div>
+          </div>
+          <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:12,padding:'10px 14px'}}>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:2}}>Paid Out</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#5bbfb5'}}>${totalPaid.toLocaleString()}</div>
+          </div>
+          <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:12,padding:'10px 14px'}}>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:2}}>Remaining</div>
+            <div style={{fontSize:18,fontWeight:700,color:'white'}}>${(totalScheduled-totalPaid).toLocaleString()}</div>
+          </div>
+        </div>
+      )}
+
+      {weeks.map((w,i)=>{
+        const isOpen=expanded===w.id;
+        const mats=w.materials?Object.values(w.materials):[];
+        const matDone=mats.filter(m=>m.checked).length;
+        return(
+          <div key={w.id} style={{background:'rgba(255,255,255,.06)',borderRadius:14,marginBottom:10,overflow:'hidden',border:'1px solid rgba(255,255,255,.08)'}}>
+            {/* Header row */}
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',cursor:'pointer'}} onClick={()=>{
+              if(isOpen){setExpanded(null);setForm(null);}else openEdit(w);
+            }}>
+              <div style={{width:28,height:28,borderRadius:'50%',background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'rgba(255,255,255,.5)',flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{w.title||'Untitled week'}</div>
+                <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginTop:1}}>
+                  {w.startDate&&w.endDate?(fmtDate(w.startDate)+' - '+fmtDate(w.endDate)):w.startDate?fmtDate(w.startDate):'No date set'}
+                </div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
+                <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:20,background:statusColor[w.status||'upcoming'],color:w.status==='upcoming'?'rgba(255,255,255,.6)':'#000'}}>{statusLabel[w.status||'upcoming']}</span>
+                {parseFloat(w.payment)>0&&<span style={{fontSize:13,fontWeight:700,color:'#e2b04a'}}>{fmtMoney(w.payment)}</span>}
+                {mats.length>0&&<span style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>{matDone}/{mats.length} materials</span>}
+              </div>
+            </div>
+
+            {/* Expanded edit form */}
+            {isOpen&&form&&form.id===w.id&&(
+              <div style={{borderTop:'1px solid rgba(255,255,255,.08)',padding:'14px',display:'flex',flexDirection:'column',gap:12}}>
+                <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Week title (e.g. Demo + Framing)" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
+                <div style={{display:'flex',gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Start date</div>
+                    <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>End date</div>
+                    <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+                  </div>
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Payment ($)</div>
+                    <input type="number" value={form.payment} onChange={e=>setForm(f=>({...f,payment:e.target.value}))} placeholder="0" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Pay to</div>
+                    <input value={form.paymentNote} onChange={e=>setForm(f=>({...f,paymentNote:e.target.value}))} placeholder="e.g. Mike GC" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Status</div>
+                  <div style={{display:'flex',gap:6}}>
+                    {['upcoming','active','done'].map(s=>(
+                      <button key={s} onClick={()=>setForm(f=>({...f,status:s}))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:form.status===s?statusColor[s]:'rgba(255,255,255,.08)',color:form.status===s&&s!=='upcoming'?'#000':'white',opacity:form.status===s?1:.6}}>{statusLabel[s]}</button>
+                    ))}
+                  </div>
+                </div>
+                <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notes for this week…" rows={2} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:13,resize:'vertical',width:'100%',boxSizing:'border-box'}}/>
+
+                {/* Materials checklist */}
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8}}>Materials Needed</div>
+                  {Object.values(form.materials||{}).map(m=>(
+                    <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+                      <input type="checkbox" checked={m.checked||false} onChange={()=>toggleMat(m.id)} style={{width:16,height:16,accentColor:'#5bbfb5',cursor:'pointer',flexShrink:0}}/>
+                      <span style={{flex:1,fontSize:13,color:m.checked?'rgba(255,255,255,.35)':'white',textDecoration:m.checked?'line-through':'none'}}>{m.text}</span>
+                      <button onClick={()=>removeMat(m.id)} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:16,cursor:'pointer',padding:'0 4px',lineHeight:1}}>×</button>
+                    </div>
+                  ))}
+                  <div style={{display:'flex',gap:8,marginTop:8}}>
+                    <input value={newMat} onChange={e=>setNewMat(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addMat()} placeholder="Add material…" style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'7px 10px',color:'#fff',fontSize:13}}/>
+                    <button onClick={addMat} style={{background:'rgba(255,255,255,.1)',border:'none',borderRadius:8,color:'white',fontSize:13,fontWeight:600,padding:'7px 14px',cursor:'pointer'}}>Add</button>
+                  </div>
+                </div>
+
+                <div style={{display:'flex',gap:8,marginTop:4}}>
+                  <button onClick={save} disabled={saving||!form.title.trim()||!form.startDate} style={{flex:1,background:'#e2b04a',color:'#000',border:'none',borderRadius:10,padding:'11px 0',fontWeight:700,fontSize:14,cursor:'pointer',opacity:saving||!form.title.trim()||!form.startDate?0.5:1}}>{saving?'Saving…':'Save'}</button>
+                  <button onClick={()=>deleteWeek(w.id)} style={{background:'rgba(220,53,69,.15)',border:'1px solid rgba(220,53,69,.3)',borderRadius:10,color:'#dc3545',padding:'11px 16px',fontWeight:600,fontSize:13,cursor:'pointer'}}>Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Add new week (inline form) */}
+      {expanded==='__new'&&form?(
+        <div style={{background:'rgba(255,255,255,.06)',borderRadius:14,border:'1px solid rgba(226,176,74,.3)',padding:14,display:'flex',flexDirection:'column',gap:12,marginBottom:10}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#e2b04a'}}>New Week</div>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Week title (e.g. Demo + Framing)" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
+          <div style={{display:'flex',gap:8}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Start date</div>
+              <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>End date</div>
+              <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Payment ($)</div>
+              <input type="number" value={form.payment} onChange={e=>setForm(f=>({...f,payment:e.target.value}))} placeholder="0" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>Pay to</div>
+              <input value={form.paymentNote} onChange={e=>setForm(f=>({...f,paymentNote:e.target.value}))} placeholder="e.g. Mike GC" style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:13,width:'100%',boxSizing:'border-box'}}/>
+            </div>
+          </div>
+          <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notes for this week…" rows={2} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:13,resize:'vertical',width:'100%',boxSizing:'border-box'}}/>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={save} disabled={saving||!form.title.trim()||!form.startDate} style={{flex:1,background:'#e2b04a',color:'#000',border:'none',borderRadius:10,padding:'11px 0',fontWeight:700,fontSize:14,cursor:'pointer',opacity:saving||!form.title.trim()||!form.startDate?0.5:1}}>{saving?'Saving…':'Add Week'}</button>
+            <button onClick={()=>{setExpanded(null);setForm(null);}} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:10,color:'white',padding:'11px 16px',fontWeight:600,fontSize:13,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </div>
+      ):(
+        <button onClick={()=>{const id=uid();setForm({id,title:'',startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:'',materials:{}});setExpanded('__new');}} style={{width:'100%',background:'rgba(226,176,74,.1)',border:'1px dashed rgba(226,176,74,.4)',borderRadius:14,padding:'13px',color:'#e2b04a',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+          + Add Week
+        </button>
+      )}
+    </div>
+  );
+}
+
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5;
+  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6;
   const initStage=prop.stage||'walkthrough';
   const[activeTab,setActiveTab]=React.useState(TAB_TASKS);
   const[data,setData]=React.useState({});
@@ -4793,7 +5016,12 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
     const{photos,aiVision,floorPlan,videos,...noPhotos}=value;
     await Promise.all([
       dbUpdate(`projects/${prop.id}/data`,{_summary:{...noPhotos,updatedAt:Date.now()}}),
-      dbUpdate(`projects/${prop.id}/photos`,{_summary:{photos:photos||[],aiVision:aiVision||[],floorPlan:floorPlan||[],videos:videos||[]}})
+      dbUpdate(`projects/${prop.id}/photos/_summary`,{
+        photos:photos||[],
+        aiVision:aiVision||[],
+        floorPlan:floorPlan||[],
+        videos:videos||[],
+      }),
     ]);
   }
 
@@ -4898,6 +5126,11 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
               🖼 AI Pictures
             </div>
           )}
+          {(stage==='contract'||stage==='renovation')&&(
+            <div className={`tab${activeTab===TAB_TIMELINE?' active':''}`} onClick={()=>setActiveTab(TAB_TIMELINE)}>
+              📅 Timeline
+            </div>
+          )}
           <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
             👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
@@ -4951,6 +5184,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
         </div>
       )}
       {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
+      {activeTab===TAB_TIMELINE&&<ProjectSchedulePage propId={prop.id}/>}
 
       {activeTab===TAB_TEAM&&(
         <div>

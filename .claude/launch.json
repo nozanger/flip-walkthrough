@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "zanco",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "/Users/noamzangeradmin/Desktop/Claude/flip-walkthrough"],
+      "port": 3456
+    }
+  ]
+}

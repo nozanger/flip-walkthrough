@@ -1,0 +1,114 @@
+{
+  "rules": {
+
+    "projects": {
+      "$projectId": {
+
+        // Read: owner or any member of the project
+        ".read": "auth != null && (
+          root.child('projects').child($projectId).child('meta/ownerId').val() === auth.uid ||
+          root.child('projects').child($projectId).child('members').child(auth.uid).exists()
+        )",
+
+        // Write to any project sub-path: owner or member (restricted further below)
+        ".write": "auth != null && (
+          root.child('projects').child($projectId).child('meta/ownerId').val() === auth.uid ||
+          root.child('projects').child($projectId).child('members').child(auth.uid).exists()
+        )",
+
+        "members": {
+          "$memberId": {
+            // Owner can add/remove anyone.
+            // A user can also add themselves (for invite-link acceptance).
+            ".write": "auth != null && (
+              root.child('projects').child($projectId).child('meta/ownerId').val() === auth.uid ||
+              auth.uid === $memberId
+            )"
+          }
+        },
+
+        "meta": {
+          // Stage and basic fields — any member can update
+          ".write": "auth != null && (
+            root.child('projects').child($projectId).child('meta/ownerId').val() === auth.uid ||
+            root.child('projects').child($projectId).child('members').child(auth.uid).exists()
+          )",
+          // ownerId must never change after creation
+          "ownerId": {
+            ".write": "auth != null &&
+              root.child('projects').child($projectId).child('meta/ownerId').val() === auth.uid &&
+              newData.val() === auth.uid"
+          }
+        }
+      }
+    },
+
+    // Which projects each user belongs to.
+    // Own uid can always read/write their own list.
+    // A project owner can also add any uid to their project's entry here
+    // (needed when owner adds a roster member → that member's home screen must update).
+    "userProjects": {
+      "$uid": {
+        "$projectId": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && (
+            auth.uid === $uid ||
+            root.child('projects').child($projectId).child('meta/ownerId').val() === auth.uid
+          )"
+        }
+      }
+    },
+
+    // Invite tokens — any authenticated user can read (to accept an invite).
+    // Only authenticated users can create invites.
+    // Only the creator can delete their own invite.
+    "invites": {
+      "$token": {
+        ".read":  "auth != null",
+        ".write": "auth != null && (
+          !data.exists() ||
+          data.child('createdBy').val() === auth.uid
+        )"
+      }
+    },
+
+    // Each user's saved roster — private, only visible to the owner
+    "roster": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    // User profiles and FCM tokens — only the user themselves
+    "users": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    // Schedule events — private per user
+    "schedule": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    // Rental portfolio — private per user
+    "rentals": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    // Gemini API key and other server config — read by any signed-in user, never writable from client
+    "config": {
+      ".read":  "auth != null",
+      ".write": "false"
+    }
+
+  }
+}
