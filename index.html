@@ -4693,17 +4693,21 @@ function PropEventsBar({propId}){
 }
 
 function ProjectSchedulePage({propId}){
-  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8});
+  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false});
   const[activeWeek,setActiveWeek]=React.useState(1);
   const[dateInput,setDateInput]=React.useState('');
   const[calMode,setCalMode]=React.useState(false);
   const[editingItem,setEditingItem]=React.useState(null); // {catId,itemId,label}
+  const[payInputs,setPayInputs]=React.useState({}); // {catId_itemId: string}
 
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,d=>{
-    const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{},numWeeks:d&&d.numWeeks||8};
+    const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{},numWeeks:d&&d.numWeeks||8,payments:d&&d.payments||{},calendarDone:d&&d.calendarDone||false};
     if(!p.numWeeks)p.numWeeks=8;
+    if(!p.payments)p.payments={};
     setPlan(p);
     setDateInput(prev=>prev===''?p.startDate||'':prev);
+    // restore calendar mode if user previously pressed Done
+    setCalMode(!!p.calendarDone);
   }),[propId]);
 
   const numWeeks=plan.numWeeks||8;
@@ -4752,6 +4756,28 @@ function ProjectSchedulePage({propId}){
       await dbSet(`projects/${propId}/weekplan/assignments/${catId}/${itemId}/${activeWeek}`,true);
     }
   }
+
+  function getPayment(catId,itemId){
+    return parseFloat(((plan.payments||{})[catId]||{})[itemId]||0)||0;
+  }
+  async function savePayment(catId,itemId,val){
+    const num=parseFloat(val);
+    if(isNaN(num)||num<0)return;
+    await dbSet(`projects/${propId}/weekplan/payments/${catId}/${itemId}`,num);
+  }
+  function weekPaymentTotal(n){
+    let total=0;
+    CATEGORIES.forEach(cat=>{
+      const ca=(plan.assignments||{})[cat.id]||{};
+      cat.items.forEach(item=>{
+        const weeks=ca[item.id];
+        const w=typeof weeks==='number'?{[weeks]:true}:(weeks||{});
+        if(w[n])total+=getPayment(cat.id,item.id);
+      });
+    });
+    return total;
+  }
+  function fmtMoney(n){return n>=1000?'$'+(n/1000).toFixed(n%1000===0?0:1)+'k':'$'+n.toLocaleString();}
 
   function weekCount(n){
     let c=0;
@@ -4816,6 +4842,7 @@ function ProjectSchedulePage({propId}){
                     <div style={{width:16,height:2,background:'rgba(255,255,255,.08)',borderRadius:1}}/>
                   )}
                 </div>
+                {weekPaymentTotal(n)>0&&<div style={{marginTop:4,fontSize:9,fontWeight:700,color:active?'#e2b04a':'rgba(226,176,74,.5)'}}>{fmtMoney(weekPaymentTotal(n))}</div>}
               </div>
             );
           })}
@@ -4868,26 +4895,42 @@ function ProjectSchedulePage({propId}){
                 const weeks=getWeeks(cat.id,item.id);
                 const isHere=!!weeks[activeWeek];
                 const otherWeeks=Object.keys(weeks).map(Number).filter(w=>w!==activeWeek).sort((a,b)=>a-b);
+                const payKey=`${cat.id}_${item.id}`;
+                const payVal=payInputs[payKey]!==undefined?payInputs[payKey]:String(getPayment(cat.id,item.id)||'');
                 return(
-                  <div key={item.id} onClick={()=>toggleItem(cat.id,item.id)}
-                    style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,cursor:'pointer',
-                      background:isHere?'rgba(226,176,74,.12)':'rgba(255,255,255,.04)',
-                      border:isHere?'1px solid rgba(226,176,74,.3)':'1px solid rgba(255,255,255,.06)'}}>
-                    <div style={{width:20,height:20,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
-                      background:isHere?'#e2b04a':'transparent',
-                      border:isHere?'none':'2px solid rgba(255,255,255,.2)'}}>
-                      {isHere&&<span style={{fontSize:11,color:'#000',fontWeight:900}}>✓</span>}
-                    </div>
-                    <span style={{flex:1,fontSize:13,color:isHere?'white':'rgba(255,255,255,.7)',fontWeight:isHere?600:400}}>
-                      {item.label}
-                    </span>
-                    {otherWeeks.length>0&&(
-                      <div style={{display:'flex',gap:3}}>
-                        {otherWeeks.map(w=>(
-                          <span key={w} style={{fontSize:10,fontWeight:700,background:'rgba(255,255,255,.1)',borderRadius:20,padding:'2px 7px',color:'rgba(255,255,255,.35)'}}>W{w}</span>
-                        ))}
+                  <div key={item.id} style={{borderRadius:10,overflow:'hidden',
+                    background:isHere?'rgba(226,176,74,.12)':'rgba(255,255,255,.04)',
+                    border:isHere?'1px solid rgba(226,176,74,.3)':'1px solid rgba(255,255,255,.06)'}}>
+                    <div onClick={()=>toggleItem(cat.id,item.id)}
+                      style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',cursor:'pointer'}}>
+                      <div style={{width:20,height:20,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
+                        background:isHere?'#e2b04a':'transparent',
+                        border:isHere?'none':'2px solid rgba(255,255,255,.2)'}}>
+                        {isHere&&<span style={{fontSize:11,color:'#000',fontWeight:900}}>✓</span>}
                       </div>
-                    )}
+                      <span style={{flex:1,fontSize:13,color:isHere?'white':'rgba(255,255,255,.7)',fontWeight:isHere?600:400}}>
+                        {item.label}
+                      </span>
+                      {otherWeeks.length>0&&(
+                        <div style={{display:'flex',gap:3}}>
+                          {otherWeeks.map(w=>(
+                            <span key={w} style={{fontSize:10,fontWeight:700,background:'rgba(255,255,255,.1)',borderRadius:20,padding:'2px 7px',color:'rgba(255,255,255,.35)'}}>W{w}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Payment input — always visible */}
+                    <div onClick={e=>e.stopPropagation()} style={{padding:'0 12px 10px',display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>$</span>
+                      <input
+                        type="number" min="0" placeholder="Payment amount"
+                        value={payVal}
+                        onChange={e=>setPayInputs(p=>({...p,[payKey]:e.target.value}))}
+                        onBlur={e=>{savePayment(cat.id,item.id,e.target.value);setPayInputs(p=>{const n={...p};delete n[payKey];return n;});}}
+                        style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:7,padding:'6px 10px',color:'white',fontSize:13,outline:'none'}}
+                      />
+                      {getPayment(cat.id,item.id)>0&&<span style={{fontSize:11,color:'#e2b04a',fontWeight:700,whiteSpace:'nowrap'}}>{fmtMoney(getPayment(cat.id,item.id))}</span>}
+                    </div>
                   </div>
                 );
               })}
@@ -4898,7 +4941,7 @@ function ProjectSchedulePage({propId}){
 
       {/* Done button */}
       <div style={{padding:'20px 12px 8px'}}>
-        <button onClick={()=>setCalMode(true)}
+        <button onClick={async()=>{await dbSet(`projects/${propId}/weekplan/calendarDone`,true);setCalMode(true);}}
           style={{width:'100%',padding:'15px',background:'#e2b04a',border:'none',borderRadius:14,fontSize:16,fontWeight:700,color:'#000',cursor:'pointer',letterSpacing:'.3px'}}>
           Done — View Calendar
         </button>
@@ -4979,7 +5022,7 @@ function ProjectSchedulePage({propId}){
       {/* Header */}
       <div style={{padding:'14px 12px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{fontSize:17,fontWeight:700,color:'white'}}>Renovation Schedule</div>
-        <button onClick={()=>setCalMode(false)}
+        <button onClick={async()=>{await dbSet(`projects/${propId}/weekplan/calendarDone`,false);setCalMode(false);}}
           style={{background:'rgba(226,176,74,.12)',border:'1px solid rgba(226,176,74,.3)',borderRadius:10,color:'#e2b04a',padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
           ✎ Edit Plan
         </button>
@@ -5024,6 +5067,7 @@ function ProjectSchedulePage({propId}){
                   {/* Week label */}
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',paddingTop:6,gap:2}}>
                     <div style={{fontSize:9,fontWeight:800,color:'rgba(226,176,74,.7)',textTransform:'uppercase'}}>W{n}</div>
+                    {weekPaymentTotal(n)>0&&<div style={{fontSize:8,fontWeight:700,color:'#e2b04a',textAlign:'center',lineHeight:1.2}}>{fmtMoney(weekPaymentTotal(n))}</div>}
                   </div>
                   {/* 7 day cells */}
                   {days.map((day,di)=>{
