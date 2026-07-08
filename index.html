@@ -4696,6 +4696,8 @@ function ProjectSchedulePage({propId}){
   const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8});
   const[activeWeek,setActiveWeek]=React.useState(1);
   const[dateInput,setDateInput]=React.useState('');
+  const[calMode,setCalMode]=React.useState(false);
+  const[editingItem,setEditingItem]=React.useState(null); // {catId,itemId,label}
 
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,d=>{
     const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{},numWeeks:d&&d.numWeeks||8};
@@ -4769,7 +4771,7 @@ function ProjectSchedulePage({propId}){
       cat.items.forEach(item=>{
         const weeks=ca[item.id];
         const w=typeof weeks==='number'?{[weeks]:true}:(weeks||{});
-        if(w[n])out.push({label:item.label});
+        if(w[n])out.push({catId:cat.id,itemId:item.id,label:item.label});
       });
     });
     return out;
@@ -4779,7 +4781,7 @@ function ProjectSchedulePage({propId}){
   const we=ws?new Date(ws.getTime()+6*864e5):null;
   const weekItems=itemsForWeek(activeWeek);
 
-  return(
+  const planView=(
     <div style={{paddingBottom:100}}>
 
       {/* Start date */}
@@ -4892,6 +4894,112 @@ function ProjectSchedulePage({propId}){
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Done button */}
+      <div style={{padding:'20px 12px 8px'}}>
+        <button onClick={()=>setCalMode(true)}
+          style={{width:'100%',padding:'15px',background:'#e2b04a',border:'none',borderRadius:14,fontSize:16,fontWeight:700,color:'#000',cursor:'pointer',letterSpacing:'.3px'}}>
+          Done — View Calendar
+        </button>
+      </div>
+    </div>
+  );
+
+  if(!calMode)return planView;
+
+  // ── Calendar view ──────────────────────────────────────────────
+  return(
+    <div style={{paddingBottom:100}}>
+
+      {/* Item edit sheet */}
+      {editingItem&&(()=>{
+        const allWeeks=getWeeks(editingItem.catId,editingItem.itemId);
+        return(
+          <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'flex-end'}}
+            onClick={e=>{if(e.target===e.currentTarget)setEditingItem(null);}}>
+            <div style={{width:'100%',background:'#0d1829',borderRadius:'20px 20px 0 0',padding:'20px 16px 40px',maxHeight:'75vh',overflowY:'auto'}}>
+              <div style={{width:36,height:4,background:'rgba(255,255,255,.2)',borderRadius:2,margin:'0 auto 16px'}}/>
+              <div style={{fontSize:15,fontWeight:700,color:'white',marginBottom:4}}>{editingItem.label}</div>
+              <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginBottom:16}}>Tap weeks to assign / remove</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+                {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
+                  const on=!!allWeeks[n];
+                  const wsd=weekStartDate(n);
+                  return(
+                    <div key={n} onClick={async()=>{
+                      if(on){await dbRemove(`projects/${propId}/weekplan/assignments/${editingItem.catId}/${editingItem.itemId}/${n}`);}
+                      else{await dbSet(`projects/${propId}/weekplan/assignments/${editingItem.catId}/${editingItem.itemId}/${n}`,true);}
+                    }}
+                    style={{borderRadius:12,padding:'12px 8px',textAlign:'center',cursor:'pointer',
+                      background:on?'rgba(226,176,74,.2)':'rgba(255,255,255,.05)',
+                      border:on?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.1)'}}>
+                      <div style={{fontSize:12,fontWeight:700,color:on?'#e2b04a':'rgba(255,255,255,.5)'}}>Wk {n}</div>
+                      {wsd&&<div style={{fontSize:9,color:'rgba(255,255,255,.3)',marginTop:2}}>{fmtD(wsd)}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={()=>setEditingItem(null)}
+                style={{marginTop:20,width:'100%',padding:'13px',background:'rgba(255,255,255,.08)',border:'none',borderRadius:12,color:'white',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                Done
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Header */}
+      <div style={{padding:'14px 12px 8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{fontSize:17,fontWeight:700,color:'white'}}>Renovation Schedule</div>
+        <button onClick={()=>setCalMode(false)}
+          style={{background:'rgba(226,176,74,.12)',border:'1px solid rgba(226,176,74,.3)',borderRadius:10,color:'#e2b04a',padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          Edit Plan
+        </button>
+      </div>
+
+      {plan.startDate&&(
+        <div style={{padding:'0 12px 10px',fontSize:12,color:'rgba(255,255,255,.35)'}}>
+          Starts {fmtD(mondayOf(plan.startDate))} · {numWeeks} weeks
+        </div>
+      )}
+
+      {/* Week blocks */}
+      <div style={{padding:'0 12px'}}>
+        {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
+          const wsd=weekStartDate(n);
+          const wed=wsd?new Date(wsd.getTime()+6*864e5):null;
+          const items=itemsForWeek(n);
+          return(
+            <div key={n} style={{marginBottom:10,borderRadius:14,overflow:'hidden',border:'1px solid rgba(255,255,255,.08)',background:'rgba(255,255,255,.03)'}}>
+              {/* Week header */}
+              <div style={{padding:'10px 14px',background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{background:'rgba(226,176,74,.15)',border:'1px solid rgba(226,176,74,.3)',borderRadius:8,padding:'4px 10px',fontSize:12,fontWeight:700,color:'#e2b04a'}}>
+                    Wk {n}
+                  </div>
+                  {wsd&&<div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>{fmtD(wsd)} – {fmtD(wed)}</div>}
+                </div>
+                <div style={{fontSize:11,color:'rgba(255,255,255,.25)',fontWeight:600}}>{items.length} item{items.length!==1?'s':''}</div>
+              </div>
+              {/* Items */}
+              {items.length===0?(
+                <div style={{padding:'14px',fontSize:12,color:'rgba(255,255,255,.18)',fontStyle:'italic'}}>Nothing scheduled</div>
+              ):(
+                <div style={{padding:'8px 10px',display:'flex',flexDirection:'column',gap:6}}>
+                  {items.map((it,i)=>(
+                    <div key={i} onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
+                      style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:10,cursor:'pointer',
+                        background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)'}}>
+                      <span style={{fontSize:13,color:'white',fontWeight:500}}>{it.label}</span>
+                      <span style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>✎</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
