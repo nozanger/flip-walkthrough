@@ -3244,11 +3244,12 @@ function KanbanView({properties, onOpen, onMoveStage}){
   );
 }
 
-function SchedulePage({currentUser, properties}){
+function SchedulePage({currentUser}){
   const today = new Date();
   const [year, setYear] = React.useState(today.getFullYear());
   const [month, setMonth] = React.useState(today.getMonth());
   const [events, setEvents] = React.useState([]);
+  const [properties, setProperties] = React.useState([]);
   const [selectedDate, setSelectedDate] = React.useState(null); // 'YYYY-MM-DD'
   const [showAdd, setShowAdd] = React.useState(false);
   const [form, setForm] = React.useState({title:'', date:'', notes:'', propId:''});
@@ -3258,6 +3259,14 @@ function SchedulePage({currentUser, properties}){
     return dbListen(`schedule/${currentUser.uid}`, val=>{
       if(!val) return setEvents([]);
       setEvents(Object.values(val).sort((a,b)=>a.date.localeCompare(b.date)));
+    });
+  },[currentUser.uid]);
+
+  React.useEffect(()=>{
+    return dbListen(`userProjects/${currentUser.uid}`, async ids=>{
+      if(!ids){setProperties([]);return;}
+      const list=await Promise.all(Object.keys(ids).map(id=>dbGet(`projects/${id}/meta`).then(m=>m?{id,...m}:null)));
+      setProperties(list.filter(Boolean).sort((a,b)=>(a.address||'').localeCompare(b.address||'')));
     });
   },[currentUser.uid]);
 
@@ -3426,18 +3435,18 @@ function SchedulePage({currentUser, properties}){
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               <div>
                 <label style={labelStyle}>Title</label>
-                <input autoFocus value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Contractor walkthrough" style={inputStyle}/>
+                <input autoFocus value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Door delivery, contractor walkthrough…" style={inputStyle}/>
+              </div>
+              <div>
+                <label style={labelStyle}>Assign to Property</label>
+                <select value={form.propId} onChange={e=>setForm(f=>({...f,propId:e.target.value}))} style={{...inputStyle,background:'white',color:form.propId?'#111':'#999'}}>
+                  <option value="">— Select a property —</option>
+                  {properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}
+                </select>
               </div>
               <div>
                 <label style={labelStyle}>Date</label>
                 <input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={inputStyle}/>
-              </div>
-              <div>
-                <label style={labelStyle}>Property (optional)</label>
-                <select value={form.propId} onChange={e=>setForm(f=>({...f,propId:e.target.value}))} style={{...inputStyle,background:'white'}}>
-                  <option value="">No property</option>
-                  {(properties||[]).map(p=><option key={p.id} value={p.id}>{p.address}</option>)}
-                </select>
               </div>
               <div>
                 <label style={labelStyle}>Notes</label>
