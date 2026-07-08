@@ -4772,7 +4772,10 @@ function ProjectSchedulePage({propId}){
       cat.items.forEach(item=>{
         const weeks=ca[item.id];
         const w=typeof weeks==='number'?{[weeks]:true}:(weeks||{});
-        if(w[n])total+=getPayment(cat.id,item.id);
+        if(w[n]){
+          const numAssigned=Object.keys(w).length||1;
+          total+=getPayment(cat.id,item.id)/numAssigned;
+        }
       });
     });
     return total;
