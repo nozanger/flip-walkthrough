@@ -4704,6 +4704,25 @@ function ProjectSchedulePage({propId}){
     setWeeks(arr);
   }),[propId]);
 
+  async function applyTemplate(){
+    const templates=[
+      {title:'Demo & Rough Framing',notes:'Demolition of existing fixtures, rough framing for layout changes'},
+      {title:'Rough Plumbing & HVAC',notes:'Rough-in plumbing, ductwork, and HVAC installation'},
+      {title:'Rough Electrical',notes:'Rough-in electrical, panel upgrades, recessed lighting'},
+      {title:'Insulation & Drywall',notes:'Insulation in walls/ceilings, hang and tape drywall'},
+      {title:'Drywall Finish & Paint',notes:'Mud, sand, prime, and paint all walls and ceilings'},
+      {title:'Flooring',notes:'Install hardwood, tile, or LVP throughout'},
+      {title:'Cabinets, Fixtures & Trim',notes:'Kitchen/bath cabinets, trim work, doors, and hardware'},
+      {title:'Final Finishes & Punch List',notes:'Countertops, appliances, touch-ups, and final inspection'},
+    ];
+    const writes={};
+    templates.forEach((t,i)=>{
+      const id=uid();
+      writes[id]={id,title:t.title,startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:t.notes,materials:{},createdAt:Date.now()+i};
+    });
+    await dbUpdate(`projects/${propId}/schedule`,writes);
+  }
+
   function openNew(){
     const id=uid();
     const f={id,title:'',startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:'',materials:{}};
@@ -4896,9 +4915,16 @@ function ProjectSchedulePage({propId}){
           </div>
         </div>
       ):(
-        <button onClick={()=>{const id=uid();setForm({id,title:'',startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:'',materials:{}});setExpanded('__new');}} style={{width:'100%',background:'rgba(226,176,74,.1)',border:'1px dashed rgba(226,176,74,.4)',borderRadius:14,padding:'13px',color:'#e2b04a',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-          + Add Week
-        </button>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {weeks.length===0&&(
+            <button onClick={applyTemplate} style={{width:'100%',background:'rgba(91,191,181,.12)',border:'1px dashed rgba(91,191,181,.5)',borderRadius:14,padding:'16px 13px',color:'#5bbfb5',fontSize:14,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{fontSize:18}}>📋</span> Start with 8-week renovation template
+            </button>
+          )}
+          <button onClick={()=>{const id=uid();setForm({id,title:'',startDate:'',endDate:'',payment:'',paymentNote:'',status:'upcoming',notes:'',materials:{}});setExpanded('__new');}} style={{width:'100%',background:'rgba(226,176,74,.1)',border:'1px dashed rgba(226,176,74,.4)',borderRadius:14,padding:'13px',color:'#e2b04a',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            + Add Week
+          </button>
+        </div>
       )}
     </div>
   );
