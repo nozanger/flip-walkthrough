@@ -3307,13 +3307,24 @@ function SchedulePage({currentUser}){
     if(!form.title.trim()||!form.date) return;
     const id=editId||uid();
     const propAddress=properties.find(p=>p.id===form.propId)?.address||'';
-    await dbSet(`schedule/${currentUser.uid}/${id}`,{id,title:form.title.trim(),date:form.date,notes:form.notes.trim(),propId:form.propId||null,propAddress:propAddress||null,createdAt:editId?(events.find(e=>e.id===editId)?.createdAt||Date.now()):Date.now()});
+    const eventData={id,title:form.title.trim(),date:form.date,notes:form.notes.trim(),propId:form.propId||null,propAddress:propAddress||null,createdAt:editId?(events.find(e=>e.id===editId)?.createdAt||Date.now()):Date.now()};
+    const writes=[dbSet(`schedule/${currentUser.uid}/${id}`,eventData)];
+    if(form.propId) writes.push(dbSet(`projects/${form.propId}/events/${id}`,eventData));
+    // if propId changed on edit, remove from old project
+    if(editId){
+      const old=events.find(e=>e.id===editId);
+      if(old?.propId&&old.propId!==form.propId) writes.push(dbRemove(`projects/${old.propId}/events/${id}`));
+    }
+    await Promise.all(writes);
     setShowAdd(false);setEditId(null);
   }
 
   async function del(id){
     if(!confirm('Delete this event?')) return;
-    await dbRemove(`schedule/${currentUser.uid}/${id}`);
+    const ev=events.find(e=>e.id===id);
+    const writes=[dbRemove(`schedule/${currentUser.uid}/${id}`)];
+    if(ev?.propId) writes.push(dbRemove(`projects/${ev.propId}/events/${id}`));
+    await Promise.all(writes);
   }
 
   const selectedEvents = selectedDate ? eventsForDate(selectedDate) : [];
@@ -4624,6 +4635,52 @@ function HandoffPage({propId, currentUser}){
   );
 }
 
+function PropEventsBar({propId}){
+  const [events, setEvents] = React.useState([]);
+  React.useEffect(()=>{
+    return dbListen(`projects/${propId}/events`, val=>{
+      if(!val){setEvents([]);return;}
+      const now=new Date();
+      function pad(n){return String(n).padStart(2,'0');}
+      const todayKey=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+      const list=Object.values(val)
+        .filter(e=>e.date>=todayKey)
+        .sort((a,b)=>a.date.localeCompare(b.date));
+      setEvents(list);
+    });
+  },[propId]);
+
+  if(events.length===0) return null;
+
+  const MONTH=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  return(
+    <div style={{margin:'12px 12px 0',background:'rgba(59,130,246,.1)',border:'1px solid rgba(59,130,246,.25)',borderRadius:14,overflow:'hidden'}}>
+      <div style={{padding:'10px 14px 6px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#60a5fa'}}>📅 Upcoming Events</div>
+      {events.map(ev=>{
+        const d=new Date(ev.date+'T12:00');
+        const now=new Date();
+        function pad(n){return String(n).padStart(2,'0');}
+        const todayKey=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+        const isToday=ev.date===todayKey;
+        return(
+          <div key={ev.id} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 14px',borderTop:'1px solid rgba(59,130,246,.12)'}}>
+            <div style={{textAlign:'center',minWidth:32,flexShrink:0}}>
+              <div style={{fontSize:15,fontWeight:800,color:isToday?'#f59e0b':'#60a5fa',lineHeight:1}}>{d.getDate()}</div>
+              <div style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,.4)',textTransform:'uppercase'}}>{MONTH[d.getMonth()]}</div>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.title}</div>
+              {ev.notes&&<div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.notes}</div>}
+            </div>
+            {isToday&&<span style={{background:'#f59e0b',color:'#000',fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:20,flexShrink:0,textTransform:'uppercase'}}>Today</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
   const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5;
   const initStage=prop.stage||'walkthrough';
@@ -4849,6 +4906,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
 
       {activeTab===TAB_TASKS&&(
         <div>
+          <PropEventsBar propId={prop.id}/>
           <TasksPage propId={prop.id} address={prop.address} currentUser={currentUser} members={members}/>
           {stage==='renovation'&&(
             <div style={{margin:'0 12px 12px'}}>
