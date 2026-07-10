@@ -4093,7 +4093,7 @@ function PropertyList({currentUser,onOpen}){
 // ── ScopeOverviewPage ────────────────────────────────────────────────
 function ScopeOverviewPage({data,onOpenCat}){
   const[open,setOpen]=React.useState({});
-  function toggle(id){setOpen(s=>({...s,[id]:!s[id]}));}
+  function toggle(e,id){e.stopPropagation();setOpen(s=>({...s,[id]:!s[id]}));}
   function countReviewed(catId){
     const d=data[catId]||{};
     return Object.values(d).filter(v=>v&&v.status&&v.status!=='none').length;
@@ -4103,35 +4103,41 @@ function ScopeOverviewPage({data,onOpenCat}){
       {CATEGORIES.map((cat,i)=>{
         const rev=countReviewed(cat.id);
         const total=cat.items.length;
+        const pct=total?Math.round(rev/total*100):0;
         const isOpen=!!open[cat.id];
         return(
-          <div key={cat.id} className="section-card" style={{marginBottom:10,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14}}>
-            <div className="section-header" onClick={()=>toggle(cat.id)} style={{padding:'14px 16px'}}>
-              <span className="section-title" style={{color:'white',fontSize:15,fontWeight:700}}>
-                {cat.icon} {cat.label}
-              </span>
-              {rev>0&&<span style={{fontSize:12,color:'rgba(255,255,255,.5)',marginRight:8}}>{rev}/{total}</span>}
-              <span style={{color:'rgba(255,255,255,.4)',fontSize:18,lineHeight:1}}>{isOpen?'▲':'▼'}</span>
+          <div key={cat.id} className="section-card" style={{marginBottom:10,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,cursor:'pointer'}}
+            onClick={()=>onOpenCat(i)}>
+            <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
+              <span style={{fontSize:22,lineHeight:1}}>{cat.icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:700,color:'white'}}>{cat.label}</div>
+                <div style={{marginTop:5,height:4,background:'rgba(255,255,255,.1)',borderRadius:2,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:pct+'%',background:pct===100?'#5bbfb5':'#e2b04a',borderRadius:2,transition:'width .3s'}}/>
+                </div>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontSize:12,fontWeight:700,color:pct===100?'#5bbfb5':rev>0?'#e2b04a':'rgba(255,255,255,.3)'}}>{rev}/{total}</div>
+              </div>
+              <div onClick={e=>toggle(e,cat.id)}
+                style={{padding:'4px 8px',borderRadius:8,background:'rgba(255,255,255,.06)',color:'rgba(255,255,255,.4)',fontSize:13,flexShrink:0}}>
+                {isOpen?'▲':'▼'}
+              </div>
             </div>
             {isOpen&&(
-              <div style={{borderTop:'1px solid rgba(255,255,255,.08)',padding:'8px 0 4px'}}>
+              <div onClick={e=>e.stopPropagation()} style={{borderTop:'1px solid rgba(255,255,255,.08)',padding:'6px 0 8px'}}>
                 {cat.items.map(item=>{
                   const d=(data[cat.id]||{})[item.id]||{};
                   const s=d.status;
                   const dot=s==='keep'?'#5bbfb5':s==='maybe'?'#f59e0b':s==='replace'?'#dc3545':'rgba(255,255,255,.2)';
                   return(
-                    <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+                    <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 16px'}}>
                       <div style={{width:8,height:8,borderRadius:'50%',background:dot,flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:14,color:s?'white':'rgba(255,255,255,.5)'}}>{item.label}</span>
-                      {d.notes&&<span style={{fontSize:12,color:'rgba(255,255,255,.35)',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.notes}</span>}
+                      <span style={{flex:1,fontSize:13,color:s?'white':'rgba(255,255,255,.4)'}}>{item.label}</span>
+                      {d.notes&&<span style={{fontSize:11,color:'rgba(255,255,255,.3)',maxWidth:100,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.notes}</span>}
                     </div>
                   );
                 })}
-                <div style={{padding:'10px 16px 6px'}}>
-                  <button onClick={()=>onOpenCat(i)} style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:10,color:'white',padding:'10px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                    Edit {cat.label} →
-                  </button>
-                </div>
               </div>
             )}
           </div>
