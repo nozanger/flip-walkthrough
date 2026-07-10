@@ -1726,6 +1726,20 @@ function TasksPage({propId,address,currentUser,members,inline}){
   const counts={todo:0,done:0};
   Object.values(tasks).forEach(t=>{if(counts[t.status]!==undefined)counts[t.status]++;});
 
+  const doneTimers=React.useRef({});
+  const[checkingDone,setCheckingDone]=React.useState({});
+
+  async function quickDone(e,task){
+    e.stopPropagation();
+    if(checkingDone[task.id])return;
+    setCheckingDone(p=>({...p,[task.id]:true}));
+    await dbUpdate(`projects/${propId}/tasks/${task.id}`,{status:'done',updatedAt:Date.now(),updatedBy:username});
+    doneTimers.current[task.id]=setTimeout(async()=>{
+      await dbRemove(`projects/${propId}/tasks/${task.id}`);
+      setCheckingDone(p=>{const n={...p};delete n[task.id];return n;});
+    },800);
+  }
+
   function dueBadge(dueDate){
     if(!dueDate)return null;
     const today=new Date().toISOString().slice(0,10);
@@ -1772,9 +1786,9 @@ function TasksPage({propId,address,currentUser,members,inline}){
           <div key={task.id} className={`task-card status-${task.status}${task.urgent?' urgent':''}`}
             onClick={()=>setDrawerTask(task)}>
             <div className="task-card-top">
-              <div className={`task-done-check${task.status==='done'?' checked':''}`}
-                onClick={e=>{e.stopPropagation();/* handled in drawer */}}>
-                {task.status==='done'&&'✓'}
+              <div className={`task-done-check${(task.status==='done'||checkingDone[task.id])?' checked':''}`}
+                onClick={e=>quickDone(e,task)}>
+                {(task.status==='done'||checkingDone[task.id])&&'✓'}
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div className={`task-title${task.status==='done'?' done':''}`}
