@@ -2113,21 +2113,16 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
     const prop={id:uid(),address:address.trim(),sqft:sqft.trim(),date,curBed,curBath,futBed,futBath,createdAt:Date.now()};
     const assignedMembers=Object.entries(selected).filter(([,v])=>v).map(([id])=>roster[id]).filter(Boolean);
 
-    // Notify via push notification (no email needed — they're already on your team)
-    if(assignedMembers.length>0){
-      assignedMembers.forEach(m=>{
-        fetch('/.netlify/functions/notify-property-added',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:currentUser.displayName||currentUser.email}),
-        }).catch(e=>console.warn('notify-property-added failed:',e));
-      });
-    }
+    // Notify via push notification (fire-and-forget — don't await)
+    assignedMembers.forEach(m=>{
+      fetch('/.netlify/functions/notify-property-added',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:currentUser.displayName||currentUser.email}),
+      }).catch(e=>console.warn('notify-property-added failed:',e));
+    });
 
-    // Write assigned members to the project
-    await Promise.all(assignedMembers.map(m=>
-      dbSet(`projects/${prop.id}/members/${m.id}`,{name:m.name,email:m.email,role:m.role,addedAt:Date.now()})
-    ));
-    onAdd(prop);
+    // Pass members to onAdd — they get written AFTER the project meta exists
+    onAdd(prop, assignedMembers);
   }
 
   const members=Object.values(roster).sort((a,b)=>a.name.localeCompare(b.name));
@@ -3776,13 +3771,19 @@ function PropertyList({currentUser,onOpen}){
     setFabTitle('');setFabOpen(false);
   }
 
-  async function addProperty(prop){
+  async function addProperty(prop, assignedMembers=[]){
     const meta={...prop,ownerId:currentUser.uid,ownerName:currentUser.displayName||currentUser.email,updatedAt:Date.now()};
     await dbSet(`projects/${prop.id}/meta`,meta);
     await dbSet(`projects/${prop.id}/members/${currentUser.uid}`,{
       name:currentUser.displayName||currentUser.email,email:currentUser.email,role:'owner',addedAt:Date.now()
     });
     await dbSet(`userProjects/${currentUser.uid}/${prop.id}`,true);
+    // Write team members AFTER project exists (so Firebase ownerId check passes)
+    if(assignedMembers.length>0){
+      await Promise.all(assignedMembers.map(m=>
+        dbSet(`projects/${prop.id}/members/${m.id}`,{name:m.name,email:m.email,role:m.role,addedAt:Date.now()})
+      ));
+    }
     setShowAdd(false);onOpen(meta);
   }
 
