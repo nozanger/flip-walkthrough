@@ -2109,20 +2109,30 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
 
   function toggle(id){setSelected(s=>s[id]?{...s,[id]:undefined}:{...s,[id]:true});}
 
+  const[saving,setSaving]=React.useState(false);
+  const[saveErr,setSaveErr]=React.useState('');
+
   async function finish(){
-    const prop={id:uid(),address:address.trim(),sqft:sqft.trim(),date,curBed,curBath,futBed,futBath,createdAt:Date.now()};
-    const assignedMembers=Object.entries(selected).filter(([,v])=>v).map(([id])=>roster[id]).filter(Boolean);
+    if(saving)return;
+    setSaving(true);setSaveErr('');
+    try{
+      const prop={id:uid(),address:address.trim(),sqft:sqft.trim(),date,curBed,curBath,futBed,futBath,createdAt:Date.now()};
+      const assignedMembers=Object.entries(selected).filter(([,v])=>v).map(([id])=>roster[id]).filter(Boolean);
 
-    // Notify via push notification (fire-and-forget — don't await)
-    assignedMembers.forEach(m=>{
-      fetch('/.netlify/functions/notify-property-added',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:currentUser.displayName||currentUser.email}),
-      }).catch(e=>console.warn('notify-property-added failed:',e));
-    });
+      // Notify via push notification (fire-and-forget)
+      assignedMembers.forEach(m=>{
+        fetch('/.netlify/functions/notify-property-added',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({memberEmail:m.email,address:prop.address,adderName:currentUser.displayName||currentUser.email}),
+        }).catch(e=>console.warn('notify-property-added failed:',e));
+      });
 
-    // Pass members to onAdd — they get written AFTER the project meta exists
-    onAdd(prop, assignedMembers);
+      await onAdd(prop, assignedMembers);
+    }catch(e){
+      console.error('addProperty failed:',e);
+      setSaveErr(e.message||'Something went wrong. Please try again.');
+      setSaving(false);
+    }
   }
 
   const members=Object.values(roster).sort((a,b)=>a.name.localeCompare(b.name));
@@ -2178,11 +2188,13 @@ function AddPropertyModal({onAdd,currentUser,onClose}){
               </div>
             );
           })}
+          {saveErr&&<div style={{color:'#dc3545',fontSize:13,marginTop:8,padding:'8px 12px',background:'#fff5f5',borderRadius:8,border:'1px solid #fcc'}}>{saveErr}</div>}
           <div className="modal-btns" style={{marginTop:16}}>
-            <button className="assign-notify-btn" onClick={finish}>
-              {numSelected>0?`Add Property & Notify ${numSelected} Member${numSelected>1?'s':''}  🔔`:'Add Property (No Team)'}
+            <button className="assign-notify-btn" onClick={finish} disabled={saving}
+              style={{opacity:saving?0.6:1}}>
+              {saving?'Saving…':numSelected>0?`Add Property & Notify ${numSelected} Member${numSelected>1?'s':''}  🔔`:'Add Property (No Team)'}
             </button>
-            <button className="btn-secondary" onClick={()=>setStep(1)}>← Back</button>
+            <button className="btn-secondary" onClick={()=>setStep(1)} disabled={saving}>← Back</button>
           </div>
         </>
       )}
