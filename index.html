@@ -5413,9 +5413,10 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
         activeTab>=0&&cat?(
           <div className="content" style={{padding:0,display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
             <ItemCardView
+              key={cat.id}
               propId={prop.id} cat={cat} data={data} mergedRef={mergedRef}
               username={username} updateItem={updateItem} setLightbox={setLightbox}
-              onPrevCat={()=>setActiveTab(t=>Math.max(t-1,0))}
+              onPrevCat={()=>setActiveTab(t=>t>0?t-1:TAB_SCOPE)}
               onNextCat={()=>setActiveTab(t=>Math.min(t+1,CATEGORIES.length-1))}/>
           </div>
         ):(
