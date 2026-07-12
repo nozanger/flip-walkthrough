@@ -5280,6 +5280,7 @@ const STANDARD_ITEMS=[
   {id:'dumpster',    label:'🗑️ Dumpsters',      unitCost:500,  defaultCount:2, unit:'dumpsters'},
   {id:'drywall',     label:'🧱 Drywall',          type:'sqft',  baseCost:843,  base:900},
   {id:'lumber',      label:'🪵 Lumber / Framing', type:'sqft',  baseCost:1034, base:900},
+  {id:'windows',     label:'🪟 Windows',           unitCost:257, defaultCount:8, unit:'windows'},
   {id:'light_fixture',label:'💡 Light Fixtures',  unitCost:35,  defaultCount:8, unit:'fixtures'},
   {id:'outlets',     label:'🔌 Outlets',           unitCost:3.5, defaultCount:20,unit:'outlets'},
 ];
@@ -5332,9 +5333,8 @@ function MaterialCostPage({prop,data}){
     let catTotal=0;
     const rows=cat.items.map(item=>{
       const d=catData[item.id];
-      const status=d?.status;
-      if(!status)return null;
-      if(status==='keep')return{item,status,cost:0,pct:0,fullCost:0,isUnit:false,entry:null};
+      const status=d?.status||null;
+      if(!status||status==='keep')return{item,status,cost:0,pct:0,fullCost:0,isUnit:false,entry:null};
       const fullCost=computeMatCost(cat.id,item.id,sqft,numBath,inputs);
       const entry=(MAT_COSTS[cat.id]||{})[item.id];
       const isUnit=entry?.type==='per_unit';
@@ -5346,27 +5346,28 @@ function MaterialCostPage({prop,data}){
       const cost=Math.round(fullCost*pct);
       catTotal+=cost;
       return{item,status,cost,pct:pct*100,fullCost,isUnit,entry};
-    }).filter(Boolean);
+    });
     scopeTotal+=catTotal;
     return{cat,rows,catTotal};
-  }).filter(s=>s.rows.length>0);
+  });
 
   const grandTotal=stdTotal+scopeTotal;
 
   function ScopeRow({catId,item,status,cost,pct,fullCost,isUnit,entry,ri}){
     const key=catId+'_'+item.id;
     const isEditing=editingKey===key;
-    const statusColor={keep:'#28a745',partial:'#1d4ed8',replace:'#dc3545',maybe:'#888'}[status]||'#888';
-    const statusIcon={keep:'✓',partial:'⚡',replace:'↺',maybe:'?'}[status]||'';
+    const statusColor={keep:'#28a745',partial:'#1d4ed8',replace:'#dc3545',maybe:'#f59e0b'}[status]||'rgba(255,255,255,.25)';
+    const statusIcon={keep:'✓ Keep',partial:'⚡ Partial',replace:'↺ Replace',maybe:'? Check'}[status]||'— not set';
+    const canEdit=status&&status!=='keep'&&status!=='maybe';
     return(
-      <div style={{padding:'10px 14px',borderTop:ri>0?'1px solid rgba(255,255,255,.06)':undefined}}>
+      <div style={{padding:'10px 14px',borderTop:ri>0?'1px solid rgba(255,255,255,.06)':undefined,opacity:!status?0.5:1}}>
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:isEditing||(status==='partial')?6:0}}>
-          <span style={{flex:1,fontSize:13,color:'white',fontWeight:500}}>{item.label}</span>
-          <span style={{fontSize:11,color:statusColor,fontWeight:700}}>{statusIcon} {status}</span>
-          <span style={{fontSize:14,fontWeight:700,color:cost>0?'#e2b04a':'rgba(255,255,255,.3)',minWidth:60,textAlign:'right'}}>
-            {status==='keep'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>—</span>:status==='maybe'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>?</span>:fmt(cost)}
+          <span style={{flex:1,fontSize:13,color:status?'white':'rgba(255,255,255,.5)',fontWeight:500}}>{item.label}</span>
+          <span style={{fontSize:10,color:statusColor,fontWeight:700,whiteSpace:'nowrap'}}>{statusIcon}</span>
+          <span style={{fontSize:14,fontWeight:700,color:cost>0?'#e2b04a':'rgba(255,255,255,.25)',minWidth:56,textAlign:'right'}}>
+            {!status?<span style={{fontSize:11}}>—</span>:status==='keep'?<span style={{fontSize:12}}>$0</span>:status==='maybe'?<span style={{fontSize:11}}>?</span>:fmt(cost)}
           </span>
-          {status!=='keep'&&status!=='maybe'&&(
+          {canEdit&&(
             <button onClick={()=>setEditingKey(isEditing?null:key)}
               style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:14,cursor:'pointer',padding:'2px 4px'}}>✏️</button>
           )}
