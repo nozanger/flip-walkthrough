@@ -5177,8 +5177,249 @@ function ProjectSchedulePage({propId}){
   );
 }
 
+// ── Material Cost Data (from Material Cost Estimator.xlsx, Price List + 1104 N Korby)
+// baseCost = full-replacement material cost for a 900 sqft, 1-story, 1-bath baseline house
+// type: 'sqft'=scales with sqft, 'fixed'=flat rate, 'per_bath'=×numBath, 'per_unit'=unitCost×count
+const MAT_COSTS = {
+  exterior:{
+    roof:             {type:'sqft',   baseCost:2693, base:900},
+    gutters:          {type:'sqft',   baseCost:352,  base:900},
+    soffit_fascia:    {type:'sqft',   baseCost:451,  base:900},
+    window_door_trim: {type:'sqft',   baseCost:543,  base:900},
+    siding:           {type:'sqft',   baseCost:1622, base:900},
+    exterior_doors:   {type:'per_unit',unitCost:354, defaultCount:2},
+    front_porch:      {type:'fixed',  baseCost:0},
+    garage:           {type:'fixed',  baseCost:0},
+    driveway:         {type:'fixed',  baseCost:0},
+    back_porch:       {type:'fixed',  baseCost:0},
+    landscaping:      {type:'fixed',  baseCost:0},
+  },
+  interior:{
+    demo:             {type:'fixed',  baseCost:500},
+    framing:          {type:'sqft',   baseCost:1034, base:900},
+    layout_change:    {type:'fixed',  baseCost:0},
+    wall_knocking:    {type:'fixed',  baseCost:0},
+    drywall:          {type:'sqft',   baseCost:843,  base:900},
+    paint:            {type:'sqft',   baseCost:419,  base:900},
+    flooring:         {type:'sqft',   baseCost:1911, base:900},
+    subfloor:         {type:'sqft',   baseCost:480,  base:900},
+    trim_quarterround:{type:'sqft',   baseCost:600,  base:900},
+    windows:          {type:'per_unit',unitCost:257, defaultCount:8},
+    interior_doors:   {type:'per_unit',unitCost:145, defaultCount:4},
+    electric_trim:    {type:'fixed',  baseCost:600},
+    garbage_removal:  {type:'fixed',  baseCost:400},
+  },
+  kitchen:{
+    cabinets:         {type:'fixed',  baseCost:2020},
+    island:           {type:'fixed',  baseCost:0},
+    countertop:       {type:'fixed',  baseCost:600},
+    backsplash:       {type:'fixed',  baseCost:200},
+    appliances:       {type:'fixed',  baseCost:1800},
+  },
+  bathroom:{
+    vanity:           {type:'per_bath',unitCost:360},
+    mirror:           {type:'per_bath',unitCost:115},
+    toilet:           {type:'per_bath',unitCost:157},
+    tub:              {type:'per_bath',unitCost:430},
+    bathroom_floor:   {type:'per_bath',unitCost:350},
+    vents:            {type:'per_bath',unitCost:85},
+  },
+  plumbing:{
+    plumbing_bathroom:{type:'per_bath',unitCost:300},
+    plumbing_kitchen: {type:'fixed',  baseCost:200},
+    laundry:          {type:'fixed',  baseCost:220},
+  },
+  electrical:{
+    panel:            {type:'fixed',  baseCost:200},
+    wiring:           {type:'sqft',   baseCost:810,  base:900},
+    addons:           {type:'fixed',  baseCost:0},
+  },
+  mechanic:{
+    hvac:             {type:'fixed',  baseCost:3060},
+    water_heater:     {type:'fixed',  baseCost:640},
+    misc:             {type:'fixed',  baseCost:0},
+  },
+  below_grade:{
+    basement_general: {type:'fixed',  baseCost:0},
+    basement_walls:   {type:'fixed',  baseCost:0},
+    basement_floor:   {type:'fixed',  baseCost:0},
+    basement_moisture:{type:'fixed',  baseCost:0},
+    basement_egress:  {type:'per_unit',unitCost:400, defaultCount:1},
+    crawlspace_general:{type:'fixed', baseCost:0},
+    crawlspace_vapor: {type:'sqft',   baseCost:270,  base:900},
+    crawlspace_insulation:{type:'sqft',baseCost:180, base:900},
+    foundation_general:{type:'fixed', baseCost:0},
+    foundation_cracks:{type:'fixed',  baseCost:0},
+    foundation_waterproofing:{type:'fixed',baseCost:0},
+    sump_pump:        {type:'fixed',  baseCost:350},
+  },
+};
+
+function computeMatCost(catId,itemId,sqft,numBath,inputs){
+  const entry=(MAT_COSTS[catId]||{})[itemId];
+  if(!entry)return 0;
+  const sq=Math.max(sqft||900,1);
+  const nb=Math.max(numBath||1,1);
+  const override=((inputs||{}).customCosts||{})[catId+'_'+itemId];
+  if(override!=null&&override!=='')return Number(override)||0;
+  switch(entry.type){
+    case 'sqft':     return Math.round(entry.baseCost*(sq/entry.base));
+    case 'fixed':    return entry.baseCost||0;
+    case 'per_bath': return Math.round(entry.unitCost*nb);
+    case 'per_unit': {
+      const cnt=((inputs||{}).unitCounts||{})[catId+'_'+itemId];
+      const n=cnt!=null?Number(cnt):entry.defaultCount;
+      return Math.round(entry.unitCost*(n||0));
+    }
+    default: return 0;
+  }
+}
+
+function MaterialCostPage({prop,data}){
+  const sqft=parseInt(prop.sqft)||900;
+  const numBath=parseInt(prop.futBath)||parseInt(prop.curBath)||1;
+  const propId=prop.id;
+
+  const[inputs,setInputs]=React.useState({partialPct:{},customCosts:{},unitCounts:{}});
+  const[saving,setSaving]=React.useState({});
+  React.useEffect(()=>dbListen(`projects/${propId}/matInputs`,v=>setInputs(v||{partialPct:{},customCosts:{},unitCounts:{}})),[propId]);
+
+  async function setPartialPct(catId,itemId,pct){
+    const key=catId+'_'+itemId;
+    await dbUpdate(`projects/${propId}/matInputs/partialPct`,{[key]:Number(pct)});
+  }
+  async function setCustomCost(catId,itemId,val){
+    const key=catId+'_'+itemId;
+    if(val===''||val==null){
+      await dbRemove(`projects/${propId}/matInputs/customCosts/${key}`);
+    } else {
+      await dbUpdate(`projects/${propId}/matInputs/customCosts`,{[key]:Number(val)||0});
+    }
+  }
+  async function setUnitCount(catId,itemId,val){
+    const key=catId+'_'+itemId;
+    await dbUpdate(`projects/${propId}/matInputs/unitCounts`,{[key]:Number(val)||0});
+  }
+
+  const[editingCost,setEditingCost]=React.useState(null); // {catId,itemId}
+
+  let grandTotal=0;
+  const sections=CATEGORIES.map(cat=>{
+    const catData=data[cat.id]||{};
+    let catTotal=0;
+    const rows=cat.items.map(item=>{
+      const d=catData[item.id];
+      const status=d?.status;
+      if(!status)return null;
+      if(status==='keep')return{item,status,cost:0,pct:0};
+      const fullCost=computeMatCost(cat.id,item.id,sqft,numBath,inputs);
+      const entry=(MAT_COSTS[cat.id]||{})[item.id];
+      const isUnit=entry?.type==='per_unit';
+      let pct=1;
+      if(status==='partial'){
+        const saved=(inputs.partialPct||{})[cat.id+'_'+item.id];
+        pct=(saved!=null?saved:50)/100;
+      }
+      const cost=Math.round(fullCost*pct);
+      catTotal+=cost;
+      return{item,status,cost,pct:pct*100,fullCost,isUnit,entry};
+    }).filter(Boolean);
+    grandTotal+=catTotal;
+    return{cat,rows,catTotal};
+  }).filter(s=>s.rows.length>0);
+
+  const fmt=n=>'$'+Math.round(n).toLocaleString();
+
+  return(
+    <div className="content" style={{paddingTop:8,paddingBottom:80}}>
+      <div style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'10px 14px',marginBottom:12,border:'1px solid rgba(255,255,255,.08)'}}>
+        <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginBottom:4}}>HOUSE INPUTS (auto-pulled from property)</div>
+        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+          <span style={{color:'white',fontSize:13}}><span style={{color:'rgba(255,255,255,.5)'}}>SQ FT</span> {sqft}</span>
+          <span style={{color:'white',fontSize:13}}><span style={{color:'rgba(255,255,255,.5)'}}>BATHS</span> {numBath}</span>
+        </div>
+        <div style={{fontSize:10,color:'rgba(255,255,255,.4)',marginTop:6}}>Material costs only · Labor not included · Tap ✏️ to override any cost</div>
+      </div>
+
+      {sections.map(({cat,rows,catTotal})=>(
+        <div key={cat.id} style={{marginBottom:16}}>
+          <div style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:'.5px',padding:'0 4px 6px',display:'flex',justifyContent:'space-between'}}>
+            <span>{cat.icon} {cat.label}</span>
+            <span style={{color:catTotal>0?'#e2b04a':'rgba(255,255,255,.3)'}}>{fmt(catTotal)}</span>
+          </div>
+          <div style={{background:'rgba(255,255,255,.04)',borderRadius:12,border:'1px solid rgba(255,255,255,.08)',overflow:'hidden'}}>
+            {rows.map(({item,status,cost,pct,fullCost,isUnit,entry},ri)=>{
+              const key=cat.id+'_'+item.id;
+              const isEditing=editingCost?.catId===cat.id&&editingCost?.itemId===item.id;
+              const statusColor={keep:'#28a745',partial:'#1d4ed8',replace:'#dc3545',maybe:'#888'}[status]||'#888';
+              const statusIcon={keep:'✓',partial:'⚡',replace:'↺',maybe:'?'}[status]||'';
+              return(
+                <div key={item.id} style={{padding:'10px 14px',borderTop:ri>0?'1px solid rgba(255,255,255,.06)':undefined}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:isEditing||(status==='partial')?6:0}}>
+                    <span style={{flex:1,fontSize:13,color:'white',fontWeight:500}}>{item.label}</span>
+                    <span style={{fontSize:11,color:statusColor,fontWeight:700}}>{statusIcon} {status}</span>
+                    <span style={{fontSize:14,fontWeight:700,color:cost>0?'#e2b04a':'rgba(255,255,255,.3)',minWidth:60,textAlign:'right'}}>
+                      {status==='keep'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>—</span>:status==='maybe'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>?</span>:fmt(cost)}
+                    </span>
+                    {status!=='keep'&&status!=='maybe'&&(
+                      <button onClick={()=>setEditingCost(isEditing?null:{catId:cat.id,itemId:item.id})}
+                        style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:14,cursor:'pointer',padding:'2px 4px'}}>✏️</button>
+                    )}
+                  </div>
+                  {status==='partial'&&(
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>% to replace:</span>
+                      <input type="range" min="5" max="100" step="5"
+                        value={(inputs.partialPct||{})[key]??50}
+                        onChange={e=>setInputs(p=>({...p,partialPct:{...(p.partialPct||{}),[key]:Number(e.target.value)}}))}
+                        onMouseUp={e=>setPartialPct(cat.id,item.id,e.target.value)}
+                        onTouchEnd={e=>setPartialPct(cat.id,item.id,e.target.value)}
+                        style={{flex:1,accentColor:'#e2b04a'}}/>
+                      <span style={{fontSize:12,color:'#e2b04a',fontWeight:700,minWidth:32}}>{(inputs.partialPct||{})[key]??50}%</span>
+                    </div>
+                  )}
+                  {isEditing&&(
+                    <div style={{display:'flex',gap:8,marginTop:4}}>
+                      {isUnit&&(
+                        <div style={{display:'flex',alignItems:'center',gap:6,flex:1}}>
+                          <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Count:</span>
+                          <input type="number" min="0" step="1"
+                            defaultValue={(inputs.unitCounts||{})[key]??entry.defaultCount}
+                            onBlur={e=>setUnitCount(cat.id,item.id,e.target.value)}
+                            style={{width:50,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
+                          <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>× {fmt(entry.unitCost)}/ea</span>
+                        </div>
+                      )}
+                      <div style={{display:'flex',alignItems:'center',gap:6,flex:1}}>
+                        <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Override $:</span>
+                        <input type="number" min="0" placeholder={String(fullCost)}
+                          defaultValue={(inputs.customCosts||{})[key]??''}
+                          onBlur={e=>setCustomCost(cat.id,item.id,e.target.value)}
+                          style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
+                        {(inputs.customCosts||{})[key]!=null&&(
+                          <button onClick={()=>setCustomCost(cat.id,item.id,'')} style={{background:'none',border:'none',color:'#dc3545',cursor:'pointer',fontSize:12}}>✕ reset</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      <div style={{background:'linear-gradient(135deg,rgba(226,176,74,.15),rgba(226,176,74,.05))',border:'1px solid rgba(226,176,74,.4)',borderRadius:14,padding:'16px 18px',textAlign:'center',marginTop:4}}>
+        <div style={{fontSize:12,color:'rgba(255,255,255,.6)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:4}}>Total Material Cost</div>
+        <div style={{fontSize:30,fontWeight:800,color:'#e2b04a'}}>{fmt(grandTotal)}</div>
+        <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginTop:4}}>Materials only · Does not include labor</div>
+      </div>
+    </div>
+  );
+}
+
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6;
+  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6,TAB_BUDGET=-7;
   const initStage=prop.stage||'walkthrough';
   const[activeTab,setActiveTab]=React.useState(TAB_TASKS);
   const[data,setData]=React.useState({});
@@ -5404,6 +5645,9 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
               📅 Timeline
             </div>
           )}
+          <div className={`tab${activeTab===TAB_BUDGET?' active':''}`} onClick={()=>setActiveTab(TAB_BUDGET)}>
+            💰 Budget
+          </div>
           <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
             👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
@@ -5459,6 +5703,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       )}
       {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
       {activeTab===TAB_TIMELINE&&<ProjectSchedulePage propId={prop.id}/>}
+      {activeTab===TAB_BUDGET&&<MaterialCostPage prop={prop} data={data}/>}
 
       {activeTab===TAB_TEAM&&(
         <div>
