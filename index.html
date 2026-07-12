@@ -5275,35 +5275,58 @@ function computeMatCost(catId,itemId,sqft,numBath,inputs){
   }
 }
 
+// Standard items always on every project budget (regardless of walkthrough status)
+const STANDARD_ITEMS=[
+  {id:'dumpster',    label:'🗑️ Dumpsters',      unitCost:500,  defaultCount:2, unit:'dumpsters'},
+  {id:'drywall',     label:'🧱 Drywall',          type:'sqft',  baseCost:843,  base:900},
+  {id:'lumber',      label:'🪵 Lumber / Framing', type:'sqft',  baseCost:1034, base:900},
+  {id:'light_fixture',label:'💡 Light Fixtures',  unitCost:35,  defaultCount:8, unit:'fixtures'},
+  {id:'outlets',     label:'🔌 Outlets',           unitCost:3.5, defaultCount:20,unit:'outlets'},
+];
+
+function computeStdCost(item,sqft,inputs){
+  const sq=Math.max(sqft||900,1);
+  const override=((inputs||{}).customCosts||{})['std_'+item.id];
+  if(override!=null&&override!=='')return Number(override)||0;
+  if(item.type==='sqft')return Math.round(item.baseCost*(sq/item.base));
+  const cnt=((inputs||{}).unitCounts||{})['std_'+item.id];
+  const n=cnt!=null?Number(cnt):item.defaultCount;
+  return Math.round(item.unitCost*(n||0));
+}
+
 function MaterialCostPage({prop,data}){
   const sqft=parseInt(prop.sqft)||900;
   const numBath=parseInt(prop.futBath)||parseInt(prop.curBath)||1;
   const propId=prop.id;
 
   const[inputs,setInputs]=React.useState({partialPct:{},customCosts:{},unitCounts:{}});
-  const[saving,setSaving]=React.useState({});
   React.useEffect(()=>dbListen(`projects/${propId}/matInputs`,v=>setInputs(v||{partialPct:{},customCosts:{},unitCounts:{}})),[propId]);
 
   async function setPartialPct(catId,itemId,pct){
-    const key=catId+'_'+itemId;
-    await dbUpdate(`projects/${propId}/matInputs/partialPct`,{[key]:Number(pct)});
+    await dbUpdate(`projects/${propId}/matInputs/partialPct`,{[catId+'_'+itemId]:Number(pct)});
   }
-  async function setCustomCost(catId,itemId,val){
-    const key=catId+'_'+itemId;
-    if(val===''||val==null){
-      await dbRemove(`projects/${propId}/matInputs/customCosts/${key}`);
-    } else {
-      await dbUpdate(`projects/${propId}/matInputs/customCosts`,{[key]:Number(val)||0});
-    }
+  async function setCustomCost(key,val){
+    if(val===''||val==null) await dbRemove(`projects/${propId}/matInputs/customCosts/${key}`);
+    else await dbUpdate(`projects/${propId}/matInputs/customCosts`,{[key]:Number(val)||0});
   }
-  async function setUnitCount(catId,itemId,val){
-    const key=catId+'_'+itemId;
+  async function setUnitCount(key,val){
     await dbUpdate(`projects/${propId}/matInputs/unitCounts`,{[key]:Number(val)||0});
   }
 
-  const[editingCost,setEditingCost]=React.useState(null); // {catId,itemId}
+  const[editingKey,setEditingKey]=React.useState(null);
 
-  let grandTotal=0;
+  const fmt=n=>'$'+Math.round(n).toLocaleString();
+
+  // Standard costs (always shown)
+  let stdTotal=0;
+  const stdRows=STANDARD_ITEMS.map(item=>{
+    const cost=computeStdCost(item,sqft,inputs);
+    stdTotal+=cost;
+    return{item,cost};
+  });
+
+  // Scope-driven costs (only items with a walkthrough status)
+  let scopeTotal=0;
   const sections=CATEGORIES.map(cat=>{
     const catData=data[cat.id]||{};
     let catTotal=0;
@@ -5311,7 +5334,7 @@ function MaterialCostPage({prop,data}){
       const d=catData[item.id];
       const status=d?.status;
       if(!status)return null;
-      if(status==='keep')return{item,status,cost:0,pct:0};
+      if(status==='keep')return{item,status,cost:0,pct:0,fullCost:0,isUnit:false,entry:null};
       const fullCost=computeMatCost(cat.id,item.id,sqft,numBath,inputs);
       const entry=(MAT_COSTS[cat.id]||{})[item.id];
       const isUnit=entry?.type==='per_unit';
@@ -5324,23 +5347,128 @@ function MaterialCostPage({prop,data}){
       catTotal+=cost;
       return{item,status,cost,pct:pct*100,fullCost,isUnit,entry};
     }).filter(Boolean);
-    grandTotal+=catTotal;
+    scopeTotal+=catTotal;
     return{cat,rows,catTotal};
   }).filter(s=>s.rows.length>0);
 
-  const fmt=n=>'$'+Math.round(n).toLocaleString();
+  const grandTotal=stdTotal+scopeTotal;
+
+  function ScopeRow({catId,item,status,cost,pct,fullCost,isUnit,entry,ri}){
+    const key=catId+'_'+item.id;
+    const isEditing=editingKey===key;
+    const statusColor={keep:'#28a745',partial:'#1d4ed8',replace:'#dc3545',maybe:'#888'}[status]||'#888';
+    const statusIcon={keep:'✓',partial:'⚡',replace:'↺',maybe:'?'}[status]||'';
+    return(
+      <div style={{padding:'10px 14px',borderTop:ri>0?'1px solid rgba(255,255,255,.06)':undefined}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:isEditing||(status==='partial')?6:0}}>
+          <span style={{flex:1,fontSize:13,color:'white',fontWeight:500}}>{item.label}</span>
+          <span style={{fontSize:11,color:statusColor,fontWeight:700}}>{statusIcon} {status}</span>
+          <span style={{fontSize:14,fontWeight:700,color:cost>0?'#e2b04a':'rgba(255,255,255,.3)',minWidth:60,textAlign:'right'}}>
+            {status==='keep'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>—</span>:status==='maybe'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>?</span>:fmt(cost)}
+          </span>
+          {status!=='keep'&&status!=='maybe'&&(
+            <button onClick={()=>setEditingKey(isEditing?null:key)}
+              style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:14,cursor:'pointer',padding:'2px 4px'}}>✏️</button>
+          )}
+        </div>
+        {status==='partial'&&(
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>% to replace:</span>
+            <input type="range" min="5" max="100" step="5"
+              value={(inputs.partialPct||{})[key]??50}
+              onChange={e=>setInputs(p=>({...p,partialPct:{...(p.partialPct||{}),[key]:Number(e.target.value)}}))}
+              onMouseUp={e=>setPartialPct(catId,item.id,e.target.value)}
+              onTouchEnd={e=>setPartialPct(catId,item.id,e.target.value)}
+              style={{flex:1,accentColor:'#e2b04a'}}/>
+            <span style={{fontSize:12,color:'#e2b04a',fontWeight:700,minWidth:32}}>{(inputs.partialPct||{})[key]??50}%</span>
+          </div>
+        )}
+        {isEditing&&(
+          <div style={{display:'flex',gap:8,marginTop:4,flexWrap:'wrap'}}>
+            {isUnit&&(
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Count:</span>
+                <input type="number" min="0" step="1"
+                  defaultValue={(inputs.unitCounts||{})[key]??entry.defaultCount}
+                  onBlur={e=>setUnitCount(key,e.target.value)}
+                  style={{width:50,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
+                <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>× {fmt(entry.unitCost)}/ea</span>
+              </div>
+            )}
+            <div style={{display:'flex',alignItems:'center',gap:6,flex:1}}>
+              <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Override $:</span>
+              <input type="number" min="0" placeholder={String(fullCost)}
+                defaultValue={(inputs.customCosts||{})[key]??''}
+                onBlur={e=>setCustomCost(key,e.target.value)}
+                style={{flex:1,minWidth:80,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
+              {(inputs.customCosts||{})[key]!=null&&(
+                <button onClick={()=>setCustomCost(key,'')} style={{background:'none',border:'none',color:'#dc3545',cursor:'pointer',fontSize:12}}>✕</button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return(
     <div className="content" style={{paddingTop:8,paddingBottom:80}}>
-      <div style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'10px 14px',marginBottom:12,border:'1px solid rgba(255,255,255,.08)'}}>
-        <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginBottom:4}}>HOUSE INPUTS (auto-pulled from property)</div>
-        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
-          <span style={{color:'white',fontSize:13}}><span style={{color:'rgba(255,255,255,.5)'}}>SQ FT</span> {sqft}</span>
-          <span style={{color:'white',fontSize:13}}><span style={{color:'rgba(255,255,255,.5)'}}>BATHS</span> {numBath}</span>
+
+      {/* Standard costs — always on every project */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:'.5px',padding:'0 4px 6px',display:'flex',justifyContent:'space-between'}}>
+          <span>📋 Standard (every project)</span>
+          <span style={{color:'#e2b04a'}}>{fmt(stdTotal)}</span>
         </div>
-        <div style={{fontSize:10,color:'rgba(255,255,255,.4)',marginTop:6}}>Material costs only · Labor not included · Tap ✏️ to override any cost</div>
+        <div style={{background:'rgba(255,255,255,.04)',borderRadius:12,border:'1px solid rgba(255,255,255,.08)',overflow:'hidden'}}>
+          {stdRows.map(({item,cost},ri)=>{
+            const key='std_'+item.id;
+            const isEditing=editingKey===key;
+            const isUnit=!item.type;
+            const cnt=(inputs.unitCounts||{})[key]??item.defaultCount;
+            return(
+              <div key={item.id} style={{padding:'10px 14px',borderTop:ri>0?'1px solid rgba(255,255,255,.06)':undefined}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:isEditing?6:0}}>
+                  <span style={{flex:1,fontSize:13,color:'white',fontWeight:500}}>{item.label}</span>
+                  {isUnit&&<span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>×{cnt}</span>}
+                  <span style={{fontSize:14,fontWeight:700,color:'#e2b04a',minWidth:60,textAlign:'right'}}>{fmt(cost)}</span>
+                  <button onClick={()=>setEditingKey(isEditing?null:key)}
+                    style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:14,cursor:'pointer',padding:'2px 4px'}}>✏️</button>
+                </div>
+                {isEditing&&(
+                  <div style={{display:'flex',gap:8,marginTop:4,flexWrap:'wrap'}}>
+                    {isUnit&&(
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Count:</span>
+                        <input type="number" min="0" step="1"
+                          defaultValue={cnt}
+                          onBlur={e=>setUnitCount(key,e.target.value)}
+                          style={{width:50,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
+                        <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>× ${item.unitCost}/ea</span>
+                      </div>
+                    )}
+                    <div style={{display:'flex',alignItems:'center',gap:6,flex:1}}>
+                      <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Override $:</span>
+                      <input type="number" min="0" placeholder={String(cost)}
+                        defaultValue={(inputs.customCosts||{})[key]??''}
+                        onBlur={e=>setCustomCost(key,e.target.value)}
+                        style={{flex:1,minWidth:80,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
+                      {(inputs.customCosts||{})[key]!=null&&(
+                        <button onClick={()=>setCustomCost(key,'')} style={{background:'none',border:'none',color:'#dc3545',cursor:'pointer',fontSize:12}}>✕</button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
+      {/* Scope-driven costs from walkthrough */}
+      {sections.length>0&&(
+        <div style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8,paddingLeft:4}}>From scope of work</div>
+      )}
       {sections.map(({cat,rows,catTotal})=>(
         <div key={cat.id} style={{marginBottom:16}}>
           <div style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:'.5px',padding:'0 4px 6px',display:'flex',justifyContent:'space-between'}}>
@@ -5348,66 +5476,18 @@ function MaterialCostPage({prop,data}){
             <span style={{color:catTotal>0?'#e2b04a':'rgba(255,255,255,.3)'}}>{fmt(catTotal)}</span>
           </div>
           <div style={{background:'rgba(255,255,255,.04)',borderRadius:12,border:'1px solid rgba(255,255,255,.08)',overflow:'hidden'}}>
-            {rows.map(({item,status,cost,pct,fullCost,isUnit,entry},ri)=>{
-              const key=cat.id+'_'+item.id;
-              const isEditing=editingCost?.catId===cat.id&&editingCost?.itemId===item.id;
-              const statusColor={keep:'#28a745',partial:'#1d4ed8',replace:'#dc3545',maybe:'#888'}[status]||'#888';
-              const statusIcon={keep:'✓',partial:'⚡',replace:'↺',maybe:'?'}[status]||'';
-              return(
-                <div key={item.id} style={{padding:'10px 14px',borderTop:ri>0?'1px solid rgba(255,255,255,.06)':undefined}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:isEditing||(status==='partial')?6:0}}>
-                    <span style={{flex:1,fontSize:13,color:'white',fontWeight:500}}>{item.label}</span>
-                    <span style={{fontSize:11,color:statusColor,fontWeight:700}}>{statusIcon} {status}</span>
-                    <span style={{fontSize:14,fontWeight:700,color:cost>0?'#e2b04a':'rgba(255,255,255,.3)',minWidth:60,textAlign:'right'}}>
-                      {status==='keep'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>—</span>:status==='maybe'?<span style={{color:'rgba(255,255,255,.3)',fontSize:12}}>?</span>:fmt(cost)}
-                    </span>
-                    {status!=='keep'&&status!=='maybe'&&(
-                      <button onClick={()=>setEditingCost(isEditing?null:{catId:cat.id,itemId:item.id})}
-                        style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:14,cursor:'pointer',padding:'2px 4px'}}>✏️</button>
-                    )}
-                  </div>
-                  {status==='partial'&&(
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>% to replace:</span>
-                      <input type="range" min="5" max="100" step="5"
-                        value={(inputs.partialPct||{})[key]??50}
-                        onChange={e=>setInputs(p=>({...p,partialPct:{...(p.partialPct||{}),[key]:Number(e.target.value)}}))}
-                        onMouseUp={e=>setPartialPct(cat.id,item.id,e.target.value)}
-                        onTouchEnd={e=>setPartialPct(cat.id,item.id,e.target.value)}
-                        style={{flex:1,accentColor:'#e2b04a'}}/>
-                      <span style={{fontSize:12,color:'#e2b04a',fontWeight:700,minWidth:32}}>{(inputs.partialPct||{})[key]??50}%</span>
-                    </div>
-                  )}
-                  {isEditing&&(
-                    <div style={{display:'flex',gap:8,marginTop:4}}>
-                      {isUnit&&(
-                        <div style={{display:'flex',alignItems:'center',gap:6,flex:1}}>
-                          <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Count:</span>
-                          <input type="number" min="0" step="1"
-                            defaultValue={(inputs.unitCounts||{})[key]??entry.defaultCount}
-                            onBlur={e=>setUnitCount(cat.id,item.id,e.target.value)}
-                            style={{width:50,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
-                          <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>× {fmt(entry.unitCost)}/ea</span>
-                        </div>
-                      )}
-                      <div style={{display:'flex',alignItems:'center',gap:6,flex:1}}>
-                        <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>Override $:</span>
-                        <input type="number" min="0" placeholder={String(fullCost)}
-                          defaultValue={(inputs.customCosts||{})[key]??''}
-                          onBlur={e=>setCustomCost(cat.id,item.id,e.target.value)}
-                          style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',borderRadius:6,color:'white',padding:'4px 8px',fontSize:13}}/>
-                        {(inputs.customCosts||{})[key]!=null&&(
-                          <button onClick={()=>setCustomCost(cat.id,item.id,'')} style={{background:'none',border:'none',color:'#dc3545',cursor:'pointer',fontSize:12}}>✕ reset</button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {rows.map((r,ri)=>(
+              <ScopeRow key={r.item.id} catId={cat.id} {...r} ri={ri}/>
+            ))}
           </div>
         </div>
       ))}
+
+      {sections.length===0&&(
+        <div style={{textAlign:'center',padding:'24px 16px',color:'rgba(255,255,255,.4)',fontSize:13}}>
+          Complete your walkthrough to see scope-based material costs here.
+        </div>
+      )}
 
       <div style={{background:'linear-gradient(135deg,rgba(226,176,74,.15),rgba(226,176,74,.05))',border:'1px solid rgba(226,176,74,.4)',borderRadius:14,padding:'16px 18px',textAlign:'center',marginTop:4}}>
         <div style={{fontSize:12,color:'rgba(255,255,255,.6)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:4}}>Total Material Cost</div>
