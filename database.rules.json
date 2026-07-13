@@ -102,25 +102,19 @@
       }
     },
 
-    // Gemini API key and other server config — read-only from client
+    // Server config — geminiKey is read-only, price lists are writable
     "config": {
-      ".read":  "auth != null",
-      ".write": "false"
-    },
-
-    // Per-user price list overrides
-    "userPriceList": {
-      "$uid": {
-        ".read":  "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
-      }
-    },
-
-    // Per-user custom price list items
-    "userPriceListCustom": {
-      "$uid": {
-        ".read":  "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+      "geminiKey": {
+        ".read":  "auth != null",
+        ".write": "false"
+      },
+      "priceList": {
+        ".read":  "auth != null",
+        ".write": "auth != null"
+      },
+      "priceListCustom": {
+        ".read":  "auth != null",
+        ".write": "auth != null"
       }
     }
 
