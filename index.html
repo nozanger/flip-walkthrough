@@ -5375,14 +5375,11 @@ function DetailedBudgetPage({prop,data}){
     await dbUpdate(`projects/${propId}/detailBudget`,{hInp:updated});
   }
   async function saveOv(field,sku,val){
-    const next={...ov,[field]:{...ov[field],[sku]:val}};
-    setOv(next);
+    setOv(prev=>({...prev,[field]:{...prev[field],[sku]:val}}));
     await dbUpdate(`projects/${propId}/detailBudget/ov/${field}`,{[sku]:val});
   }
   async function removeOv(field,sku){
-    const next={...ov,[field]:{...ov[field]}};
-    delete next[field][sku];
-    setOv(next);
+    setOv(prev=>{const n={...prev,[field]:{...prev[field]}};delete n[field][sku];return n;});
     await dbRemove(`projects/${propId}/detailBudget/ov/${field}/${sku}`);
   }
   async function saveCustom(items){
@@ -5392,7 +5389,7 @@ function DetailedBudgetPage({prop,data}){
 
   const d=computeDerived(hInp);
   const fmt=n=>'$'+(Math.round(n)||0).toLocaleString();
-  const fmtN=n=>Number(n.toFixed(2));
+  const fmtN=n=>{if(!isFinite(n)||isNaN(n))return 0;return Number(n.toFixed(2));};
 
   function getStatus(scopeKey){
     if(!scopeKey)return null;
@@ -5483,7 +5480,7 @@ function DetailedBudgetPage({prop,data}){
                 <div style={{fontSize:9,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:2}}>{f.label}</div>
                 <input type={f.type} value={hInp[f.key]||''} style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:14,fontWeight:600,padding:'6px 8px',boxSizing:'border-box'}}
                   onChange={e=>setHInp(h=>({...h,[f.key]:e.target.value===''?'':Number(e.target.value)}))}
-                  onBlur={()=>saveHInp(hInp)}/>
+                  onBlur={e=>{const v=e.target.value===''?'':Number(e.target.value);setHInp(h=>{const u={...h,[f.key]:v};saveHInp(u);return u;});}}/>
               </div>
             ))}
           </div>
