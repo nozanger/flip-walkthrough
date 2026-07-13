@@ -5639,6 +5639,18 @@ const DETAIL_ITEMS=[
   {sku:'M0412',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Door Casing',            unit:'LF',    cost:1.10, waste:.10,qty:()=>28},
   {sku:'M0413',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Window Stool & Apron',   unit:'set',   cost:35,   waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
   {sku:'M0414',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Finish Nails & Filler',  unit:'kit',   cost:15,   waste:0,  qty:()=>1},
+  // ─ GARAGE ─ (garageSqft defaults to 400 = typical 2-car garage)
+  {sku:'M0250',sec:'Garage',grp:'Garage Roofing',   scopeKey:'exterior.garage',label:'Shingles',              unit:'square',cost:125,  waste:.10,qty:(i)=>(i.garageSqft||400)/100*1.15},
+  {sku:'M0251',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Underlayment',        unit:'square',cost:7,    waste:.05,qty:(i)=>(i.garageSqft||400)/100*1.15},
+  {sku:'M0252',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Ice & Water Shield',  unit:'roll',  cost:75,   waste:.05,qty:(i)=>Math.ceil((i.garageSqft||400)/200)},
+  {sku:'M0253',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Drip Edge',           unit:'LF',    cost:.78,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
+  {sku:'M0254',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Ridge Cap',           unit:'bundle',cost:74,   waste:.05,qty:()=>1},
+  {sku:'M0255',sec:'Garage',grp:'Garage Roofing',                               label:'↳ OSB Deck Repair',     unit:'sheet', cost:22,   waste:.10,qty:(i)=>Math.ceil((i.garageSqft||400)/100)},
+  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding',                unit:'SF',    cost:4.50, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0261',sec:'Garage',grp:'Garage Siding',                               label:'↳ House Wrap',           unit:'SF',    cost:.25,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0262',sec:'Garage',grp:'Garage Siding',                               label:'↳ Starter Strip',        unit:'LF',    cost:1,    waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
+  {sku:'M0263',sec:'Garage',grp:'Garage Siding',                               label:'↳ J-Channel / Corners',  unit:'LF',    cost:6,    waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*.15)},
+  {sku:'M0264',sec:'Garage',grp:'Garage Siding',                               label:'↳ Exterior Caulk',       unit:'tube',  cost:6,    waste:0,  qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*2)},
   // ─ DECKING ─ (default sized for a 6×8 = 48 sqft deck; adjust deckSqft in house inputs)
   {sku:'M0210',sec:'Decking',grp:'Deck Structure',label:'Deck Boards (5/4×6 PT)',      unit:'SF',    cost:2.50, waste:.12,qty:(i)=>i.deckSqft||48},
   {sku:'M0211',sec:'Decking',grp:'Deck Structure',label:'↳ Joist Framing (2×6 PT)',   unit:'LF',    cost:0.90, waste:.10,qty:(i)=>(i.deckSqft||48)*1.25},
@@ -5658,7 +5670,7 @@ const DETAIL_ITEMS=[
 
 function getDefaultHouseInputs(prop){
   const sq=parseInt(prop.sqft)||900,st=1;
-  return{sqft:sq,stories:st,ceilH:8,perim:Math.round(4*Math.sqrt(sq/st)),intWallLf:Math.round(sq/2),numBed:parseInt(prop.futBed)||parseInt(prop.curBed)||3,numBath:parseInt(prop.futBath)||parseInt(prop.curBath)||1,numExtDoors:2,numIntDoors:4,numWindows:Math.round(sq/112),cabinetLf:14,trimLf:Math.round(sq/1.33),deckSqft:48,additionSqft:0};
+  return{sqft:sq,stories:st,ceilH:8,perim:Math.round(4*Math.sqrt(sq/st)),intWallLf:Math.round(sq/2),numBed:parseInt(prop.futBed)||parseInt(prop.curBed)||3,numBath:parseInt(prop.futBath)||parseInt(prop.curBath)||1,numExtDoors:2,numIntDoors:4,numWindows:Math.round(sq/112),cabinetLf:14,trimLf:Math.round(sq/1.33),deckSqft:48,additionSqft:0,garageSqft:400};
 }
 
 function computeDerived(i){
@@ -5791,6 +5803,7 @@ function DetailedBudgetPage({prop,data}){
     {key:'cabinetLf',label:'Cabinet Run (LF)',type:'number'},{key:'trimLf',label:'Trim Run (LF)',type:'number'},
     {key:'deckSqft',label:'Deck Size (SF)',type:'number'},
     {key:'additionSqft',label:'Addition Size (SF)',type:'number'},
+    {key:'garageSqft',label:'Garage Size (SF)',type:'number'},
   ];
 
   const STATUS_COLOR={replace:'#ef4444',partial:'#3b82f6',keep:'#22c55e',maybe:'#f59e0b'};
