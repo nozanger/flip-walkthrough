@@ -715,6 +715,20 @@ const CATEGORIES = [
     {id:'foundation_general',label:'Foundation — General'},{id:'foundation_cracks',label:'Cracks / Settling'},
     {id:'foundation_waterproofing',label:'Waterproofing'},{id:'sump_pump',label:'Sump Pump'},
   ]},
+  { id:'addition', label:'Addition', icon:'🏗', items:[
+    {id:'addition_foundation',label:'Foundation / Slab'},
+    {id:'addition_framing',label:'Framing (2×4 / 2×6)'},
+    {id:'addition_sheathing',label:'OSB Sheathing'},
+    {id:'addition_roofing',label:'Roofing'},
+    {id:'addition_exterior',label:'Exterior (Siding / Wrap)'},
+    {id:'addition_insulation',label:'Insulation'},
+    {id:'addition_drywall',label:'Drywall & Finishing'},
+    {id:'addition_flooring',label:'Flooring'},
+    {id:'addition_windows_doors',label:'Windows & Doors'},
+    {id:'addition_electrical',label:'Electrical'},
+    {id:'addition_paint',label:'Paint & Caulk'},
+    {id:'addition_trim',label:'Trim & Finishing'},
+  ]},
 ];
 
 const STATUSES      = [{id:'keep',label:'✓ Keep',cls:'keep'},{id:'partial',label:'⚡ Partial',cls:'partial'},{id:'replace',label:'↺ Replace',cls:'replace'},{id:'maybe',label:'? Check',cls:'maybe'}];
@@ -5554,6 +5568,77 @@ const DETAIL_ITEMS=[
   {sku:'M0202',sec:'Below Grade',grp:'Crawl Space',                  scopeKey:'below_grade.crawlspace_vapor',label:'Vapor Barrier',unit:'SF',cost:.15,waste:.05,qty:(i)=>i.sqft/i.stories},
   {sku:'M0203',sec:'Below Grade',grp:'Crawl Space',                                            label:'↳ Crawl Space Insulation',unit:'SF',cost:.20,waste:.05,qty:(i)=>i.sqft/i.stories},
   {sku:'M0204',sec:'Below Grade',grp:'Egress Windows',               scopeKey:'below_grade.basement_egress',label:'Egress Windows',unit:'each',cost:400,waste:0,qty:()=>1},
+  // ─ ADDITION ─ (default 200 sqft; adjust additionSqft in house inputs)
+  // Foundation / Slab
+  {sku:'M0300',sec:'Addition',grp:'Foundation / Slab',scopeKey:'addition.addition_foundation',label:'Concrete (80lb bags)',         unit:'bag',   cost:8,    waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)*0.8)},
+  {sku:'M0301',sec:'Addition',grp:'Foundation / Slab',                                        label:'↳ Rebar (#4)',                 unit:'LF',    cost:.65,  waste:.10,qty:(i)=>(i.additionSqft||200)*3},
+  {sku:'M0302',sec:'Addition',grp:'Foundation / Slab',                                        label:'↳ Gravel / Fill (bag)',        unit:'bag',   cost:5,    waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)*0.5)},
+  {sku:'M0303',sec:'Addition',grp:'Foundation / Slab',                                        label:'↳ Vapor Barrier (6 mil)',      unit:'SF',    cost:.15,  waste:.10,qty:(i)=>(i.additionSqft||200)},
+  {sku:'M0304',sec:'Addition',grp:'Foundation / Slab',                                        label:'↳ Form Boards (2×6)',          unit:'LF',    cost:1.10, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4)},
+  // Framing
+  {sku:'M0310',sec:'Addition',grp:'Framing',          scopeKey:'addition.addition_framing',   label:'2×4×8 Studs',                 unit:'each',  cost:4.50, waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)*0.75)},
+  {sku:'M0311',sec:'Addition',grp:'Framing',                                                   label:'↳ Top/Bottom Plates (2×4)',   unit:'LF',    cost:.55,  waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*12)},
+  {sku:'M0312',sec:'Addition',grp:'Framing',                                                   label:'↳ Header Lumber (2×10)',      unit:'LF',    cost:2.20, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*1.5)},
+  {sku:'M0313',sec:'Addition',grp:'Framing',                                                   label:'↳ Ceiling Joists (2×8)',      unit:'LF',    cost:1.10, waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)*1.25)},
+  {sku:'M0314',sec:'Addition',grp:'Framing',                                                   label:'↳ Roof Rafters (2×6)',        unit:'LF',    cost:.90,  waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)*1.5)},
+  {sku:'M0315',sec:'Addition',grp:'Framing',                                                   label:'↳ Framing Nails (5 lb box)',  unit:'box',   cost:28,   waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
+  {sku:'M0316',sec:'Addition',grp:'Framing',                                                   label:'↳ Hurricane Ties / Hangers',  unit:'each',  cost:1.75, waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/5)},
+  {sku:'M0317',sec:'Addition',grp:'Framing',                                                   label:'↳ LVL Beam (3.5"×9.5")',     unit:'LF',    cost:8,    waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200))},
+  // OSB Sheathing
+  {sku:'M0320',sec:'Addition',grp:'OSB Sheathing',    scopeKey:'addition.addition_sheathing', label:'OSB Wall Sheathing (7/16")',   unit:'sheet', cost:22,   waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*8/32)},
+  {sku:'M0321',sec:'Addition',grp:'OSB Sheathing',                                            label:'↳ OSB Roof Deck (7/16")',     unit:'sheet', cost:22,   waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)*1.15/32)},
+  {sku:'M0322',sec:'Addition',grp:'OSB Sheathing',                                            label:'↳ OSB Subfloor (3/4" T&G)',  unit:'sheet', cost:38,   waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)/32)},
+  {sku:'M0323',sec:'Addition',grp:'OSB Sheathing',                                            label:'↳ Subfloor Adhesive',         unit:'tube',  cost:6,    waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/50)},
+  // Roofing
+  {sku:'M0330',sec:'Addition',grp:'Roofing',          scopeKey:'addition.addition_roofing',   label:'Shingles (to match)',         unit:'square',cost:125,  waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)/100*1.15)},
+  {sku:'M0331',sec:'Addition',grp:'Roofing',                                                   label:'↳ Roof Underlayment',        unit:'square',cost:7,    waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)/100*1.15)},
+  {sku:'M0332',sec:'Addition',grp:'Roofing',                                                   label:'↳ Ice & Water Shield',       unit:'roll',  cost:75,   waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)/200)},
+  {sku:'M0333',sec:'Addition',grp:'Roofing',                                                   label:'↳ Drip Edge',                unit:'LF',    cost:.78,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*3)},
+  {sku:'M0334',sec:'Addition',grp:'Roofing',                                                   label:'↳ Ridge Cap',                unit:'bundle',cost:74,   waste:.05,qty:()=>1},
+  // Exterior
+  {sku:'M0340',sec:'Addition',grp:'Exterior',         scopeKey:'addition.addition_exterior',  label:'House Wrap',                  unit:'SF',    cost:.25,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9)},
+  {sku:'M0341',sec:'Addition',grp:'Exterior',                                                  label:'↳ Siding (to match)',        unit:'SF',    cost:4.50, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9)},
+  {sku:'M0342',sec:'Addition',grp:'Exterior',                                                  label:'↳ Exterior Caulk',          unit:'tube',  cost:6,    waste:0,  qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*0.5)},
+  {sku:'M0343',sec:'Addition',grp:'Exterior',                                                  label:'↳ Exterior Paint / Stain',  unit:'gallon',cost:45,   waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9/350)},
+  // Insulation
+  {sku:'M0350',sec:'Addition',grp:'Insulation',       scopeKey:'addition.addition_insulation',label:'Wall Insulation (R-13 batt)',  unit:'SF',    cost:.50,  waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*8)},
+  {sku:'M0351',sec:'Addition',grp:'Insulation',                                                label:'↳ Ceiling Insulation (R-38)',unit:'SF',    cost:1.20, waste:.10,qty:(i)=>(i.additionSqft||200)},
+  {sku:'M0352',sec:'Addition',grp:'Insulation',                                                label:'↳ Spray Foam (cans)',        unit:'can',   cost:8,    waste:0,  qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*2)},
+  // Drywall & Finishing
+  {sku:'M0360',sec:'Addition',grp:'Drywall & Finishing',scopeKey:'addition.addition_drywall', label:'Drywall Sheets (1/2")',       unit:'sheet', cost:13,   waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)*0.135)},
+  {sku:'M0361',sec:'Addition',grp:'Drywall & Finishing',                                       label:'↳ Joint Compound (4.5 gal)', unit:'bucket',cost:15,   waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)*0.008)},
+  {sku:'M0362',sec:'Addition',grp:'Drywall & Finishing',                                       label:'↳ Joint Tape',              unit:'roll',  cost:4,    waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)*0.008*9)},
+  {sku:'M0363',sec:'Addition',grp:'Drywall & Finishing',                                       label:'↳ Corner Bead',             unit:'each',  cost:3.41, waste:.10,qty:(i)=>Math.ceil((i.additionSqft||200)*0.015)},
+  {sku:'M0364',sec:'Addition',grp:'Drywall & Finishing',                                       label:'↳ Drywall Screws (5lb)',    unit:'box',   cost:45,   waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/1000)},
+  {sku:'M0365',sec:'Addition',grp:'Drywall & Finishing',                                       label:'↳ Sanding Blocks',          unit:'each',  cost:3.50, waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/50)},
+  {sku:'M0366',sec:'Addition',grp:'Drywall & Finishing',                                       label:'↳ Sandpaper Sheets (pkg)',  unit:'pkg',   cost:8,    waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
+  // Flooring
+  {sku:'M0370',sec:'Addition',grp:'Flooring',         scopeKey:'addition.addition_flooring',  label:'LVP Flooring',               unit:'SF',    cost:1.50, waste:.10,qty:(i)=>(i.additionSqft||200)},
+  {sku:'M0371',sec:'Addition',grp:'Flooring',                                                  label:'↳ Underlayment',            unit:'SF',    cost:.50,  waste:.10,qty:(i)=>(i.additionSqft||200)},
+  {sku:'M0372',sec:'Addition',grp:'Flooring',                                                  label:'↳ Transition Strips',       unit:'each',  cost:15,   waste:0,  qty:()=>2},
+  // Windows & Doors
+  {sku:'M0380',sec:'Addition',grp:'Windows & Doors',  scopeKey:'addition.addition_windows_doors',label:'Windows',                unit:'each',  cost:174,  waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
+  {sku:'M0381',sec:'Addition',grp:'Windows & Doors',                                           label:'↳ Exterior Door',          unit:'each',  cost:280,  waste:0,  qty:()=>1},
+  {sku:'M0382',sec:'Addition',grp:'Windows & Doors',                                           label:'↳ Interior Door',          unit:'each',  cost:120,  waste:0,  qty:()=>1},
+  {sku:'M0383',sec:'Addition',grp:'Windows & Doors',                                           label:'↳ Flashing / Foam Kit',    unit:'kit',   cost:35,   waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)+2},
+  // Electrical
+  {sku:'M0390',sec:'Addition',grp:'Electrical',       scopeKey:'addition.addition_electrical', label:'Romex 14/2 Wire',           unit:'LF',    cost:.45,  waste:.10,qty:(i)=>(i.additionSqft||200)*2},
+  {sku:'M0391',sec:'Addition',grp:'Electrical',                                                label:'↳ Outlets',                unit:'each',  cost:3.50, waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/45)},
+  {sku:'M0392',sec:'Addition',grp:'Electrical',                                                label:'↳ Switches',               unit:'each',  cost:3.50, waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/150)},
+  {sku:'M0393',sec:'Addition',grp:'Electrical',                                                label:'↳ Light Fixtures',         unit:'each',  cost:35,   waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
+  {sku:'M0394',sec:'Addition',grp:'Electrical',                                                label:'↳ Electrical Boxes/Misc',  unit:'kit',   cost:40,   waste:0,  qty:()=>1},
+  // Paint
+  {sku:'M0400',sec:'Addition',grp:'Paint & Caulk',    scopeKey:'addition.addition_paint',     label:'Paint (5-gal bucket)',       unit:'bucket',cost:100,  waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)*0.004)},
+  {sku:'M0401',sec:'Addition',grp:'Paint & Caulk',                                            label:'↳ Primer (5-gal)',          unit:'bucket',cost:53,   waste:.05,qty:(i)=>Math.ceil((i.additionSqft||200)*0.004)},
+  {sku:'M0402',sec:'Addition',grp:'Paint & Caulk',                                            label:"↳ Painter's Tape",         unit:'roll',  cost:6,    waste:0,  qty:()=>2},
+  {sku:'M0403',sec:'Addition',grp:'Paint & Caulk',                                            label:'↳ Interior Caulk',         unit:'tube',  cost:5,    waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
+  {sku:'M0404',sec:'Addition',grp:'Paint & Caulk',                                            label:'↳ Paint Sundries Kit',     unit:'kit',   cost:35,   waste:0,  qty:()=>1},
+  // Trim
+  {sku:'M0410',sec:'Addition',grp:'Trim & Finishing', scopeKey:'addition.addition_trim',      label:'Baseboard / Trim',          unit:'LF',    cost:1.30, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4)},
+  {sku:'M0411',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Quarter Round',          unit:'LF',    cost:.71,  waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4)},
+  {sku:'M0412',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Door Casing',            unit:'LF',    cost:1.10, waste:.10,qty:()=>28},
+  {sku:'M0413',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Window Stool & Apron',   unit:'set',   cost:35,   waste:0,  qty:(i)=>Math.ceil((i.additionSqft||200)/100)},
+  {sku:'M0414',sec:'Addition',grp:'Trim & Finishing',                                         label:'↳ Finish Nails & Filler',  unit:'kit',   cost:15,   waste:0,  qty:()=>1},
   // ─ DECKING ─ (default sized for a 6×8 = 48 sqft deck; adjust deckSqft in house inputs)
   {sku:'M0210',sec:'Decking',grp:'Deck Structure',label:'Deck Boards (5/4×6 PT)',      unit:'SF',    cost:2.50, waste:.12,qty:(i)=>i.deckSqft||48},
   {sku:'M0211',sec:'Decking',grp:'Deck Structure',label:'↳ Joist Framing (2×6 PT)',   unit:'LF',    cost:0.90, waste:.10,qty:(i)=>(i.deckSqft||48)*1.25},
@@ -5573,7 +5658,7 @@ const DETAIL_ITEMS=[
 
 function getDefaultHouseInputs(prop){
   const sq=parseInt(prop.sqft)||900,st=1;
-  return{sqft:sq,stories:st,ceilH:8,perim:Math.round(4*Math.sqrt(sq/st)),intWallLf:Math.round(sq/2),numBed:parseInt(prop.futBed)||parseInt(prop.curBed)||3,numBath:parseInt(prop.futBath)||parseInt(prop.curBath)||1,numExtDoors:2,numIntDoors:4,numWindows:Math.round(sq/112),cabinetLf:14,trimLf:Math.round(sq/1.33),deckSqft:48};
+  return{sqft:sq,stories:st,ceilH:8,perim:Math.round(4*Math.sqrt(sq/st)),intWallLf:Math.round(sq/2),numBed:parseInt(prop.futBed)||parseInt(prop.curBed)||3,numBath:parseInt(prop.futBath)||parseInt(prop.curBath)||1,numExtDoors:2,numIntDoors:4,numWindows:Math.round(sq/112),cabinetLf:14,trimLf:Math.round(sq/1.33),deckSqft:48,additionSqft:0};
 }
 
 function computeDerived(i){
@@ -5705,6 +5790,7 @@ function DetailedBudgetPage({prop,data}){
     {key:'numIntDoors',label:'Int Doors',type:'number'},{key:'numWindows',label:'Windows',type:'number'},
     {key:'cabinetLf',label:'Cabinet Run (LF)',type:'number'},{key:'trimLf',label:'Trim Run (LF)',type:'number'},
     {key:'deckSqft',label:'Deck Size (SF)',type:'number'},
+    {key:'additionSqft',label:'Addition Size (SF)',type:'number'},
   ];
 
   const STATUS_COLOR={replace:'#ef4444',partial:'#3b82f6',keep:'#22c55e',maybe:'#f59e0b'};
