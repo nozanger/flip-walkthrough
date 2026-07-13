@@ -3760,6 +3760,7 @@ function PriceListPage(){
   const[globalCosts,setGlobalCosts]=React.useState({});
   const[customItems,setCustomItems]=React.useState([]);
   const[editSku,setEditSku]=React.useState(null);
+  const[editValue,setEditValue]=React.useState('');
   const[collapsed,setCollapsed]=React.useState({});
   const[search,setSearch]=React.useState('');
   const[showGuide,setShowGuide]=React.useState(false);
@@ -3789,6 +3790,7 @@ function PriceListPage(){
     const num=Number(val);
     if(isNaN(num)||num<0)return;
     setEditSku(null);
+    setEditValue('');
     setGlobalCosts(p=>({...p,[sku]:{...p[sku],cost:num}}));
     await dbUpdate(`config/priceList/${sku}`,{cost:num});
   }
@@ -3873,15 +3875,16 @@ function PriceListPage(){
                           </div>
                           {isEditing?(
                             <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
-                              <input autoFocus type="number" min="0" step="0.01" defaultValue={displayCost}
+                              <input autoFocus type="number" min="0" step="0.01" value={editValue}
                                 style={{width:76,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:6,color:'white',fontSize:13,fontWeight:700,padding:'6px 8px',textAlign:'right'}}
-                                onBlur={e=>saveCost(it.sku,e.target.value)}
+                                onChange={e=>setEditValue(e.target.value)}
+                                onBlur={()=>saveCost(it.sku,editValue)}
                                 onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setEditSku(null);}}/>
                               <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>/{it.unit}</span>
                             </div>
                           ):(
                             <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
-                              <button onClick={()=>setEditSku(it.sku)}
+                              <button onClick={()=>{setEditSku(it.sku);setEditValue(String(displayCost));}}
                                 style={{background:ovCost!=null?'rgba(226,176,74,.15)':'rgba(255,255,255,.06)',border:'1px solid '+(ovCost!=null?'rgba(226,176,74,.4)':'rgba(255,255,255,.1)'),borderRadius:6,color:ovCost!=null?'#e2b04a':'rgba(255,255,255,.8)',fontSize:13,fontWeight:700,padding:'6px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>
                                 ${displayCost}<span style={{fontWeight:400,fontSize:10,color:'rgba(255,255,255,.4)'}}>/{it.unit}</span>
                               </button>
@@ -5698,6 +5701,7 @@ function DetailedBudgetPage({prop,data}){
   const[custom,setCustom]=React.useState([]);
   const[collapsed,setCollapsed]=React.useState({});
   const[editCell,setEditCell]=React.useState(null); // {sku,field}
+  const[editCellVal,setEditCellVal]=React.useState('');
   const[addingTo,setAddingTo]=React.useState(null); // section name
   const[newItem,setNewItem]=React.useState({label:'',unit:'each',cost:'',qty:''});
   const[showInputs,setShowInputs]=React.useState(false);
@@ -5914,12 +5918,13 @@ function DetailedBudgetPage({prop,data}){
                                 <span style={{fontSize:10,color:'rgba(255,255,255,.25)'}}>×</span>
                                 {/* Unit Cost */}
                                 {isEditingCost?(
-                                  <input autoFocus type="number" min="0" step="0.01" defaultValue={unitCost}
+                                  <input autoFocus type="number" min="0" step="0.01" value={editCellVal}
                                     style={{width:70,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:5,color:'white',fontSize:11,padding:'3px 5px'}}
-                                    onBlur={async e=>{const v=Number(e.target.value);setEditCell(null);await saveOv('cost',it.sku,v);}}
+                                    onChange={e=>setEditCellVal(e.target.value)}
+                                    onBlur={async()=>{const v=Number(editCellVal);setEditCell(null);setEditCellVal('');await saveOv('cost',it.sku,v);}}
                                     onKeyDown={e=>e.key==='Enter'&&e.target.blur()}/>
                                 ):(
-                                  <button onClick={()=>setEditCell({sku:it.sku,field:'cost'})}
+                                  <button onClick={()=>{setEditCell({sku:it.sku,field:'cost'});setEditCellVal(String(unitCost));}}
                                     style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:5,color:ov.cost[it.sku]!=null?'#e2b04a':globalCosts[it.sku]?.cost!=null?'#a78bfa':'rgba(255,255,255,.6)',fontSize:11,padding:'3px 7px',cursor:'pointer'}}>
                                     ${unitCost}/{it.unit}
                                   </button>
