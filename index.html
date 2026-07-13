@@ -5432,7 +5432,7 @@ const DETAIL_ITEMS=[
   {sku:'M0006',sec:'Exterior',grp:'Roof',                                                      label:'↳ Ridge Vent',           unit:'LF',     cost:3.3,  waste:.05,qty:(i)=>i.perim/4},
   {sku:'M0007',sec:'Exterior',grp:'Roof',                                                      label:'↳ Starter Strip',        unit:'bundle', cost:50.48,waste:.05,qty:(i)=>i.perim/105},
   {sku:'M0008',sec:'Exterior',grp:'Roof',                                                      label:'↳ Roofing Nails',        unit:'box',    cost:42,   waste:0,  qty:(i,d)=>d.roofSq/10},
-  {sku:'M0009',sec:'Exterior',grp:'Roof',                                                      label:'↳ OSB Deck Repair',      unit:'sheet',  cost:9.76, waste:.10,qty:(i,d)=>Math.max(6,Math.round(d.roofSq*.6))},
+  {sku:'M0009',sec:'Exterior',grp:'Roof',                                                      label:'↳ OSB Deck Repair',      unit:'sheet',  cost:9.76, waste:.10,qty:(i,d)=>Math.max(5,Math.round(d.roofSq*.45))},
   {sku:'M0010',sec:'Exterior',grp:'Roof',                                                      label:'↳ Pipe Boots/Flashing',  unit:'each',   cost:18,   waste:0,  qty:()=>3},
   // ─ GUTTERS ─
   {sku:'M0011',sec:'Exterior',grp:'Gutters',                          scopeKey:'exterior.gutters',label:'Gutters',             unit:'LF',     cost:2,    waste:.05,qty:(i)=>i.perim},
