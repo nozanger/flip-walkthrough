@@ -5424,13 +5424,13 @@ function ProjectSchedulePage({propId}){
 // scopeKey='catId.itemId' links to walkthrough status
 const DETAIL_ITEMS=[
   // ─ EXTERIOR ─ ROOF ─
-  {sku:'M0001',sec:'Exterior',grp:'Roof',                             scopeKey:'exterior.roof',label:'Shingles',               unit:'square', cost:90,  waste:.10,qty:(i,d)=>d.roofSq},
+  {sku:'M0001',sec:'Exterior',grp:'Roof',                             scopeKey:'exterior.roof',label:'Shingles',               unit:'square', cost:78,  waste:.10,qty:(i,d)=>d.roofSq},
   {sku:'M0002',sec:'Exterior',grp:'Roof',                                                      label:'↳ Underlayment',         unit:'square', cost:7,    waste:.05,qty:(i,d)=>d.roofSq},
-  {sku:'M0003',sec:'Exterior',grp:'Roof',                                                      label:'↳ Ice & Water Shield',   unit:'roll',   cost:75,   waste:.05,qty:(i,d)=>d.roofSq/2},
+  {sku:'M0003',sec:'Exterior',grp:'Roof',                                                      label:'↳ Ice & Water Shield',   unit:'roll',   cost:75,   waste:.05,qty:(i,d)=>Math.ceil(d.roofSq/10)},
   {sku:'M0004',sec:'Exterior',grp:'Roof',                                                      label:'↳ Drip Edge',            unit:'LF',     cost:.78,  waste:.05,qty:(i)=>i.perim},
-  {sku:'M0005',sec:'Exterior',grp:'Roof',                                                      label:'↳ Ridge Cap',            unit:'bundle', cost:74,   waste:.05,qty:(i,d)=>d.roofSq*.15},
+  {sku:'M0005',sec:'Exterior',grp:'Roof',                                                      label:'↳ Ridge Cap',            unit:'bundle', cost:56.98,waste:.05,qty:(i,d)=>d.roofSq*.15},
   {sku:'M0006',sec:'Exterior',grp:'Roof',                                                      label:'↳ Ridge Vent',           unit:'LF',     cost:3.3,  waste:.05,qty:(i)=>i.perim/4},
-  {sku:'M0007',sec:'Exterior',grp:'Roof',                                                      label:'↳ Starter Strip',        unit:'bundle', cost:50.48,waste:.05,qty:(i,d)=>d.roofSq/2},
+  {sku:'M0007',sec:'Exterior',grp:'Roof',                                                      label:'↳ Starter Strip',        unit:'bundle', cost:50.48,waste:.05,qty:(i)=>i.perim/105},
   {sku:'M0008',sec:'Exterior',grp:'Roof',                                                      label:'↳ Roofing Nails',        unit:'box',    cost:42,   waste:0,  qty:(i,d)=>d.roofSq/10},
   {sku:'M0009',sec:'Exterior',grp:'Roof',                                                      label:'↳ OSB Deck Repair',      unit:'sheet',  cost:9.76, waste:.10,qty:(i,d)=>Math.max(6,Math.round(d.roofSq*.6))},
   {sku:'M0010',sec:'Exterior',grp:'Roof',                                                      label:'↳ Pipe Boots/Flashing',  unit:'each',   cost:18,   waste:0,  qty:()=>3},
@@ -5441,7 +5441,7 @@ const DETAIL_ITEMS=[
   {sku:'M0014',sec:'Exterior',grp:'Gutters',                                                    label:'↳ End Caps & Outlets', unit:'each',   cost:4,    waste:0,  qty:(i)=>Math.round(i.perim/13)},
   // ─ SOFFIT/FASCIA ─
   {sku:'M0015',sec:'Exterior',grp:'Soffit / Fascia',                  scopeKey:'exterior.soffit_fascia',label:'Soffit',       unit:'SF',     cost:1.67, waste:.10,qty:(i)=>i.perim*2},
-  {sku:'M0016',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ Fascia/Trim Coil',  unit:'LF',     cost:1.92, waste:.10,qty:(i)=>i.perim},
+  {sku:'M0016',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ Fascia/Trim Coil',  unit:'LF',     cost:1.92, waste:.10,qty:(i)=>i.perim*2},
   {sku:'M0017',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ J-Channel',         unit:'LF',     cost:1.1,  waste:.10,qty:(i)=>i.perim},
   // ─ SIDING ─
   {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:1.75, waste:.10,qty:(i,d)=>d.wallSf},
@@ -5565,7 +5565,7 @@ const DETAIL_ITEMS=[
   {sku:'M0128',sec:'Mechanical',grp:'HVAC',                                                    label:'↳ Condenser Pad',     unit:'each',   cost:35,   waste:0,  qty:()=>1},
   {sku:'M0129',sec:'Mechanical',grp:'HVAC',                                                    label:'↳ Ductwork',          unit:'LF',     cost:8,    waste:.10,qty:(i)=>Math.round(i.sqft/15)},
   {sku:'M0130',sec:'Mechanical',grp:'HVAC',                                                    label:'↳ Registers/Boots',   unit:'each',   cost:15,   waste:0,  qty:(i)=>Math.round(i.sqft/150)},
-  {sku:'M0131',sec:'Mechanical',grp:'Water Heater',                  scopeKey:'mechanic.water_heater',label:'Water Heater (40 gal)',unit:'each',cost:450,waste:0,qty:()=>1},
+  {sku:'M0131',sec:'Mechanical',grp:'Water Heater',                  scopeKey:'mechanic.water_heater',label:'Water Heater (40 gal)',unit:'each',cost:375,waste:0,qty:()=>1},
   {sku:'M0132',sec:'Mechanical',grp:'Water Heater',                                            label:'↳ Expansion Tank',    unit:'each',   cost:45,   waste:0,  qty:()=>1},
   {sku:'M0133',sec:'Mechanical',grp:'Water Heater',                                            label:'↳ Supply/Drain Kit',  unit:'kit',    cost:35,   waste:0,  qty:()=>1},
   {sku:'M0134',sec:'Mechanical',grp:'Misc Mechanical',               scopeKey:'mechanic.misc',label:'Misc Mechanical (allowance)',unit:'LS',cost:0,waste:0,qty:()=>1},
