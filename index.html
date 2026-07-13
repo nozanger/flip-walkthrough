@@ -5914,23 +5914,10 @@ function DetailedBudgetPage({prop,data}){
                                 <span style={{fontSize:10,color:'rgba(255,255,255,.25)'}}>×</span>
                                 {/* Unit Cost */}
                                 {isEditingCost?(
-                                  <div style={{display:'flex',alignItems:'center',gap:3}}>
-                                    <input autoFocus type="number" min="0" step="0.01" defaultValue={unitCost}
-                                      id={`cost-input-${it.sku}`}
-                                      style={{width:65,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:5,color:'white',fontSize:11,padding:'3px 5px'}}
-                                      onKeyDown={e=>e.key==='Enter'&&e.target.blur()}
-                                      onBlur={()=>{}}/>
-                                    <button onMouseDown={async e=>{e.preventDefault();const v=Number(document.getElementById(`cost-input-${it.sku}`).value);await saveOv('cost',it.sku,v);setEditCell(null);}}
-                                      style={{background:'rgba(226,176,74,.2)',border:'1px solid #e2b04a',borderRadius:4,color:'#e2b04a',fontSize:10,padding:'2px 5px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                      This job
-                                    </button>
-                                    <button onMouseDown={async e=>{e.preventDefault();const v=Number(document.getElementById(`cost-input-${it.sku}`).value);await dbUpdate(`config/priceList/${it.sku}`,{cost:v});setGlobalCosts(p=>({...p,[it.sku]:{...p[it.sku],cost:v}}));setEditCell(null);}}
-                                      style={{background:'rgba(167,139,250,.2)',border:'1px solid #a78bfa',borderRadius:4,color:'#a78bfa',fontSize:10,padding:'2px 5px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                      Price List
-                                    </button>
-                                    <button onMouseDown={()=>setEditCell(null)}
-                                      style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:12,cursor:'pointer',padding:'0 2px'}}>✕</button>
-                                  </div>
+                                  <input autoFocus type="number" min="0" step="0.01" defaultValue={unitCost}
+                                    style={{width:70,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:5,color:'white',fontSize:11,padding:'3px 5px'}}
+                                    onBlur={async e=>{await saveOv('cost',it.sku,Number(e.target.value));setEditCell(null);}}
+                                    onKeyDown={e=>e.key==='Enter'&&e.target.blur()}/>
                                 ):(
                                   <button onClick={()=>setEditCell({sku:it.sku,field:'cost'})}
                                     style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:5,color:ov.cost[it.sku]!=null?'#e2b04a':globalCosts[it.sku]?.cost!=null?'#a78bfa':'rgba(255,255,255,.6)',fontSize:11,padding:'3px 7px',cursor:'pointer'}}>
