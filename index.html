@@ -3769,8 +3769,8 @@ function PriceListPage(){
   const[newItem,setNewItem]=React.useState({label:'',sec:'',grp:'',unit:'each',cost:''});
 
   React.useEffect(()=>{
-    dbGet('config/priceList').then(v=>setGlobalCosts(v||{}));
-    const u2=dbListen('config/priceListCustom',v=>setCustomItems(v?Object.values(v):[]) );
+    dbGet(`userPriceList/${getAuth().currentUser.uid}`).then(v=>setGlobalCosts(v||{}));
+    const u2=dbListen(`userPriceListCustom/${getAuth().currentUser.uid}`,v=>setCustomItems(v?Object.values(v):[]));
     return()=>{u2();};
   },[]);
 
@@ -3778,13 +3778,13 @@ function PriceListPage(){
     if(!newItem.label.trim()||!newItem.cost||!newItem.sec.trim())return;
     const id='gc'+Date.now();
     const item={id,sku:id,sec:newItem.sec.trim(),grp:newItem.grp.trim()||newItem.sec.trim(),label:newItem.label.trim(),unit:newItem.unit||'each',cost:Number(newItem.cost),waste:0,isGlobalCustom:true};
-    await dbUpdate(`config/priceListCustom/${id}`,item);
+    await dbUpdate(`userPriceListCustom/${getAuth().currentUser.uid}/${id}`,item);
     setNewItem({label:'',sec:'',grp:'',unit:'each',cost:''});
     setAddingTo(null);
   }
 
   async function removeCustomItem(id){
-    await dbRemove(`config/priceListCustom/${id}`);
+    await dbRemove(`userPriceListCustom/${getAuth().currentUser.uid}/${id}`);
   }
 
   async function saveCost(sku,val){
@@ -3793,12 +3793,12 @@ function PriceListPage(){
     setEditSku(null);
     setEditValue('');
     setGlobalCosts(p=>({...p,[sku]:{...p[sku],cost:num}}));
-    await dbUpdate(`config/priceList/${sku}`,{cost:num});
+    await dbUpdate(`userPriceList/${getAuth().currentUser.uid}/${sku}`,{cost:num});
   }
 
   async function resetCost(sku){
     setGlobalCosts(p=>{const n={...p};delete n[sku];return n;});
-    await dbRemove(`config/priceList/${sku}`);
+    await dbRemove(`userPriceList/${getAuth().currentUser.uid}/${sku}`);
   }
 
   // build sections from DETAIL_ITEMS
@@ -5698,8 +5698,8 @@ function DetailedBudgetPage({prop,data}){
 
   const[globalCustomItems,setGlobalCustomItems]=React.useState([]);
   React.useEffect(()=>{
-    const u1=dbListen('config/priceList',v=>setGlobalCosts(v||{}));
-    const u2=dbListen('config/priceListCustom',v=>setGlobalCustomItems(v?Object.values(v).map(ci=>({...ci,qty:()=>1,waste:0})):[]));
+    const u1=dbListen(`userPriceList/${getAuth().currentUser.uid}`,v=>setGlobalCosts(v||{}));
+    const u2=dbListen(`userPriceListCustom/${getAuth().currentUser.uid}`,v=>setGlobalCustomItems(v?Object.values(v).map(ci=>({...ci,qty:()=>1,waste:0})):[]));
     return()=>{u1();u2();};
   },[]);
   const[custom,setCustom]=React.useState([]);
