@@ -3761,6 +3761,7 @@ function PriceListPage(){
   const[customItems,setCustomItems]=React.useState([]);
   const[editSku,setEditSku]=React.useState(null);
   const[editValue,setEditValue]=React.useState('');
+  const editValueRef=React.useRef('');
   const[collapsed,setCollapsed]=React.useState({});
   const[search,setSearch]=React.useState('');
   const[showGuide,setShowGuide]=React.useState(false);
@@ -3877,14 +3878,14 @@ function PriceListPage(){
                             <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
                               <input autoFocus type="number" min="0" step="0.01" value={editValue}
                                 style={{width:76,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:6,color:'white',fontSize:13,fontWeight:700,padding:'6px 8px',textAlign:'right'}}
-                                onChange={e=>setEditValue(e.target.value)}
-                                onBlur={()=>saveCost(it.sku,editValue)}
+                                onChange={e=>{setEditValue(e.target.value);editValueRef.current=e.target.value;}}
+                                onBlur={()=>saveCost(it.sku,editValueRef.current)}
                                 onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setEditSku(null);}}/>
                               <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>/{it.unit}</span>
                             </div>
                           ):(
                             <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
-                              <button onClick={()=>{setEditSku(it.sku);setEditValue(String(displayCost));}}
+                              <button onClick={()=>{setEditSku(it.sku);setEditValue(String(displayCost));editValueRef.current=String(displayCost);}}
                                 style={{background:ovCost!=null?'rgba(226,176,74,.15)':'rgba(255,255,255,.06)',border:'1px solid '+(ovCost!=null?'rgba(226,176,74,.4)':'rgba(255,255,255,.1)'),borderRadius:6,color:ovCost!=null?'#e2b04a':'rgba(255,255,255,.8)',fontSize:13,fontWeight:700,padding:'6px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>
                                 ${displayCost}<span style={{fontWeight:400,fontSize:10,color:'rgba(255,255,255,.4)'}}>/{it.unit}</span>
                               </button>
