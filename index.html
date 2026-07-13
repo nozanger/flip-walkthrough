@@ -5703,7 +5703,7 @@ function DetailedBudgetPage({prop,data}){
     return()=>{u1();u2();};
   },[]);
   const[custom,setCustom]=React.useState([]);
-  const[collapsed,setCollapsed]=React.useState({});
+  const[collapsed,setCollapsed]=React.useState({Exterior:true,Garage:true,Kitchen:true,Bathroom:true,Mechanical:true,Electrical:true,Plumbing:true,Interior:true,'Below Grade':true,Decking:true,Addition:true});
   const[editCell,setEditCell]=React.useState(null); // {sku,field}
   const[editCellVal,setEditCellVal]=React.useState('');
   const[addingTo,setAddingTo]=React.useState(null); // section name
