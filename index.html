@@ -3725,11 +3725,29 @@ function RentalsPage({currentUser}){
   );
 }
 
+const UNIT_GUIDE=[
+  {unit:'Square',abbr:'sq',desc:'Roofing unit. 1 square = 100 sq ft of roof area. A 1,000 sqft house needs ~10–11 squares of shingles.'},
+  {unit:'Square Feet',abbr:'SF',desc:'Area — length × width. Used for flooring, siding, insulation, tile, drywall coverage.'},
+  {unit:'Linear Feet',abbr:'LF',desc:'Length only, no width. Used for trim, gutters, framing lumber, cabinets. A 10-foot wall = 10 LF.'},
+  {unit:'Lump Sum',abbr:'LS',desc:'One flat price for the whole job. Used for allowances and things we can\'t break into units (demo, landscaping).'},
+  {unit:'Each',abbr:'each',desc:'Individual items counted one by one — a toilet, window, door, vanity, or fixture.'},
+  {unit:'Bundle',abbr:'bundle',desc:'A packaged quantity from the manufacturer. Shingles come in bundles (~3 bundles = 1 square). Ridge cap and starter strip also sold by bundle.'},
+  {unit:'Roll',abbr:'roll',desc:'Products sold wound on a roll — underlayment, house wrap, tape, vapor barrier.'},
+  {unit:'Bag',abbr:'bag',desc:'Dry mix products like thinset, grout, or concrete. One bag covers a set area per the label.'},
+  {unit:'Sheet',abbr:'sheet',desc:'4×8 ft panels — drywall, OSB subfloor, cement backer board. One sheet = 32 sq ft.'},
+  {unit:'Kit',abbr:'kit',desc:'A pre-packaged set of small parts (drain kit, valve trim, hardware). Saves listing every nut and bolt.'},
+  {unit:'Bucket',abbr:'bucket',desc:'Paint and primer sold in 5-gallon buckets. Joint compound comes in 4.5-gallon buckets.'},
+  {unit:'Can',abbr:'can',desc:'Spray products — spray foam insulation, contact cement, adhesive.'},
+  {unit:'Box',abbr:'box',desc:'Fasteners sold in bulk — screws, nails, staples. One box typically covers a set quantity of material.'},
+  {unit:'Gallon',abbr:'gallon',desc:'Liquid products measured individually — sealers, adhesives, some paints.'},
+];
+
 function PriceListPage(){
   const[globalCosts,setGlobalCosts]=React.useState({});
   const[editSku,setEditSku]=React.useState(null);
   const[collapsed,setCollapsed]=React.useState({});
   const[search,setSearch]=React.useState('');
+  const[showGuide,setShowGuide]=React.useState(false);
 
   React.useEffect(()=>{
     return dbListen('config/priceList',v=>setGlobalCosts(v||{}));
@@ -3771,7 +3789,26 @@ function PriceListPage(){
         <input placeholder="🔍 Search items..." value={search} onChange={e=>setSearch(e.target.value)}
           style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.12)',borderRadius:10,color:'white',fontSize:15,padding:'10px 12px'}}/>
       </div>
-      <div style={{padding:'8px 12px 4px',fontSize:11,color:'rgba(255,255,255,.35)'}}>Tap any price to edit · Yellow = overridden from default · Changes apply to all new projects</div>
+      <div style={{padding:'6px 12px 4px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>Tap any price to edit · Yellow = overridden · Changes apply to all projects</span>
+        <button onClick={()=>setShowGuide(p=>!p)} style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.12)',borderRadius:6,color:'rgba(255,255,255,.6)',fontSize:11,padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,marginLeft:8}}>
+          {showGuide?'Hide':'📖 Units'}
+        </button>
+      </div>
+      {showGuide&&(
+        <div style={{margin:'0 12px 4px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:10,overflow:'hidden'}}>
+          <div style={{padding:'10px 12px 6px',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.5px'}}>Unit Guide</div>
+          {UNIT_GUIDE.map(g=>(
+            <div key={g.abbr} style={{padding:'7px 12px',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',gap:10,alignItems:'baseline'}}>
+              <span style={{fontSize:12,fontWeight:700,color:'#e2b04a',minWidth:44,flexShrink:0}}>{g.abbr}</span>
+              <div>
+                <span style={{fontSize:11,fontWeight:600,color:'white'}}>{g.unit} — </span>
+                <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>{g.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {filtered.map(({sec,groups})=>{
         const isCollapsed=collapsed[sec];
