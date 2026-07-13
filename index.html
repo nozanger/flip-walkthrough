@@ -3788,9 +3788,9 @@ function PriceListPage(){
   async function saveCost(sku,val){
     const num=Number(val);
     if(isNaN(num)||num<0)return;
+    setEditSku(null);
     setGlobalCosts(p=>({...p,[sku]:{...p[sku],cost:num}}));
     await dbUpdate(`config/priceList/${sku}`,{cost:num});
-    setEditSku(null);
   }
 
   async function resetCost(sku){
@@ -5916,7 +5916,7 @@ function DetailedBudgetPage({prop,data}){
                                 {isEditingCost?(
                                   <input autoFocus type="number" min="0" step="0.01" defaultValue={unitCost}
                                     style={{width:70,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:5,color:'white',fontSize:11,padding:'3px 5px'}}
-                                    onBlur={async e=>{await saveOv('cost',it.sku,Number(e.target.value));setEditCell(null);}}
+                                    onBlur={async e=>{const v=Number(e.target.value);setEditCell(null);await saveOv('cost',it.sku,v);}}
                                     onKeyDown={e=>e.key==='Enter'&&e.target.blur()}/>
                                 ):(
                                   <button onClick={()=>setEditCell({sku:it.sku,field:'cost'})}
