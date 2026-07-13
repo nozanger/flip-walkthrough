@@ -3875,13 +3875,16 @@ function PriceListPage(){
                             <div style={{fontSize:10,color:'rgba(255,255,255,.3)',marginTop:1}}>{it.sku} · {it.unit}{it.waste>0?` · +${it.waste*100}% waste`:''}</div>
                           </div>
                           {isEditing?(
-                            <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
+                            <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
+                              <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>$</span>
                               <input autoFocus type="text" inputMode="decimal" value={editValue}
-                                style={{width:76,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:6,color:'white',fontSize:13,fontWeight:700,padding:'6px 8px',textAlign:'right'}}
+                                style={{width:66,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:6,color:'white',fontSize:13,fontWeight:700,padding:'6px 8px',textAlign:'right'}}
                                 onChange={e=>setEditValue(e.target.value)}
-                                onBlur={e=>saveCost(it.sku,e.target.value)}
-                                onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setEditSku(null);}}/>
-                              <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>/{it.unit}</span>
+                                onKeyDown={e=>{if(e.key==='Enter'){saveCost(it.sku,editValue);}if(e.key==='Escape')setEditSku(null);}}/>
+                              <button onPointerDown={e=>{e.preventDefault();saveCost(it.sku,editValue);}}
+                                style={{background:'#22c55e',border:'none',borderRadius:6,color:'white',fontSize:14,fontWeight:700,padding:'5px 9px',cursor:'pointer',flexShrink:0}}>✓</button>
+                              <button onPointerDown={e=>{e.preventDefault();setEditSku(null);setEditValue('');}}
+                                style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:6,color:'rgba(255,255,255,.5)',fontSize:13,padding:'5px 8px',cursor:'pointer',flexShrink:0}}>✕</button>
                             </div>
                           ):(
                             <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
