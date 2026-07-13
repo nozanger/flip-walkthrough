@@ -5455,7 +5455,7 @@ function computeDerived(i){
   const roofSq=i.sqft/i.stories/100*1.15;
   const wallSf=i.perim*(i.ceilH+1)*i.stories*0.85;
   const insulSf=i.perim*i.ceilH*i.stories;
-  const drywallSh=((i.perim+i.intWallLf*2)*i.ceilH+i.sqft/i.stories)/32;
+  const drywallSh=i.sqft*0.135;
   const paintGal=((i.perim+i.intWallLf*1.2)*i.ceilH*0.6+i.sqft/i.stories)/350;
   const framingLf=i.intWallLf*2.75;
   return{roofSq,wallSf,insulSf,drywallSh,paintGal,framingLf};
