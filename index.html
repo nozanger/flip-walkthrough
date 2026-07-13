@@ -5758,13 +5758,21 @@ function DetailedBudgetPage({prop,data}){
       {/* Grand Total */}
       <div style={{margin:'16px 12px 0',background:'linear-gradient(135deg,rgba(226,176,74,.18),rgba(226,176,74,.06))',border:'1px solid rgba(226,176,74,.5)',borderRadius:14,padding:'18px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+          <div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>Subtotal</div>
+          <div style={{fontSize:16,fontWeight:700,color:'rgba(255,255,255,.7)'}}>{fmt(grandTotal)}</div>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,paddingBottom:12,borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+          <div style={{fontSize:12,color:'rgba(255,255,255,.5)'}}>10% Contingency</div>
+          <div style={{fontSize:16,fontWeight:700,color:'rgba(255,255,255,.7)'}}>{fmt(grandTotal*0.1)}</div>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
           <div>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',textTransform:'uppercase',letterSpacing:'.5px'}}>Total Material Cost</div>
-            <div style={{fontSize:32,fontWeight:800,color:'#e2b04a',lineHeight:1.1}}>{fmt(grandTotal)}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',textTransform:'uppercase',letterSpacing:'.5px'}}>Total (with contingency)</div>
+            <div style={{fontSize:32,fontWeight:800,color:'#e2b04a',lineHeight:1.1}}>{fmt(grandTotal*1.1)}</div>
           </div>
           <div style={{textAlign:'right'}}>
             <div style={{fontSize:11,color:'rgba(255,255,255,.5)',textTransform:'uppercase',letterSpacing:'.5px'}}>Per Sq Ft</div>
-            <div style={{fontSize:22,fontWeight:700,color:'#e2b04a'}}>{hInp.sqft?fmt(grandTotal/hInp.sqft)+'/sf':'—'}</div>
+            <div style={{fontSize:22,fontWeight:700,color:'#e2b04a'}}>{hInp.sqft?fmt(grandTotal*1.1/hInp.sqft)+'/sf':'—'}</div>
           </div>
         </div>
         <div style={{fontSize:10,color:'rgba(255,255,255,.35)'}}>Materials only · Does not include labor · Tap any qty or price to edit · Yellow = overridden</div>
