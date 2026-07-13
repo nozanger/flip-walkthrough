@@ -3768,9 +3768,9 @@ function PriceListPage(){
   const[newItem,setNewItem]=React.useState({label:'',sec:'',grp:'',unit:'each',cost:''});
 
   React.useEffect(()=>{
-    const u1=dbListen('config/priceList',v=>setGlobalCosts(v||{}));
+    dbGet('config/priceList').then(v=>setGlobalCosts(v||{}));
     const u2=dbListen('config/priceListCustom',v=>setCustomItems(v?Object.values(v):[]) );
-    return()=>{u1();u2();};
+    return()=>{u2();};
   },[]);
 
   async function saveCustomItem(){
