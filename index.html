@@ -3744,14 +3744,32 @@ const UNIT_GUIDE=[
 
 function PriceListPage(){
   const[globalCosts,setGlobalCosts]=React.useState({});
+  const[customItems,setCustomItems]=React.useState([]);
   const[editSku,setEditSku]=React.useState(null);
   const[collapsed,setCollapsed]=React.useState({});
   const[search,setSearch]=React.useState('');
   const[showGuide,setShowGuide]=React.useState(false);
+  const[addingTo,setAddingTo]=React.useState(null);
+  const[newItem,setNewItem]=React.useState({label:'',sec:'',grp:'',unit:'each',cost:''});
 
   React.useEffect(()=>{
-    return dbListen('config/priceList',v=>setGlobalCosts(v||{}));
+    const u1=dbListen('config/priceList',v=>setGlobalCosts(v||{}));
+    const u2=dbListen('config/priceListCustom',v=>setCustomItems(v?Object.values(v):[]) );
+    return()=>{u1();u2();};
   },[]);
+
+  async function saveCustomItem(){
+    if(!newItem.label.trim()||!newItem.cost||!newItem.sec.trim())return;
+    const id='gc'+Date.now();
+    const item={id,sku:id,sec:newItem.sec.trim(),grp:newItem.grp.trim()||newItem.sec.trim(),label:newItem.label.trim(),unit:newItem.unit||'each',cost:Number(newItem.cost),waste:0,isGlobalCustom:true};
+    await dbUpdate(`config/priceListCustom/${id}`,item);
+    setNewItem({label:'',sec:'',grp:'',unit:'each',cost:''});
+    setAddingTo(null);
+  }
+
+  async function removeCustomItem(id){
+    await dbRemove(`config/priceListCustom/${id}`);
+  }
 
   async function saveCost(sku,val){
     const num=Number(val);
@@ -3769,7 +3787,7 @@ function PriceListPage(){
   // build sections from DETAIL_ITEMS
   const sections=[];
   const seenSec={},seenGrp={};
-  DETAIL_ITEMS.forEach(it=>{
+  [...DETAIL_ITEMS,...customItems].forEach(it=>{
     if(!seenSec[it.sec]){seenSec[it.sec]=true;sections.push({sec:it.sec,groups:[]});}
     const sec=sections.find(s=>s.sec===it.sec);
     if(!seenGrp[it.sec+'|'+it.grp]){
@@ -3863,11 +3881,66 @@ function PriceListPage(){
                     })}
                   </div>
                 ))}
+
+                {/* Add item to this section */}
+                {!q&&(addingTo===sec?(
+                  <div style={{padding:'10px 12px',borderTop:'1px solid rgba(255,255,255,.06)',background:'rgba(255,255,255,.03)'}}>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>New item in <strong style={{color:'white'}}>{sec}</strong></div>
+                    <input placeholder="Item name *" value={newItem.label} onChange={e=>setNewItem(p=>({...p,label:e.target.value}))}
+                      style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 10px',marginBottom:6}}/>
+                    <input placeholder="Group / subcategory (e.g. Deck Structure)" value={newItem.grp} onChange={e=>setNewItem(p=>({...p,grp:e.target.value}))}
+                      style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 10px',marginBottom:6}}/>
+                    <div style={{display:'flex',gap:6,marginBottom:8}}>
+                      <input placeholder="Unit (SF, LF, each…)" value={newItem.unit} onChange={e=>setNewItem(p=>({...p,unit:e.target.value}))}
+                        style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 8px'}}/>
+                      <input placeholder="$ / unit *" type="number" value={newItem.cost} onChange={e=>setNewItem(p=>({...p,cost:e.target.value}))}
+                        style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 8px'}}/>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={()=>{setNewItem(p=>({...p,sec}));saveCustomItem();}}
+                        style={{flex:1,background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px',fontWeight:700,fontSize:13,cursor:'pointer'}}>Add to Price List</button>
+                      <button onClick={()=>{setAddingTo(null);setNewItem({label:'',sec:'',grp:'',unit:'each',cost:''}); }}
+                        style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:8,padding:'9px 14px',color:'white',fontSize:13,cursor:'pointer'}}>Cancel</button>
+                    </div>
+                  </div>
+                ):(
+                  <button onClick={()=>{setAddingTo(sec);setNewItem({label:'',sec,grp:'',unit:'each',cost:''}); }}
+                    style={{width:'100%',background:'none',border:'none',borderTop:'1px solid rgba(255,255,255,.06)',padding:'10px',color:'rgba(255,255,255,.35)',fontSize:12,cursor:'pointer'}}>
+                    + Add item to {sec}
+                  </button>
+                ))}
               </div>
             )}
           </div>
         );
       })}
+
+      {/* Add entirely new section */}
+      {!q&&(addingTo==='__new__'?(
+        <div style={{margin:'10px 12px 0',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,padding:'12px'}}>
+          <div style={{fontSize:12,color:'rgba(255,255,255,.5)',marginBottom:8}}>New section + item</div>
+          <input placeholder="Section name * (e.g. Fencing)" value={newItem.sec} onChange={e=>setNewItem(p=>({...p,sec:e.target.value}))}
+            style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 10px',marginBottom:6}}/>
+          <input placeholder="Item name *" value={newItem.label} onChange={e=>setNewItem(p=>({...p,label:e.target.value}))}
+            style={{width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 10px',marginBottom:6}}/>
+          <div style={{display:'flex',gap:6,marginBottom:8}}>
+            <input placeholder="Unit" value={newItem.unit} onChange={e=>setNewItem(p=>({...p,unit:e.target.value}))}
+              style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 8px'}}/>
+            <input placeholder="$ / unit *" type="number" value={newItem.cost} onChange={e=>setNewItem(p=>({...p,cost:e.target.value}))}
+              style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:6,color:'white',fontSize:13,padding:'7px 8px'}}/>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={saveCustomItem} style={{flex:1,background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px',fontWeight:700,fontSize:13,cursor:'pointer'}}>Create Section</button>
+            <button onClick={()=>{setAddingTo(null);setNewItem({label:'',sec:'',grp:'',unit:'each',cost:''}); }}
+              style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:8,padding:'9px 14px',color:'white',fontSize:13,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </div>
+      ):(
+        <button onClick={()=>setAddingTo('__new__')}
+          style={{display:'block',margin:'10px 12px 0',width:'calc(100% - 24px)',background:'rgba(255,255,255,.05)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:10,padding:'12px',color:'rgba(255,255,255,.4)',fontSize:13,cursor:'pointer'}}>
+          + Add new section to Price List
+        </button>
+      ))}
     </div>
   );
 }
@@ -5481,11 +5554,26 @@ const DETAIL_ITEMS=[
   {sku:'M0202',sec:'Below Grade',grp:'Crawl Space',                  scopeKey:'below_grade.crawlspace_vapor',label:'Vapor Barrier',unit:'SF',cost:.15,waste:.05,qty:(i)=>i.sqft/i.stories},
   {sku:'M0203',sec:'Below Grade',grp:'Crawl Space',                                            label:'↳ Crawl Space Insulation',unit:'SF',cost:.20,waste:.05,qty:(i)=>i.sqft/i.stories},
   {sku:'M0204',sec:'Below Grade',grp:'Egress Windows',               scopeKey:'below_grade.basement_egress',label:'Egress Windows',unit:'each',cost:400,waste:0,qty:()=>1},
+  // ─ DECKING ─ (default sized for a 6×8 = 48 sqft deck; adjust deckSqft in house inputs)
+  {sku:'M0210',sec:'Decking',grp:'Deck Structure',label:'Deck Boards (5/4×6 PT)',      unit:'SF',    cost:2.50, waste:.12,qty:(i)=>i.deckSqft||48},
+  {sku:'M0211',sec:'Decking',grp:'Deck Structure',label:'↳ Joist Framing (2×6 PT)',   unit:'LF',    cost:0.90, waste:.10,qty:(i)=>(i.deckSqft||48)*1.25},
+  {sku:'M0212',sec:'Decking',grp:'Deck Structure',label:'↳ Ledger Board (2×8)',        unit:'LF',    cost:1.80, waste:.05,qty:(i)=>Math.sqrt((i.deckSqft||48)*0.75)},
+  {sku:'M0213',sec:'Decking',grp:'Deck Structure',label:'↳ Posts (4×4×8 PT)',          unit:'each',  cost:11,   waste:0,  qty:(i)=>Math.ceil((i.deckSqft||48)/12)},
+  {sku:'M0214',sec:'Decking',grp:'Deck Structure',label:'↳ Concrete (80lb bag)',       unit:'bag',   cost:8,    waste:0,  qty:(i)=>Math.ceil((i.deckSqft||48)/12)},
+  {sku:'M0215',sec:'Decking',grp:'Deck Structure',label:'↳ Post Anchor Bases',         unit:'each',  cost:12,   waste:0,  qty:(i)=>Math.ceil((i.deckSqft||48)/12)},
+  {sku:'M0216',sec:'Decking',grp:'Deck Structure',label:'↳ Joist Hangers',             unit:'each',  cost:1.75, waste:0,  qty:(i)=>Math.ceil((i.deckSqft||48)/3)},
+  {sku:'M0217',sec:'Decking',grp:'Deck Structure',label:'↳ Carriage Bolts Kit',        unit:'kit',   cost:20,   waste:0,  qty:()=>1},
+  {sku:'M0218',sec:'Decking',grp:'Deck Structure',label:'↳ Deck Screws (5 lb box)',    unit:'box',   cost:40,   waste:0,  qty:()=>1},
+  {sku:'M0219',sec:'Decking',grp:'Railing',       label:'Railing (composite)',          unit:'LF',    cost:25,   waste:.05,qty:(i)=>Math.ceil(Math.sqrt((i.deckSqft||48)*0.75)*2+Math.sqrt((i.deckSqft||48)*1.33))},
+  {sku:'M0220',sec:'Decking',grp:'Railing',       label:'↳ Post Caps',                 unit:'each',  cost:8,    waste:0,  qty:(i)=>Math.ceil((i.deckSqft||48)/12)},
+  {sku:'M0221',sec:'Decking',grp:'Stairs',        label:'Stair Stringers (2×12)',       unit:'each',  cost:28,   waste:0,  qty:()=>2},
+  {sku:'M0222',sec:'Decking',grp:'Stairs',        label:'↳ Stair Treads (5/4×6)',      unit:'each',  cost:9,    waste:0,  qty:()=>6},
+  {sku:'M0223',sec:'Decking',grp:'Stairs',        label:'↳ Stair Hardware Kit',        unit:'kit',   cost:35,   waste:0,  qty:()=>1},
 ];
 
 function getDefaultHouseInputs(prop){
   const sq=parseInt(prop.sqft)||900,st=1;
-  return{sqft:sq,stories:st,ceilH:8,perim:Math.round(4*Math.sqrt(sq/st)),intWallLf:Math.round(sq/2),numBed:parseInt(prop.futBed)||parseInt(prop.curBed)||3,numBath:parseInt(prop.futBath)||parseInt(prop.curBath)||1,numExtDoors:2,numIntDoors:4,numWindows:Math.round(sq/112),cabinetLf:14,trimLf:Math.round(sq/1.33)};
+  return{sqft:sq,stories:st,ceilH:8,perim:Math.round(4*Math.sqrt(sq/st)),intWallLf:Math.round(sq/2),numBed:parseInt(prop.futBed)||parseInt(prop.curBed)||3,numBath:parseInt(prop.futBath)||parseInt(prop.curBath)||1,numExtDoors:2,numIntDoors:4,numWindows:Math.round(sq/112),cabinetLf:14,trimLf:Math.round(sq/1.33),deckSqft:48};
 }
 
 function computeDerived(i){
@@ -5504,8 +5592,11 @@ function DetailedBudgetPage({prop,data}){
   const[ov,setOv]=React.useState({pct:{},qty:{},cost:{},off:{}});
   const[globalCosts,setGlobalCosts]=React.useState({});
 
+  const[globalCustomItems,setGlobalCustomItems]=React.useState([]);
   React.useEffect(()=>{
-    return dbListen('config/priceList',v=>setGlobalCosts(v||{}));
+    const u1=dbListen('config/priceList',v=>setGlobalCosts(v||{}));
+    const u2=dbListen('config/priceListCustom',v=>setGlobalCustomItems(v?Object.values(v).map(ci=>({...ci,qty:()=>1,waste:0})):[]));
+    return()=>{u1();u2();};
   },[]);
   const[custom,setCustom]=React.useState([]);
   const[collapsed,setCollapsed]=React.useState({});
@@ -5571,7 +5662,7 @@ function DetailedBudgetPage({prop,data}){
   // Build sections → groups → items
   const sections=[];
   const seenSec={},seenGrp={};
-  DETAIL_ITEMS.forEach(it=>{
+  [...DETAIL_ITEMS,...globalCustomItems].forEach(it=>{
     if(!seenSec[it.sec]){seenSec[it.sec]=true;sections.push({sec:it.sec,groups:[]});}
     const sec=sections.find(s=>s.sec===it.sec);
     if(!seenGrp[it.sec+'|'+it.grp]){
@@ -5613,6 +5704,7 @@ function DetailedBudgetPage({prop,data}){
     {key:'numBath',label:'Bathrooms',type:'number'},{key:'numExtDoors',label:'Ext Doors',type:'number'},
     {key:'numIntDoors',label:'Int Doors',type:'number'},{key:'numWindows',label:'Windows',type:'number'},
     {key:'cabinetLf',label:'Cabinet Run (LF)',type:'number'},{key:'trimLf',label:'Trim Run (LF)',type:'number'},
+    {key:'deckSqft',label:'Deck Size (SF)',type:'number'},
   ];
 
   const STATUS_COLOR={replace:'#ef4444',partial:'#3b82f6',keep:'#22c55e',maybe:'#f59e0b'};
