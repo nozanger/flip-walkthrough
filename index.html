@@ -3876,10 +3876,10 @@ function PriceListPage(){
                           </div>
                           {isEditing?(
                             <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
-                              <input autoFocus type="number" min="0" step="0.01" value={editValue}
+                              <input autoFocus type="text" inputMode="decimal" value={editValue}
                                 style={{width:76,background:'rgba(255,255,255,.12)',border:'1px solid #e2b04a',borderRadius:6,color:'white',fontSize:13,fontWeight:700,padding:'6px 8px',textAlign:'right'}}
-                                onChange={e=>{setEditValue(e.target.value);editValueRef.current=e.target.value;}}
-                                onBlur={()=>saveCost(it.sku,editValueRef.current)}
+                                onChange={e=>setEditValue(e.target.value)}
+                                onBlur={e=>saveCost(it.sku,e.target.value)}
                                 onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setEditSku(null);}}/>
                               <span style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>/{it.unit}</span>
                             </div>
