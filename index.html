@@ -5523,7 +5523,7 @@ function DetailedBudgetPage({prop,data}){
   }
 
   function getLineCost(item,pct){
-    const baseQty=ov.qty[item.sku]!=null?Number(ov.qty[item.sku]):item.qty(hInp,d);
+    const baseQty=ov.qty[item.sku]!=null?Number(ov.qty[item.sku]):Math.ceil(item.qty(hInp,d));
     const globalCost=globalCosts[item.sku]?.cost;
     const unitCost=ov.cost[item.sku]!=null?Number(ov.cost[item.sku]):(globalCost!=null?globalCost:item.cost);
     const qtyNeeded=baseQty*(pct/100);
