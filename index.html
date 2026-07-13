@@ -5347,7 +5347,7 @@ const DETAIL_ITEMS=[
   {sku:'M0045',sec:'Interior',grp:'Drywall',                                                   label:'↳ Corner Bead',        unit:'6.75ft', cost:3.41, waste:.10,qty:(i,d)=>Math.round(d.drywallSh*.26)},
   {sku:'M0046',sec:'Interior',grp:'Drywall',                                                   label:'↳ Drywall Screws',     unit:'5lb box',cost:45,   waste:0,  qty:(i,d)=>d.drywallSh/31},
   {sku:'M0047',sec:'Interior',grp:'Paint',                            scopeKey:'interior.paint',label:'Paint (5-gal bucket)', unit:'bucket', cost:100,  waste:.05,qty:(i,d)=>d.paintGal/5},
-  {sku:'M0048',sec:'Interior',grp:'Paint',                                                     label:'↳ Primer (5-gal)',     unit:'bucket', cost:53,   waste:.05,qty:(i,d)=>d.paintGal/5*.44},
+  {sku:'M0048',sec:'Interior',grp:'Paint',                                                     label:'↳ Primer (5-gal)',     unit:'bucket', cost:53,   waste:.05,qty:(i,d)=>d.paintGal/5},
   {sku:'M0049',sec:'Interior',grp:'Paint',                                                     label:"↳ Painter's Tape",    unit:'roll',   cost:6,    waste:0,  qty:(i)=>Math.ceil(i.sqft/500)},
   {sku:'M0050',sec:'Interior',grp:'Paint',                                                     label:'↳ Caulk',             unit:'tube',   cost:5,    waste:0,  qty:(i)=>Math.ceil(i.sqft/400)},
   {sku:'M0051',sec:'Interior',grp:'Paint',                                                     label:'↳ Sundries Kit',      unit:'kit',    cost:35,   waste:0,  qty:()=>1},
@@ -5456,7 +5456,7 @@ function computeDerived(i){
   const wallSf=i.perim*(i.ceilH+1)*i.stories*0.85;
   const insulSf=i.perim*i.ceilH*i.stories;
   const drywallSh=i.sqft*0.135;
-  const paintGal=((i.perim+i.intWallLf*1.2)*i.ceilH*0.6+i.sqft/i.stories)/350;
+  const paintGal=i.sqft*0.02; // 4×5gal buckets per 1000 sqft
   const framingLf=i.intWallLf*2.75;
   return{roofSq,wallSf,insulSf,drywallSh,paintGal,framingLf};
 }
