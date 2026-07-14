@@ -5020,6 +5020,49 @@ function PropEventsBar({propId}){
 
 function ProjectSchedulePage({propId}){
   const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false,inspection:null});
+  const[tlDragOver,setTlDragOver]=React.useState(null);
+  const tlDragRef=React.useRef(null);
+  const tlDragOverRef=React.useRef(null);
+  const tlGhostRef=React.useRef(null);
+
+  async function moveTimelineItem(catId,itemId,srcWeek,destWeek){
+    if(srcWeek===destWeek||!destWeek)return;
+    await dbRemove(`projects/${propId}/weekplan/assignments/${catId}/${itemId}/${srcWeek}`);
+    await dbSet(`projects/${propId}/weekplan/assignments/${catId}/${itemId}/${destWeek}`,true);
+  }
+
+  function startTlTouchDrag(e,item){
+    e.stopPropagation();
+    tlDragRef.current=item;
+    const touch=e.touches[0];
+    const ghost=document.createElement('div');
+    ghost.textContent=item.label;
+    ghost.style.cssText='position:fixed;z-index:9999;background:#e2b04a;color:#1a1a2e;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;pointer-events:none;opacity:.92;left:'+(touch.clientX+12)+'px;top:'+(touch.clientY-30)+'px;';
+    document.body.appendChild(ghost);tlGhostRef.current=ghost;
+    function onMove(e){
+      e.preventDefault();
+      const t=e.touches[0];
+      if(!tlGhostRef.current)return;
+      tlGhostRef.current.style.left=(t.clientX+12)+'px';
+      tlGhostRef.current.style.top=(t.clientY-30)+'px';
+      tlGhostRef.current.style.display='none';
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      tlGhostRef.current.style.display='';
+      const wn=parseInt(el?.closest('[data-week]')?.dataset.week);
+      const w=isNaN(wn)?null:wn;
+      tlDragOverRef.current=w;setTlDragOver(w);
+    }
+    function onEnd(){
+      if(tlGhostRef.current){tlGhostRef.current.remove();tlGhostRef.current=null;}
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onEnd);
+      const src=tlDragRef.current,dest=tlDragOverRef.current;
+      tlDragRef.current=null;tlDragOverRef.current=null;setTlDragOver(null);
+      if(src&&dest!=null&&src.srcWeek!==dest)moveTimelineItem(src.catId,src.itemId,src.srcWeek,dest);
+    }
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
+  }
   const[activeWeek,setActiveWeek]=React.useState(1);
   const[dateInput,setDateInput]=React.useState('');
   const[calMode,setCalMode]=React.useState(false);
@@ -5408,7 +5451,11 @@ function ProjectSchedulePage({propId}){
               });
               return(
                 <React.Fragment key={n}>
-                <div style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:2,minHeight:items.length>0?undefined:52}}>
+                <div data-week={n}
+                  onDragOver={e=>{e.preventDefault();tlDragOverRef.current=n;setTlDragOver(n);}}
+                  onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){tlDragOverRef.current=null;setTlDragOver(null);}}}
+                  onDrop={e=>{e.preventDefault();const src=tlDragRef.current;tlDragRef.current=null;setTlDragOver(null);if(src&&src.srcWeek!==n)moveTimelineItem(src.catId,src.itemId,src.srcWeek,n);}}
+                  style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:2,minHeight:items.length>0?undefined:52,outline:tlDragOver===n?'2px solid #e2b04a':'none',borderRadius:4}}>
                   {/* Week label */}
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',paddingTop:6,gap:2}}>
                     <div style={{fontSize:9,fontWeight:800,color:'rgba(226,176,74,.7)',textTransform:'uppercase'}}>W{n}</div>
@@ -5442,8 +5489,13 @@ function ProjectSchedulePage({propId}){
                             {items.map((it,ii)=>{
                               const color=ITEM_COLORS[catColorIdx[it.catId]||0];
                               return(
-                                <div key={ii} onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
-                                  style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'pointer',
+                                <div key={ii}
+                                  draggable
+                                  onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';tlDragRef.current={catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n};}}
+                                  onDragEnd={()=>{tlDragRef.current=null;setTlDragOver(null);}}
+                                  onTouchStart={e=>startTlTouchDrag(e,{catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n})}
+                                  onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
+                                  style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'grab',
                                     background:color+'22',borderLeft:`3px solid ${color}`,
                                   }}>
                                   <span style={{fontSize:10,fontWeight:600,color:color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'90%'}}>{it.label}</span>
@@ -6258,6 +6310,10 @@ function RenovationSchedulePage({prop}){
   const [addingTo,setAddingTo]=React.useState(null); // wid
   const [newItemText,setNewItemText]=React.useState('');
   const [showOptional,setShowOptional]=React.useState({});
+  const [dragOverWid,setDragOverWid]=React.useState(null);
+  const dragRef=React.useRef(null);
+  const dragOverRef=React.useRef(null);
+  const ghostRef=React.useRef(null);
 
   React.useEffect(()=>{
     return dbListen(`projects/${propId}/renovSchedule`,v=>{
@@ -6294,6 +6350,56 @@ function RenovationSchedulePage({prop}){
     const w=sched.weeks?.[wid]||{};
     const custom=(w.custom||[]).filter((_,i)=>i!==idx);
     await save({...sched,weeks:{...sched.weeks,[wid]:{...w,custom}}});
+  }
+
+  async function moveItem(srcWid,destWid,item){
+    if(!destWid||srcWid===destWid)return;
+    const srcW={...(sched.weeks?.[srcWid]||{})};
+    const destW={...(sched.weeks?.[destWid]||{})};
+    if(item.type==='standard'){
+      srcW.off={...(srcW.off||{}),[item.iid]:true};
+    }else{
+      const c=[...(srcW.custom||[])];c.splice(item.idx,1);srcW.custom=c;
+    }
+    destW.custom=[...(destW.custom||[]),item.text];
+    await save({...sched,weeks:{...sched.weeks,[srcWid]:srcW,[destWid]:destW}});
+  }
+
+  function startSchedDrag(e,srcWid,item){
+    dragRef.current={srcWid,...item};
+    e.dataTransfer.effectAllowed='move';
+  }
+
+  function startSchedTouchDrag(e,srcWid,item){
+    e.stopPropagation();
+    dragRef.current={srcWid,...item};
+    const touch=e.touches[0];
+    const ghost=document.createElement('div');
+    ghost.textContent=item.text;
+    ghost.style.cssText='position:fixed;z-index:9999;background:#e2b04a;color:#1a1a2e;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;pointer-events:none;opacity:.92;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;left:'+(touch.clientX+12)+'px;top:'+(touch.clientY-36)+'px;';
+    document.body.appendChild(ghost);ghostRef.current=ghost;
+    function onMove(e){
+      e.preventDefault();
+      const t=e.touches[0];
+      if(!ghostRef.current)return;
+      ghostRef.current.style.left=(t.clientX+12)+'px';
+      ghostRef.current.style.top=(t.clientY-36)+'px';
+      ghostRef.current.style.display='none';
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      ghostRef.current.style.display='';
+      const wid=el?.closest('[data-wid]')?.dataset.wid||null;
+      dragOverRef.current=wid;setDragOverWid(wid);
+    }
+    function onEnd(){
+      if(ghostRef.current){ghostRef.current.remove();ghostRef.current=null;}
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onEnd);
+      const src=dragRef.current,dest=dragOverRef.current;
+      dragRef.current=null;dragOverRef.current=null;setDragOverWid(null);
+      if(src&&dest&&src.srcWid!==dest)moveItem(src.srcWid,dest,src);
+    }
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
   }
 
   function openPrint(){
@@ -6360,8 +6466,13 @@ function RenovationSchedulePage({prop}){
         const hasOptional=week.items.some(it=>it.optional);
         const showOpt=showOptional[week.id];
 
+        const isDropTarget=dragOverWid===week.id&&dragRef.current?.srcWid!==week.id;
         return(
-          <div key={week.id} style={{margin:'0 14px 16px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.09)',borderRadius:12,overflow:'hidden'}}>
+          <div key={week.id} data-wid={week.id}
+            onDragOver={e=>{e.preventDefault();dragOverRef.current=week.id;setDragOverWid(week.id);}}
+            onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){dragOverRef.current=null;setDragOverWid(null);}}}
+            onDrop={e=>{e.preventDefault();const src=dragRef.current;dragRef.current=null;setDragOverWid(null);if(src&&src.srcWid!==week.id)moveItem(src.srcWid,week.id,src);}}
+            style={{margin:'0 14px 16px',background:isDropTarget?'rgba(226,176,74,.08)':'rgba(255,255,255,.04)',border:'1px solid '+(isDropTarget?'#e2b04a':'rgba(255,255,255,.09)'),borderRadius:12,overflow:'hidden',transition:'border-color .15s,background .15s'}}>
             {/* Week header */}
             <div style={{padding:'10px 14px',background:'rgba(255,255,255,.06)',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span style={{fontSize:13,fontWeight:700,color:'white'}}>{week.title}</span>
@@ -6378,7 +6489,11 @@ function RenovationSchedulePage({prop}){
                 const text=edits[it.id]||it.text;
                 const isEditing=editingItem?.wid===week.id&&editingItem?.iid===it.id;
                 return(
-                  <div key={it.id} style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,opacity:isOff?.4:1}}>
+                  <div key={it.id}
+                    draggable={!isOff&&!isEditing}
+                    onDragStart={e=>startSchedDrag(e,week.id,{type:'standard',iid:it.id,text})}
+                    onTouchStart={e=>{if(!isOff&&!isEditing)startSchedTouchDrag(e,week.id,{type:'standard',iid:it.id,text});}}
+                    style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,opacity:isOff?.4:1,cursor:isOff||isEditing?'default':'grab'}}>
                     <button onClick={()=>toggleItem(week.id,it.id,isOff)}
                       style={{background:'none',border:'none',color:isOff?'rgba(255,255,255,.25)':'#22c55e',fontSize:15,cursor:'pointer',padding:'0',marginTop:1,flexShrink:0}}>
                       {isOff?'○':'●'}
@@ -6404,7 +6519,11 @@ function RenovationSchedulePage({prop}){
               })}
               {/* Custom items */}
               {custom.map((txt,idx)=>(
-                <div key={idx} style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10}}>
+                <div key={idx}
+                  draggable
+                  onDragStart={e=>startSchedDrag(e,week.id,{type:'custom',idx,text:txt})}
+                  onTouchStart={e=>startSchedTouchDrag(e,week.id,{type:'custom',idx,text:txt})}
+                  style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,cursor:'grab'}}>
                   <span style={{color:'#22c55e',fontSize:15,marginTop:1,flexShrink:0}}>●</span>
                   <span style={{flex:1,fontSize:12,color:'rgba(255,255,255,.9)',lineHeight:1.5}}>{txt}<span style={{fontSize:10,color:'rgba(226,176,74,.5)',marginLeft:6}}>custom</span></span>
                   <button onClick={()=>removeCustom(week.id,idx)} style={{background:'none',border:'none',color:'rgba(239,68,68,.5)',fontSize:13,cursor:'pointer',padding:'0',flexShrink:0}}>✕</button>
