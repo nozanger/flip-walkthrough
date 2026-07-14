@@ -5027,21 +5027,30 @@ function ProjectSchedulePage({propId}){
   const tlDragOverIdxRef=React.useRef(null);
   const tlGhostRef=React.useRef(null);
   const[itemOrder,setItemOrder]=React.useState({});
+  const[tlInspections,setTlInspections]=React.useState({}); // {id:{week,label}}
+  const[itemLabels,setItemLabels]=React.useState({}); // {catId|itemId: label}
+  const[editLabelKey,setEditLabelKey]=React.useState(null); // key being edited
+  const[editLabelText,setEditLabelText]=React.useState('');
 
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemOrder`,v=>setItemOrder(v||{})),[propId]);
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan/inspections`,v=>setTlInspections(v||{})),[propId]);
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemLabels`,v=>setItemLabels(v||{})),[propId]);
 
   function itemsForWeekOrdered(n){
-    const all=itemsForWeek(n);
+    const regular=itemsForWeek(n).map(it=>({...it,key:it.catId+'|'+it.itemId,label:itemLabels[it.catId+'|'+it.itemId]||it.label}));
+    const inspItems=Object.entries(tlInspections).filter(([,v])=>v.week===n)
+      .map(([id,v])=>({key:'insp|'+id,isInsp:true,inspId:id,catId:'insp',itemId:id,label:v.label||'City Inspection'}));
+    const all=[...regular,...inspItems];
     const order=itemOrder[n];
     if(!order||!order.length)return all;
-    const map=Object.fromEntries(all.map(it=>[it.catId+'|'+it.itemId,it]));
+    const map=Object.fromEntries(all.map(it=>[it.key,it]));
     const ordered=order.map(k=>map[k]).filter(Boolean);
-    const extra=all.filter(it=>!order.includes(it.catId+'|'+it.itemId));
+    const extra=all.filter(it=>!order.includes(it.key));
     return[...ordered,...extra];
   }
 
   async function reorderTlWeek(n,newOrder){
-    await dbSet(`projects/${propId}/weekplan/itemOrder/${n}`,newOrder.map(it=>it.catId+'|'+it.itemId));
+    await dbSet(`projects/${propId}/weekplan/itemOrder/${n}`,newOrder.map(it=>it.key));
   }
 
   async function dropOnTlItem(destWeek,destIdx){
@@ -5057,8 +5066,31 @@ function ProjectSchedulePage({propId}){
       newOrder.splice(destIdx>src.listIdx?destIdx-1:destIdx,0,moved);
       await reorderTlWeek(destWeek,newOrder);
     }else{
-      await moveTimelineItem(src.catId,src.itemId,src.srcWeek,destWeek);
+      if(src.isInsp){
+        await dbSet(`projects/${propId}/weekplan/inspections/${src.inspId}/week`,destWeek);
+      }else{
+        await moveTimelineItem(src.catId,src.itemId,src.srcWeek,destWeek);
+      }
     }
+  }
+
+  async function addTlInspection(week){
+    const id=Date.now().toString(36);
+    await dbSet(`projects/${propId}/weekplan/inspections/${id}`,{week,label:'City Inspection'});
+  }
+
+  async function deleteTlInspection(id){
+    await dbRemove(`projects/${propId}/weekplan/inspections/${id}`);
+  }
+
+  async function saveTlLabel(key,label){
+    if(key.startsWith('insp|')){
+      const id=key.replace('insp|','');
+      await dbSet(`projects/${propId}/weekplan/inspections/${id}/label`,label);
+    }else{
+      await dbSet(`projects/${propId}/weekplan/itemLabels/${key}`,label);
+    }
+    setEditLabelKey(null);
   }
 
   async function moveTimelineItem(catId,itemId,srcWeek,destWeek){
@@ -5233,34 +5265,6 @@ function ProjectSchedulePage({propId}){
         </div>
       </div>
 
-      {/* City inspection week picker — multi-select */}
-      <div style={{padding:'10px 12px 0'}}>
-        <div style={{background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.25)',borderRadius:12,padding:'12px 14px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-            <span style={{fontSize:13,color:'#f59e0b',flexShrink:0}}>⚠</span>
-            <span style={{fontSize:12,color:'rgba(255,255,255,.6)'}}>City inspections after week(s):</span>
-          </div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-            {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
-              const inspArr=Array.isArray(plan.inspection)?plan.inspection:(plan.inspection!=null?[plan.inspection]:[]);
-              const checked=inspArr.includes(n);
-              return(
-                <div key={n} onClick={async()=>{
-                  const cur=Array.isArray(plan.inspection)?plan.inspection:(plan.inspection!=null?[plan.inspection]:[]);
-                  const next=checked?cur.filter(x=>x!==n):[...cur,n].sort((a,b)=>a-b);
-                  await dbSet(`projects/${propId}/weekplan/inspection`,next.length>0?next:null);
-                }}
-                style={{padding:'5px 12px',borderRadius:20,fontSize:12,fontWeight:600,cursor:'pointer',
-                  background:checked?'rgba(245,158,11,.35)':'rgba(255,255,255,.06)',
-                  border:checked?'1px solid #f59e0b':'1px solid rgba(255,255,255,.15)',
-                  color:checked?'#f59e0b':'rgba(255,255,255,.5)',userSelect:'none'}}>
-                  W{n}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       {/* 8-week Gantt grid */}
       <div style={{padding:'10px 12px 0',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
@@ -5494,8 +5498,6 @@ function ProjectSchedulePage({propId}){
             {mg.weeks.map(n=>{
               const wsd=weekStartDate(n);
               const items=itemsForWeekOrdered(n);
-              const inspArr=Array.isArray(plan.inspection)?plan.inspection:(plan.inspection!=null?[plan.inspection]:[]);
-              const hasInspection=inspArr.includes(n);
               const isTlSrcWeek=tlDragRef.current?.srcWeek===n;
               // build 7 day cells Mon–Sun
               const days=Array.from({length:7},(_,di)=>{
@@ -5541,42 +5543,59 @@ function ProjectSchedulePage({propId}){
                             width:'700%',
                           }}>
                             {items.map((it,ii)=>{
-                              const color=ITEM_COLORS[catColorIdx[it.catId]||0];
+                              const isInsp=it.isInsp;
+                              const color=isInsp?'#f59e0b':ITEM_COLORS[catColorIdx[it.catId]||0];
                               const showInsert=tlDragOverIdx?.week===n&&tlDragOverIdx?.idx===ii&&tlDragRef.current?.srcWeek===n;
+                              const isEditing=editLabelKey===it.key;
                               return(
-                                <React.Fragment key={ii}>
+                                <React.Fragment key={it.key}>
                                   {showInsert&&<div style={{height:3,background:'#e2b04a',borderRadius:2,margin:'1px 0'}}/>}
-                                  <div
-                                    data-tlwidx={ii}
-                                    draggable
-                                    onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';tlDragRef.current={catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n};}}
-                                    onDragEnd={()=>{tlDragRef.current=null;setTlDragOver(null);setTlDragOverIdx(null);}}
-                                    onDragOver={e=>{e.preventDefault();e.stopPropagation();if(tlDragRef.current?.srcWeek===n){const v={week:n,idx:ii};tlDragOverIdxRef.current=v;setTlDragOverIdx(v);}}}
-                                    onDrop={e=>{e.preventDefault();e.stopPropagation();dropOnTlItem(n,ii);}}
-                                    onTouchStart={e=>startTlTouchDrag(e,{catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n})}
-                                    onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
-                                    style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'grab',
-                                      background:color+'22',borderLeft:`3px solid ${color}`,
-                                    }}>
-                                    <span style={{fontSize:10,fontWeight:600,color:color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'90%'}}>{it.label}</span>
-                                  </div>
+                                  {isEditing?(
+                                    <div style={{display:'flex',alignItems:'center',gap:4,padding:'2px 4px',borderRadius:5,background:color+'22',borderLeft:`3px solid ${color}`}}>
+                                      <input autoFocus value={editLabelText}
+                                        onChange={e=>setEditLabelText(e.target.value)}
+                                        onKeyDown={e=>{if(e.key==='Enter')saveTlLabel(it.key,editLabelText);if(e.key==='Escape')setEditLabelKey(null);}}
+                                        style={{flex:1,background:'transparent',border:'none',outline:'none',color:'white',fontSize:10,fontWeight:600,minWidth:0}}/>
+                                      <span onClick={()=>saveTlLabel(it.key,editLabelText)} style={{cursor:'pointer',color:color,fontSize:11,fontWeight:700}}>✓</span>
+                                      {isInsp&&<span onClick={async()=>{await deleteTlInspection(it.inspId);setEditLabelKey(null);}} style={{cursor:'pointer',color:'#ef4444',fontSize:11,fontWeight:700,marginLeft:2}}>✕</span>}
+                                      <span onClick={()=>setEditLabelKey(null)} style={{cursor:'pointer',color:'rgba(255,255,255,.4)',fontSize:11}}>—</span>
+                                    </div>
+                                  ):(
+                                    <div
+                                      data-tlwidx={ii}
+                                      draggable
+                                      onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';tlDragRef.current={...it,srcWeek:n,listIdx:ii};}}
+                                      onDragEnd={()=>{tlDragRef.current=null;setTlDragOver(null);setTlDragOverIdx(null);}}
+                                      onDragOver={e=>{e.preventDefault();e.stopPropagation();if(tlDragRef.current?.srcWeek===n){const v={week:n,idx:ii};tlDragOverIdxRef.current=v;setTlDragOverIdx(v);}}}
+                                      onDrop={e=>{e.preventDefault();e.stopPropagation();dropOnTlItem(n,ii);}}
+                                      onTouchStart={e=>startTlTouchDrag(e,{...it,srcWeek:n,listIdx:ii})}
+                                      onClick={()=>{setEditLabelKey(it.key);setEditLabelText(it.label);}}
+                                      style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'grab',
+                                        background:isInsp?'rgba(245,158,11,.15)':color+'22',
+                                        borderLeft:`3px solid ${color}`,
+                                      }}>
+                                      {isInsp&&<span style={{fontSize:9}}>⚠</span>}
+                                      <span style={{fontSize:10,fontWeight:600,color:color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'90%'}}>{it.label}</span>
+                                    </div>
+                                  )}
                                 </React.Fragment>
                               );
                             })}
                             {/* Insert line at end of week */}
                             {tlDragOverIdx?.week===n&&tlDragOverIdx?.idx>=items.length&&tlDragRef.current?.srcWeek===n&&<div style={{height:3,background:'#e2b04a',borderRadius:2,margin:'1px 0'}}/>}
+                            {/* Add inspection button */}
+                            <div onClick={()=>addTlInspection(n)}
+                              style={{display:'flex',alignItems:'center',gap:3,padding:'2px 6px',borderRadius:5,cursor:'pointer',
+                                border:'1px dashed rgba(245,158,11,.3)',color:'rgba(245,158,11,.5)',fontSize:9,fontWeight:600,marginTop:2,
+                                userSelect:'none'}}>
+                              <span>⚠</span><span>+ inspection</span>
+                            </div>
                           </div>
                         )}
                       </div>
                     );
                   })}
                 </div>
-                {hasInspection&&(
-                  <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',margin:'2px 0 4px',background:'rgba(245,158,11,.12)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8}}>
-                    <span style={{fontSize:13}}>⚠</span>
-                    <span style={{fontSize:11,fontWeight:700,color:'#f59e0b'}}>City Inspection — Framing, Plumbing &amp; Electrical</span>
-                  </div>
-                )}
                 </React.Fragment>
               );
             })}
