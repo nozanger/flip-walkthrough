@@ -5233,16 +5233,32 @@ function ProjectSchedulePage({propId}){
         </div>
       </div>
 
-      {/* City inspection week picker */}
+      {/* City inspection week picker — multi-select */}
       <div style={{padding:'10px 12px 0'}}>
-        <div style={{background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.25)',borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
-          <span style={{fontSize:13,color:'#f59e0b',flexShrink:0}}>⚠</span>
-          <span style={{fontSize:12,color:'rgba(255,255,255,.6)',flex:1}}>City inspection after Week:</span>
-          <select value={plan.inspection??''} onChange={async e=>{const v=e.target.value===''?null:Number(e.target.value);await dbSet(`projects/${propId}/weekplan/inspection`,v);}}
-            style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(245,158,11,.3)',borderRadius:8,color:'white',fontSize:13,padding:'6px 10px',cursor:'pointer'}}>
-            <option value=''>None</option>
-            {Array.from({length:numWeeks},(_,i)=>i+1).map(n=><option key={n} value={n}>Week {n}</option>)}
-          </select>
+        <div style={{background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.25)',borderRadius:12,padding:'12px 14px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+            <span style={{fontSize:13,color:'#f59e0b',flexShrink:0}}>⚠</span>
+            <span style={{fontSize:12,color:'rgba(255,255,255,.6)'}}>City inspections after week(s):</span>
+          </div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+            {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
+              const inspArr=Array.isArray(plan.inspection)?plan.inspection:(plan.inspection!=null?[plan.inspection]:[]);
+              const checked=inspArr.includes(n);
+              return(
+                <div key={n} onClick={async()=>{
+                  const cur=Array.isArray(plan.inspection)?plan.inspection:(plan.inspection!=null?[plan.inspection]:[]);
+                  const next=checked?cur.filter(x=>x!==n):[...cur,n].sort((a,b)=>a-b);
+                  await dbSet(`projects/${propId}/weekplan/inspection`,next.length>0?next:null);
+                }}
+                style={{padding:'5px 12px',borderRadius:20,fontSize:12,fontWeight:600,cursor:'pointer',
+                  background:checked?'rgba(245,158,11,.35)':'rgba(255,255,255,.06)',
+                  border:checked?'1px solid #f59e0b':'1px solid rgba(255,255,255,.15)',
+                  color:checked?'#f59e0b':'rgba(255,255,255,.5)',userSelect:'none'}}>
+                  W{n}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -5478,7 +5494,8 @@ function ProjectSchedulePage({propId}){
             {mg.weeks.map(n=>{
               const wsd=weekStartDate(n);
               const items=itemsForWeekOrdered(n);
-              const hasInspection=plan.inspection===n;
+              const inspArr=Array.isArray(plan.inspection)?plan.inspection:(plan.inspection!=null?[plan.inspection]:[]);
+              const hasInspection=inspArr.includes(n);
               const isTlSrcWeek=tlDragRef.current?.srcWeek===n;
               // build 7 day cells Mon–Sun
               const days=Array.from({length:7},(_,di)=>{
