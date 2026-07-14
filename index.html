@@ -5021,9 +5021,45 @@ function PropEventsBar({propId}){
 function ProjectSchedulePage({propId}){
   const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false,inspection:null});
   const[tlDragOver,setTlDragOver]=React.useState(null);
+  const[tlDragOverIdx,setTlDragOverIdx]=React.useState(null); // {week,idx}
   const tlDragRef=React.useRef(null);
   const tlDragOverRef=React.useRef(null);
+  const tlDragOverIdxRef=React.useRef(null);
   const tlGhostRef=React.useRef(null);
+  const[itemOrder,setItemOrder]=React.useState({});
+
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemOrder`,v=>setItemOrder(v||{})),[propId]);
+
+  function itemsForWeekOrdered(n){
+    const all=itemsForWeek(n);
+    const order=itemOrder[n];
+    if(!order||!order.length)return all;
+    const map=Object.fromEntries(all.map(it=>[it.catId+'|'+it.itemId,it]));
+    const ordered=order.map(k=>map[k]).filter(Boolean);
+    const extra=all.filter(it=>!order.includes(it.catId+'|'+it.itemId));
+    return[...ordered,...extra];
+  }
+
+  async function reorderTlWeek(n,newOrder){
+    await dbSet(`projects/${propId}/weekplan/itemOrder/${n}`,newOrder.map(it=>it.catId+'|'+it.itemId));
+  }
+
+  async function dropOnTlItem(destWeek,destIdx){
+    const src=tlDragRef.current;
+    tlDragRef.current=null;tlDragOverRef.current=null;tlDragOverIdxRef.current=null;
+    setTlDragOver(null);setTlDragOverIdx(null);
+    if(!src)return;
+    if(src.srcWeek===destWeek){
+      const items=itemsForWeekOrdered(destWeek);
+      if(src.listIdx===destIdx||src.listIdx===destIdx-1)return;
+      const newOrder=[...items];
+      const[moved]=newOrder.splice(src.listIdx,1);
+      newOrder.splice(destIdx>src.listIdx?destIdx-1:destIdx,0,moved);
+      await reorderTlWeek(destWeek,newOrder);
+    }else{
+      await moveTimelineItem(src.catId,src.itemId,src.srcWeek,destWeek);
+    }
+  }
 
   async function moveTimelineItem(catId,itemId,srcWeek,destWeek){
     if(srcWeek===destWeek||!destWeek)return;
@@ -5441,8 +5477,9 @@ function ProjectSchedulePage({propId}){
             {/* Week rows */}
             {mg.weeks.map(n=>{
               const wsd=weekStartDate(n);
-              const items=itemsForWeek(n);
+              const items=itemsForWeekOrdered(n);
               const hasInspection=plan.inspection===n;
+              const isTlSrcWeek=tlDragRef.current?.srcWeek===n;
               // build 7 day cells Mon–Sun
               const days=Array.from({length:7},(_,di)=>{
                 if(!wsd)return{date:null,dayItems:[]};
@@ -5452,9 +5489,9 @@ function ProjectSchedulePage({propId}){
               return(
                 <React.Fragment key={n}>
                 <div data-week={n}
-                  onDragOver={e=>{e.preventDefault();tlDragOverRef.current=n;setTlDragOver(n);}}
-                  onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){tlDragOverRef.current=null;setTlDragOver(null);}}}
-                  onDrop={e=>{e.preventDefault();const src=tlDragRef.current;tlDragRef.current=null;setTlDragOver(null);if(src&&src.srcWeek!==n)moveTimelineItem(src.catId,src.itemId,src.srcWeek,n);}}
+                  onDragOver={e=>{e.preventDefault();if(tlDragRef.current?.srcWeek!==n){tlDragOverRef.current=n;setTlDragOver(n);}}}
+                  onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){tlDragOverRef.current=null;tlDragOverIdxRef.current=null;setTlDragOver(null);setTlDragOverIdx(null);}}}
+                  onDrop={e=>{e.preventDefault();const idx=tlDragOverIdxRef.current?.week===n?tlDragOverIdxRef.current.idx:999;dropOnTlItem(n,idx);}}
                   style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:2,minHeight:items.length>0?undefined:52,outline:tlDragOver===n?'2px solid #e2b04a':'none',borderRadius:4}}>
                   {/* Week label */}
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',paddingTop:6,gap:2}}>
@@ -5488,20 +5525,29 @@ function ProjectSchedulePage({propId}){
                           }}>
                             {items.map((it,ii)=>{
                               const color=ITEM_COLORS[catColorIdx[it.catId]||0];
+                              const showInsert=tlDragOverIdx?.week===n&&tlDragOverIdx?.idx===ii&&tlDragRef.current?.srcWeek===n;
                               return(
-                                <div key={ii}
-                                  draggable
-                                  onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';tlDragRef.current={catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n};}}
-                                  onDragEnd={()=>{tlDragRef.current=null;setTlDragOver(null);}}
-                                  onTouchStart={e=>startTlTouchDrag(e,{catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n})}
-                                  onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
-                                  style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'grab',
-                                    background:color+'22',borderLeft:`3px solid ${color}`,
-                                  }}>
-                                  <span style={{fontSize:10,fontWeight:600,color:color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'90%'}}>{it.label}</span>
-                                </div>
+                                <React.Fragment key={ii}>
+                                  {showInsert&&<div style={{height:3,background:'#e2b04a',borderRadius:2,margin:'1px 0'}}/>}
+                                  <div
+                                    data-tlwidx={ii}
+                                    draggable
+                                    onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';tlDragRef.current={catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n};}}
+                                    onDragEnd={()=>{tlDragRef.current=null;setTlDragOver(null);setTlDragOverIdx(null);}}
+                                    onDragOver={e=>{e.preventDefault();e.stopPropagation();if(tlDragRef.current?.srcWeek===n){const v={week:n,idx:ii};tlDragOverIdxRef.current=v;setTlDragOverIdx(v);}}}
+                                    onDrop={e=>{e.preventDefault();e.stopPropagation();dropOnTlItem(n,ii);}}
+                                    onTouchStart={e=>startTlTouchDrag(e,{catId:it.catId,itemId:it.itemId,label:it.label,srcWeek:n})}
+                                    onClick={()=>setEditingItem({catId:it.catId,itemId:it.itemId,label:it.label})}
+                                    style={{display:'flex',alignItems:'center',gap:4,padding:'3px 7px',borderRadius:5,cursor:'grab',
+                                      background:color+'22',borderLeft:`3px solid ${color}`,
+                                    }}>
+                                    <span style={{fontSize:10,fontWeight:600,color:color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'90%'}}>{it.label}</span>
+                                  </div>
+                                </React.Fragment>
                               );
                             })}
+                            {/* Insert line at end of week */}
+                            {tlDragOverIdx?.week===n&&tlDragOverIdx?.idx>=items.length&&tlDragRef.current?.srcWeek===n&&<div style={{height:3,background:'#e2b04a',borderRadius:2,margin:'1px 0'}}/>}
                           </div>
                         )}
                       </div>
@@ -6311,9 +6357,31 @@ function RenovationSchedulePage({prop}){
   const [newItemText,setNewItemText]=React.useState('');
   const [showOptional,setShowOptional]=React.useState({});
   const [dragOverWid,setDragOverWid]=React.useState(null);
+  const [dragOverIdx,setDragOverIdx]=React.useState(null); // {wid,idx}
   const dragRef=React.useRef(null);
   const dragOverRef=React.useRef(null);
+  const dragOverIdxRef=React.useRef(null);
   const ghostRef=React.useRef(null);
+
+  function getDisplayItems(week,wData,showOpt){
+    const off=wData.off||{},edits=wData.edits||{},custom=wData.custom||[],stored=wData.order;
+    if(stored&&stored.length>0){
+      return stored
+        .filter(it=>it.type==='standard'?!off[it.iid]:true)
+        .map(it=>({...it,text:it.type==='standard'?(edits[it.iid]||it.text):it.text,
+          optional:it.type==='standard'?(week.items.find(i=>i.id===it.iid)?.optional||false):false}));
+    }
+    const std=week.items.filter(it=>(!it.optional||showOpt)&&!off[it.id])
+      .map(it=>({type:'standard',iid:it.id,text:edits[it.id]||it.text,optional:it.optional||false}));
+    return [...std,...custom.map(text=>({type:'custom',text}))];
+  }
+
+  async function reorderItems(wid,newOrder){
+    const w={...(sched.weeks?.[wid]||{})};
+    w.order=newOrder;
+    w.custom=newOrder.filter(i=>i.type==='custom').map(i=>i.text);
+    await save({...sched,weeks:{...sched.weeks,[wid]:w}});
+  }
 
   React.useEffect(()=>{
     return dbListen(`projects/${propId}/renovSchedule`,v=>{
@@ -6352,6 +6420,27 @@ function RenovationSchedulePage({prop}){
     await save({...sched,weeks:{...sched.weeks,[wid]:{...w,custom}}});
   }
 
+  async function dropOnItem(destWid,destIdx){
+    const src=dragRef.current;
+    dragRef.current=null;dragOverRef.current=null;dragOverIdxRef.current=null;
+    setDragOverWid(null);setDragOverIdx(null);
+    if(!src)return;
+    if(src.srcWid===destWid){
+      // reorder within same week
+      const week=SCHED_WEEKS.find(w=>w.id===destWid);
+      const wData=sched.weeks?.[destWid]||{};
+      const items=getDisplayItems(week,wData,showOptional[destWid]);
+      if(src.listIdx===destIdx||src.listIdx===destIdx-1)return;
+      const newOrder=[...items];
+      const [moved]=newOrder.splice(src.listIdx,1);
+      const insertAt=destIdx>src.listIdx?destIdx-1:destIdx;
+      newOrder.splice(insertAt,0,moved);
+      await reorderItems(destWid,newOrder);
+    }else{
+      await moveItem(src.srcWid,destWid,src);
+    }
+  }
+
   async function moveItem(srcWid,destWid,item){
     if(!destWid||srcWid===destWid)return;
     const srcW={...(sched.weeks?.[srcWid]||{})};
@@ -6388,15 +6477,20 @@ function RenovationSchedulePage({prop}){
       const el=document.elementFromPoint(t.clientX,t.clientY);
       ghostRef.current.style.display='';
       const wid=el?.closest('[data-wid]')?.dataset.wid||null;
+      const widxEl=el?.closest('[data-widx]');
+      const widx=widxEl?{wid:widxEl.dataset.wid,idx:parseInt(widxEl.dataset.widx)}:null;
       dragOverRef.current=wid;setDragOverWid(wid);
+      dragOverIdxRef.current=widx;setDragOverIdx(widx);
     }
     function onEnd(){
       if(ghostRef.current){ghostRef.current.remove();ghostRef.current=null;}
       document.removeEventListener('touchmove',onMove);
       document.removeEventListener('touchend',onEnd);
-      const src=dragRef.current,dest=dragOverRef.current;
-      dragRef.current=null;dragOverRef.current=null;setDragOverWid(null);
-      if(src&&dest&&src.srcWid!==dest)moveItem(src.srcWid,dest,src);
+      const dest=dragOverRef.current,destIdx=dragOverIdxRef.current;
+      const idx=destIdx?.wid===dest?destIdx.idx:999;
+      dragRef.current=null;dragOverRef.current=null;dragOverIdxRef.current=null;
+      setDragOverWid(null);setDragOverIdx(null);
+      if(dest)dropOnItem(dest,idx);
     }
     document.addEventListener('touchmove',onMove,{passive:false});
     document.addEventListener('touchend',onEnd);
@@ -6469,9 +6563,9 @@ function RenovationSchedulePage({prop}){
         const isDropTarget=dragOverWid===week.id&&dragRef.current?.srcWid!==week.id;
         return(
           <div key={week.id} data-wid={week.id}
-            onDragOver={e=>{e.preventDefault();dragOverRef.current=week.id;setDragOverWid(week.id);}}
-            onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){dragOverRef.current=null;setDragOverWid(null);}}}
-            onDrop={e=>{e.preventDefault();const src=dragRef.current;dragRef.current=null;setDragOverWid(null);if(src&&src.srcWid!==week.id)moveItem(src.srcWid,week.id,src);}}
+            onDragOver={e=>{e.preventDefault();if(dragRef.current?.srcWid!==week.id){dragOverRef.current=week.id;setDragOverWid(week.id);}}}
+            onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){dragOverRef.current=null;dragOverIdxRef.current=null;setDragOverWid(null);setDragOverIdx(null);}}}
+            onDrop={e=>{e.preventDefault();const idx=dragOverIdxRef.current?.wid===week.id?dragOverIdxRef.current.idx:999;dropOnItem(week.id,idx);}}
             style={{margin:'0 14px 16px',background:isDropTarget?'rgba(226,176,74,.08)':'rgba(255,255,255,.04)',border:'1px solid '+(isDropTarget?'#e2b04a':'rgba(255,255,255,.09)'),borderRadius:12,overflow:'hidden',transition:'border-color .15s,background .15s'}}>
             {/* Week header */}
             <div style={{padding:'10px 14px',background:'rgba(255,255,255,.06)',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -6482,53 +6576,66 @@ function RenovationSchedulePage({prop}){
                 </button>
               )}
             </div>
-            {/* Items */}
+            {/* Items — unified ordered list */}
             <div style={{padding:'6px 0'}}>
-              {week.items.filter(it=>!it.optional||showOpt||!off[it.id]===false).filter(it=>!it.optional||showOpt).map(it=>{
-                const isOff=!!off[it.id];
-                const text=edits[it.id]||it.text;
-                const isEditing=editingItem?.wid===week.id&&editingItem?.iid===it.id;
-                return(
-                  <div key={it.id}
-                    draggable={!isOff&&!isEditing}
-                    onDragStart={e=>startSchedDrag(e,week.id,{type:'standard',iid:it.id,text})}
-                    onTouchStart={e=>{if(!isOff&&!isEditing)startSchedTouchDrag(e,week.id,{type:'standard',iid:it.id,text});}}
-                    style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,opacity:isOff?.4:1,cursor:isOff||isEditing?'default':'grab'}}>
-                    <button onClick={()=>toggleItem(week.id,it.id,isOff)}
-                      style={{background:'none',border:'none',color:isOff?'rgba(255,255,255,.25)':'#22c55e',fontSize:15,cursor:'pointer',padding:'0',marginTop:1,flexShrink:0}}>
-                      {isOff?'○':'●'}
-                    </button>
-                    {isEditing?(
-                      <div style={{flex:1,display:'flex',gap:6}}>
-                        <input autoFocus value={editText} onChange={e=>setEditText(e.target.value)}
-                          onKeyDown={e=>{if(e.key==='Enter')saveItemEdit(week.id,it.id,editText);if(e.key==='Escape')setEditingItem(null);}}
-                          style={{...inputStyle,padding:'5px 9px',fontSize:12,flex:1}}/>
-                        <button onClick={()=>saveItemEdit(week.id,it.id,editText)} style={{background:'#22c55e',border:'none',borderRadius:6,color:'white',padding:'5px 10px',cursor:'pointer',fontWeight:700,flexShrink:0}}>✓</button>
-                        <button onClick={()=>setEditingItem(null)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:6,color:'rgba(255,255,255,.5)',padding:'5px 8px',cursor:'pointer',flexShrink:0}}>✕</button>
+              {(()=>{
+                const displayItems=getDisplayItems(week,wData,showOpt);
+                const isSrcWeek=dragRef.current?.srcWid===week.id;
+                return displayItems.map((item,idx)=>{
+                  const isStd=item.type==='standard';
+                  const isOff=isStd?!!off[item.iid]:false;
+                  const isEditing=isStd&&editingItem?.wid===week.id&&editingItem?.iid===item.iid;
+                  const showInsertBefore=dragOverIdx?.wid===week.id&&dragOverIdx?.idx===idx;
+                  return(
+                    <React.Fragment key={idx}>
+                      {showInsertBefore&&<div style={{height:3,background:'#e2b04a',borderRadius:2,margin:'0 14px'}}/>}
+                      <div
+                        draggable={!isEditing}
+                        onDragStart={e=>{e.dataTransfer.effectAllowed='move';startSchedDrag(e,week.id,{...item,listIdx:idx});}}
+                        onDragOver={e=>{
+                          e.preventDefault();e.stopPropagation();
+                          if(isSrcWeek){dragOverIdxRef.current={wid:week.id,idx};setDragOverIdx({wid:week.id,idx});}
+                          else{dragOverRef.current=week.id;setDragOverWid(week.id);}
+                        }}
+                        onDrop={e=>{e.preventDefault();e.stopPropagation();dropOnItem(week.id,idx);}}
+                        onTouchStart={e=>startSchedTouchDrag(e,week.id,{...item,listIdx:idx})}
+                        data-wid={week.id} data-widx={idx}
+                        style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,opacity:isOff?.4:1,cursor:isEditing?'default':'grab'}}>
+                        {isStd?(
+                          <button onClick={()=>toggleItem(week.id,item.iid,isOff)}
+                            style={{background:'none',border:'none',color:isOff?'rgba(255,255,255,.25)':'#22c55e',fontSize:15,cursor:'pointer',padding:'0',marginTop:1,flexShrink:0}}>
+                            {isOff?'○':'●'}
+                          </button>
+                        ):(
+                          <span style={{color:'#22c55e',fontSize:15,marginTop:1,flexShrink:0}}>●</span>
+                        )}
+                        {isEditing?(
+                          <div style={{flex:1,display:'flex',gap:6}}>
+                            <input autoFocus value={editText} onChange={e=>setEditText(e.target.value)}
+                              onKeyDown={e=>{if(e.key==='Enter')saveItemEdit(week.id,item.iid,editText);if(e.key==='Escape')setEditingItem(null);}}
+                              style={{...inputStyle,padding:'5px 9px',fontSize:12,flex:1}}/>
+                            <button onClick={()=>saveItemEdit(week.id,item.iid,editText)} style={{background:'#22c55e',border:'none',borderRadius:6,color:'white',padding:'5px 10px',cursor:'pointer',fontWeight:700,flexShrink:0}}>✓</button>
+                            <button onClick={()=>setEditingItem(null)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:6,color:'rgba(255,255,255,.5)',padding:'5px 8px',cursor:'pointer',flexShrink:0}}>✕</button>
+                          </div>
+                        ):(
+                          <span
+                            onClick={()=>{if(isStd&&!isOff){setEditingItem({wid:week.id,iid:item.iid});setEditText(item.text);}}}
+                            style={{flex:1,fontSize:12,color:isOff?'rgba(255,255,255,.3)':item.optional?'rgba(255,255,255,.65)':'rgba(255,255,255,.9)',cursor:isStd&&!isOff?'text':'default',lineHeight:1.5,textDecoration:isOff?'line-through':'none'}}>
+                            {item.text}
+                            {item.optional&&!isOff&&<span style={{fontSize:10,color:'rgba(226,176,74,.6)',marginLeft:6}}>optional</span>}
+                            {!isStd&&<span style={{fontSize:10,color:'rgba(226,176,74,.5)',marginLeft:6}}>custom</span>}
+                          </span>
+                        )}
+                        {!isStd&&(
+                          <button onClick={()=>removeCustom(week.id,custom.indexOf(item.text))} style={{background:'none',border:'none',color:'rgba(239,68,68,.5)',fontSize:13,cursor:'pointer',padding:'0',flexShrink:0}}>✕</button>
+                        )}
                       </div>
-                    ):(
-                      <span onClick={()=>{if(!isOff){setEditingItem({wid:week.id,iid:it.id});setEditText(text);}}}
-                        style={{flex:1,fontSize:12,color:isOff?'rgba(255,255,255,.3)':it.optional?'rgba(255,255,255,.65)':'rgba(255,255,255,.9)',cursor:isOff?'default':'text',lineHeight:1.5,textDecoration:isOff?'line-through':'none'}}>
-                        {text}
-                        {it.optional&&!isOff&&<span style={{fontSize:10,color:'rgba(226,176,74,.6)',marginLeft:6}}>optional</span>}
-                        {edits[it.id]&&<span style={{fontSize:10,color:'#e2b04a',marginLeft:6}}>edited</span>}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-              {/* Custom items */}
-              {custom.map((txt,idx)=>(
-                <div key={idx}
-                  draggable
-                  onDragStart={e=>startSchedDrag(e,week.id,{type:'custom',idx,text:txt})}
-                  onTouchStart={e=>startSchedTouchDrag(e,week.id,{type:'custom',idx,text:txt})}
-                  style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,cursor:'grab'}}>
-                  <span style={{color:'#22c55e',fontSize:15,marginTop:1,flexShrink:0}}>●</span>
-                  <span style={{flex:1,fontSize:12,color:'rgba(255,255,255,.9)',lineHeight:1.5}}>{txt}<span style={{fontSize:10,color:'rgba(226,176,74,.5)',marginLeft:6}}>custom</span></span>
-                  <button onClick={()=>removeCustom(week.id,idx)} style={{background:'none',border:'none',color:'rgba(239,68,68,.5)',fontSize:13,cursor:'pointer',padding:'0',flexShrink:0}}>✕</button>
-                </div>
-              ))}
+                    </React.Fragment>
+                  );
+                });
+              })()}
+              {/* Insert line at end of list */}
+              {dragOverIdx?.wid===week.id&&dragOverIdx?.idx===999&&<div style={{height:3,background:'#e2b04a',borderRadius:2,margin:'0 14px'}}/>}
               {/* Add item */}
               {addingTo===week.id?(
                 <div style={{padding:'8px 14px',display:'flex',gap:6}}>
