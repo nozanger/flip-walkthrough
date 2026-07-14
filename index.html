@@ -5019,7 +5019,7 @@ function PropEventsBar({propId}){
 }
 
 function ProjectSchedulePage({propId}){
-  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false});
+  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false,inspection:null});
   const[activeWeek,setActiveWeek]=React.useState(1);
   const[dateInput,setDateInput]=React.useState('');
   const[calMode,setCalMode]=React.useState(false);
@@ -5027,9 +5027,10 @@ function ProjectSchedulePage({propId}){
   const[payInputs,setPayInputs]=React.useState({}); // {catId_itemId: string}
 
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,d=>{
-    const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{},numWeeks:d&&d.numWeeks||8,payments:d&&d.payments||{},calendarDone:d&&d.calendarDone||false};
+    const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{},numWeeks:d&&d.numWeeks||8,payments:d&&d.payments||{},calendarDone:d&&d.calendarDone||false,inspection:d&&d.inspection!=null?d.inspection:null};
     if(!p.numWeeks)p.numWeeks=8;
     if(!p.payments)p.payments={};
+    if(p.inspection===undefined)p.inspection=null;
     setPlan(p);
     setDateInput(prev=>prev===''?p.startDate||'':prev);
     // restore calendar mode if user previously pressed Done
@@ -5150,6 +5151,19 @@ function ProjectSchedulePage({propId}){
           {plan.startDate&&<div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:5}}>
             Mon starts each week · Week 8 ends {fmtD(weekStartDate(numWeeks)&&new Date(weekStartDate(numWeeks).getTime()+6*864e5))}
           </div>}
+        </div>
+      </div>
+
+      {/* City inspection week picker */}
+      <div style={{padding:'10px 12px 0'}}>
+        <div style={{background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.25)',borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:13,color:'#f59e0b',flexShrink:0}}>⚠</span>
+          <span style={{fontSize:12,color:'rgba(255,255,255,.6)',flex:1}}>City inspection after Week:</span>
+          <select value={plan.inspection??''} onChange={async e=>{const v=e.target.value===''?null:Number(e.target.value);await dbSet(`projects/${propId}/weekplan/inspection`,v);}}
+            style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(245,158,11,.3)',borderRadius:8,color:'white',fontSize:13,padding:'6px 10px',cursor:'pointer'}}>
+            <option value=''>None</option>
+            {Array.from({length:numWeeks},(_,i)=>i+1).map(n=><option key={n} value={n}>Week {n}</option>)}
+          </select>
         </div>
       </div>
 
@@ -5385,6 +5399,7 @@ function ProjectSchedulePage({propId}){
             {mg.weeks.map(n=>{
               const wsd=weekStartDate(n);
               const items=itemsForWeek(n);
+              const hasInspection=plan.inspection===n;
               // build 7 day cells Mon–Sun
               const days=Array.from({length:7},(_,di)=>{
                 if(!wsd)return{date:null,dayItems:[]};
@@ -5392,7 +5407,8 @@ function ProjectSchedulePage({propId}){
                 return{date:d,dayItems:[]};
               });
               return(
-                <div key={n} style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:2,minHeight:items.length>0?undefined:52}}>
+                <React.Fragment key={n}>
+                <div style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',gap:0,marginBottom:2,minHeight:items.length>0?undefined:52}}>
                   {/* Week label */}
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',paddingTop:6,gap:2}}>
                     <div style={{fontSize:9,fontWeight:800,color:'rgba(226,176,74,.7)',textTransform:'uppercase'}}>W{n}</div>
@@ -5440,6 +5456,13 @@ function ProjectSchedulePage({propId}){
                     );
                   })}
                 </div>
+                {hasInspection&&(
+                  <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',margin:'2px 0 4px',background:'rgba(245,158,11,.12)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8}}>
+                    <span style={{fontSize:13}}>⚠</span>
+                    <span style={{fontSize:11,fontWeight:700,color:'#f59e0b'}}>City Inspection — Framing, Plumbing &amp; Electrical</span>
+                  </div>
+                )}
+                </React.Fragment>
               );
             })}
           </div>
@@ -6299,7 +6322,7 @@ function RenovationSchedulePage({prop}){
         }
       });
     });
-    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:6,assignments,payments});
+    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:6,assignments,payments,inspection:2});
     alert('Timeline updated! Open the 📅 Timeline tab to see it.');
   }
 
