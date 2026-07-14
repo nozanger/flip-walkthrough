@@ -6080,8 +6080,308 @@ function DetailedBudgetPage({prop,data}){
   );
 }
 
+// ── Renovation Schedule Page ──────────────────────────────────────────────────
+
+const SCHED_WEEKS=[
+  {id:'w1',title:'Week 1 – Demo & Framing',payLabel:'Payment after Demo and Framing Complete',
+   items:[
+    {id:'demo',text:'Full interior demo — clear all debris from property'},
+    {id:'foundation',text:'Crawl space / foundation inspection'},
+    {id:'subfloor',text:'Fix subfloor in all areas where missing or damaged'},
+    {id:'closets',text:'Frame closets in all bedrooms'},
+    {id:'new_room',text:'Frame new half-bathroom and laundry room'},
+    {id:'doorway',text:'Open doorway between rooms',optional:true},
+    {id:'backyard',text:'Demolish shed / pool / structure in backyard',optional:true},
+  ]},
+  {id:'w2',title:'Week 2 – Plumbing & Electrical',payLabel:'Payment after Plumbing and Electrical Complete',inspection:true,
+   items:[
+    {id:'pex',text:'Rough-in plumbing — replace all supply lines to PEX'},
+    {id:'rewire',text:'Remove unnecessary outlets and rewire as needed throughout'},
+    {id:'elec',text:'Full electrical rough-in throughout house'},
+    {id:'wh',text:'Install new water heater'},
+    {id:'laundry',text:'Build laundry hookups and dryer vent'},
+    {id:'kitchen_move',text:'Move kitchen to new location — all plumbing and electrical included',optional:true},
+    {id:'extra_bath',text:'Rough-in plumbing and electrical for additional bathroom',optional:true},
+  ]},
+  {id:'w3',title:'Week 3 – Drywall & Tile',payLabel:'Payment after Drywall and Tile Complete',
+   items:[
+    {id:'drywall',text:'Hang drywall throughout entire house'},
+    {id:'tape',text:'Tape, float, and sand — walls ready for paint'},
+    {id:'backer',text:'Install cement backer board in all bathroom wet areas'},
+    {id:'tub',text:'Set and install new bathtub'},
+    {id:'bath_floor',text:'Tile bathroom floors'},
+    {id:'tub_surround',text:'Tile tub surround and build shower niche'},
+    {id:'extra_tile',text:'Tile additional bathroom or laundry floor',optional:true},
+  ]},
+  {id:'w4',title:'Week 4 – Flooring, Cabinets & Paint',payLabel:'Payment after Flooring, Cabinets, and Paint Complete',
+   items:[
+    {id:'paint',text:'Paint entire house — SW Alabaster (eggshell sheen)'},
+    {id:'lvp',text:'Install LVP flooring throughout all rooms'},
+    {id:'tile_floor',text:'Install tile flooring in bathrooms'},
+    {id:'cabinets',text:'Install kitchen cabinets with black hardware handles'},
+    {id:'doors',text:'Install 5 new interior doors'},
+    {id:'island',text:'Install kitchen island',optional:true},
+  ]},
+  {id:'w5',title:'Week 5 – Finishes & Fixtures',payLabel:null,
+   items:[
+    {id:'trim',text:'Install trim and PVC quarter round throughout'},
+    {id:'counter',text:'Install laminate kitchen countertop'},
+    {id:'sink',text:'Install kitchen sink and faucet'},
+    {id:'backsplash',text:'Install subway tile backsplash'},
+    {id:'vanity',text:'Install 2 bathroom vanities, mirrors, and vanity light fixtures'},
+    {id:'toilet',text:'Install 2 new toilets'},
+    {id:'tub_done',text:'Install new tub with tile surround and niche'},
+    {id:'vents',text:'Install bathroom ventilation fans'},
+    {id:'elec_trim',text:'Install all electrical trim — outlets, switches, and light fixtures'},
+    {id:'front_door',text:'Replace front exterior door'},
+    {id:'window_trim',text:'Install window and door trim — paint dark gray'},
+    {id:'appliances',text:'Install appliances: refrigerator, stove, microwave, dishwasher'},
+  ]},
+  {id:'w6',title:'Week 6 – Exterior, Punch List & Closeout',payLabel:'Final Payment after Full Completion and Owner Sign-Off',
+   items:[
+    {id:'roof',text:'Roof inspection and repairs where needed'},
+    {id:'powerwash',text:'Power wash all siding'},
+    {id:'punch',text:'Owner and GC walkthrough — complete all punch list items'},
+    {id:'inspections',text:'Final inspections (electrical, plumbing, building)'},
+    {id:'clean',text:'Full garbage removal and deep clean of entire property'},
+    {id:'signoff',text:'Final owner sign-off'},
+    {id:'gutters',text:'Install new gutters',optional:true},
+    {id:'soffit',text:'Install new soffit and fascia',optional:true},
+    {id:'patch',text:'Patch exterior opening where window was removed',optional:true},
+  ]},
+];
+
+function buildScheduleHTML(prop,sched){
+  const addr=prop.address||'[Property Address]';
+  const total=sched.totalPrice||'[TOTAL]';
+  const finalPay=sched.finalPayment||'[FINAL PAYMENT]';
+  function getItems(week){
+    const wData=sched.weeks?.[week.id]||{};
+    const off=wData.off||{};
+    const edits=wData.edits||{};
+    const custom=wData.custom||[];
+    const rows=week.items
+      .filter(it=>!off[it.id])
+      .map(it=>`<li>${edits[it.id]||it.text}</li>`)
+      .join('');
+    const customRows=custom.map(t=>`<li>${t}</li>`).join('');
+    return rows+customRows;
+  }
+  const weeks=SCHED_WEEKS.map(w=>{
+    const wData=sched.weeks?.[w.id]||{};
+    const draw=wData.draw;
+    const drawLine=w.payLabel?(draw?`<p class="draw">${w.payLabel}: <strong>$${Number(draw).toLocaleString()}</strong></p>`:`<p class="draw">${w.payLabel}: <strong>${w.id==='w6'?finalPay:'[AMOUNT]'}</strong></p>`):'';
+    const inspection=w.inspection?`<p class="inspection">⚠ City Inspection Required: Framing, Plumbing, and Electrical — must pass before proceeding to the next week</p>`:'';
+    return`<div class="week"><h2>${w.title}</h2><ul>${getItems(w)}</ul>${drawLine}${inspection}</div>`;
+  }).join('');
+  return`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Schedule — ${addr}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Arial,sans-serif;background:#f5f5f5;color:#111;padding:32px 20px}
+.page{max-width:720px;margin:0 auto;background:white;padding:40px 48px;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.meta{font-size:13px;color:#555;margin-bottom:4px}
+.meta.bold{font-weight:700;color:#111;font-size:13px}
+hr{border:none;border-top:1px solid #ccc;margin:18px 0}
+.week{margin-bottom:22px}
+h2{font-size:14px;font-weight:700;margin-bottom:8px;padding-top:14px;border-top:2px solid #111}
+ul{padding-left:18px;margin-bottom:8px}
+li{font-size:12px;line-height:1.7;color:#222}
+.draw{font-size:12px;margin-top:8px;color:#333}
+.inspection{font-size:11px;font-weight:700;color:#b45309;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;padding:7px 10px;margin-top:8px}
+.sig{margin-top:32px;display:flex;gap:48px}
+.sig-line{flex:1}
+.sig-line p{font-size:12px;font-weight:600;margin-bottom:24px}
+.sig-line .line{border-top:1px solid #888;margin-bottom:4px}
+.sig-label{font-size:11px;color:#555}
+@media print{body{background:white;padding:0}.page{box-shadow:none;border-radius:0;padding:24px 32px}.no-print{display:none}}
+</style></head><body><div class="page">
+<div class="no-print" style="margin-bottom:20px;display:flex;gap:10px">
+<button onclick="window.print()" style="background:#111;color:white;border:none;padding:9px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600">🖨 Print / Save as PDF</button>
+<button onclick="window.close()" style="background:none;border:1px solid #ccc;padding:9px 14px;border-radius:6px;font-size:13px;cursor:pointer">Close</button>
+</div>
+<h1>${addr} — Renovation Schedule</h1>
+<div class="meta">Total Labor Price: <strong>${total}</strong></div>
+<div class="meta">Total Length of Project: 6 Weeks</div>
+<div class="meta bold">Final ${finalPay} paid upon project completion and owner sign-off</div>
+<hr/>
+${weeks}
+<hr/>
+<div class="sig">
+<div class="sig-line"><p>Owner / Authorized Representative</p><div class="line"></div><div class="sig-label">Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</div></div>
+<div class="sig-line"><p>General Contractor</p><div class="line"></div><div class="sig-label">Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</div></div>
+</div>
+</div></body></html>`;
+}
+
+function RenovationSchedulePage({prop}){
+  const propId=prop.id;
+  const [sched,setSched]=React.useState({totalPrice:'',finalPayment:'',weeks:{}});
+  const [editingItem,setEditingItem]=React.useState(null); // {wid,iid}
+  const [editText,setEditText]=React.useState('');
+  const [addingTo,setAddingTo]=React.useState(null); // wid
+  const [newItemText,setNewItemText]=React.useState('');
+  const [showOptional,setShowOptional]=React.useState({});
+
+  React.useEffect(()=>{
+    return dbListen(`projects/${propId}/renovSchedule`,v=>{
+      if(v)setSched(s=>({totalPrice:'',finalPayment:'',...v,weeks:{...v.weeks}}));
+    });
+  },[propId]);
+
+  async function save(updated){
+    setSched(updated);
+    await dbUpdate(`projects/${propId}/renovSchedule`,updated);
+  }
+  async function setField(field,val){await save({...sched,[field]:val});}
+  async function setWeekDraw(wid,val){await save({...sched,weeks:{...sched.weeks,[wid]:{...sched.weeks?.[wid],draw:val}}});}
+  async function toggleItem(wid,iid,currentOff){
+    const w=sched.weeks?.[wid]||{};
+    const off={...w.off,[iid]:!currentOff};
+    if(!off[iid])delete off[iid];
+    await save({...sched,weeks:{...sched.weeks,[wid]:{...w,off}}});
+  }
+  async function saveItemEdit(wid,iid,text){
+    const w=sched.weeks?.[wid]||{};
+    const edits={...w.edits,[iid]:text};
+    await save({...sched,weeks:{...sched.weeks,[wid]:{...w,edits}}});
+    setEditingItem(null);
+  }
+  async function addCustom(wid){
+    if(!newItemText.trim())return;
+    const w=sched.weeks?.[wid]||{};
+    const custom=[...(w.custom||[]),newItemText.trim()];
+    await save({...sched,weeks:{...sched.weeks,[wid]:{...w,custom}}});
+    setNewItemText('');setAddingTo(null);
+  }
+  async function removeCustom(wid,idx){
+    const w=sched.weeks?.[wid]||{};
+    const custom=(w.custom||[]).filter((_,i)=>i!==idx);
+    await save({...sched,weeks:{...sched.weeks,[wid]:{...w,custom}}});
+  }
+
+  function openPrint(){
+    const h=buildScheduleHTML(prop,sched);
+    const b=new Blob([h],{type:'text/html'});
+    window.open(URL.createObjectURL(b),'_blank');
+  }
+
+  const inputStyle={background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,color:'white',fontSize:13,padding:'9px 12px',width:'100%',boxSizing:'border-box'};
+  const chipStyle=(active)=>({background:active?'rgba(226,176,74,.15)':'rgba(255,255,255,.06)',border:'1px solid '+(active?'rgba(226,176,74,.4)':'rgba(255,255,255,.1)'),borderRadius:6,color:active?'#e2b04a':'rgba(255,255,255,.5)',fontSize:11,padding:'4px 9px',cursor:'pointer'});
+
+  return(
+    <div style={{paddingBottom:100}}>
+      {/* Top bar */}
+      <div style={{padding:'14px 14px 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'white'}}>Renovation Schedule</div>
+        <button onClick={openPrint} style={{background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>🖨 Print / PDF</button>
+      </div>
+      {/* Contract info */}
+      <div style={{padding:'12px 14px',display:'flex',gap:10}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:700,marginBottom:4,textTransform:'uppercase',letterSpacing:.5}}>Total Contract Price</div>
+          <input placeholder="e.g. $18,000" value={sched.totalPrice} onChange={e=>setField('totalPrice',e.target.value)} style={inputStyle}/>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:700,marginBottom:4,textTransform:'uppercase',letterSpacing:.5}}>Final Payment</div>
+          <input placeholder="e.g. $3,000" value={sched.finalPayment} onChange={e=>setField('finalPayment',e.target.value)} style={inputStyle}/>
+        </div>
+      </div>
+
+      {/* Weeks */}
+      {SCHED_WEEKS.map(week=>{
+        const wData=sched.weeks?.[week.id]||{};
+        const off=wData.off||{};
+        const edits=wData.edits||{};
+        const custom=wData.custom||[];
+        const hasOptional=week.items.some(it=>it.optional);
+        const showOpt=showOptional[week.id];
+
+        return(
+          <div key={week.id} style={{margin:'0 14px 16px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.09)',borderRadius:12,overflow:'hidden'}}>
+            {/* Week header */}
+            <div style={{padding:'10px 14px',background:'rgba(255,255,255,.06)',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{fontSize:13,fontWeight:700,color:'white'}}>{week.title}</span>
+              {hasOptional&&(
+                <button onClick={()=>setShowOptional(p=>({...p,[week.id]:!p[week.id]}))} style={{...chipStyle(showOpt),fontSize:10}}>
+                  {showOpt?'Hide':'+ Optional'}
+                </button>
+              )}
+            </div>
+            {/* Items */}
+            <div style={{padding:'6px 0'}}>
+              {week.items.filter(it=>!it.optional||showOpt||!off[it.id]===false).filter(it=>!it.optional||showOpt).map(it=>{
+                const isOff=!!off[it.id];
+                const text=edits[it.id]||it.text;
+                const isEditing=editingItem?.wid===week.id&&editingItem?.iid===it.id;
+                return(
+                  <div key={it.id} style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10,opacity:isOff?.4:1}}>
+                    <button onClick={()=>toggleItem(week.id,it.id,isOff)}
+                      style={{background:'none',border:'none',color:isOff?'rgba(255,255,255,.25)':'#22c55e',fontSize:15,cursor:'pointer',padding:'0',marginTop:1,flexShrink:0}}>
+                      {isOff?'○':'●'}
+                    </button>
+                    {isEditing?(
+                      <div style={{flex:1,display:'flex',gap:6}}>
+                        <input autoFocus value={editText} onChange={e=>setEditText(e.target.value)}
+                          onKeyDown={e=>{if(e.key==='Enter')saveItemEdit(week.id,it.id,editText);if(e.key==='Escape')setEditingItem(null);}}
+                          style={{...inputStyle,padding:'5px 9px',fontSize:12,flex:1}}/>
+                        <button onClick={()=>saveItemEdit(week.id,it.id,editText)} style={{background:'#22c55e',border:'none',borderRadius:6,color:'white',padding:'5px 10px',cursor:'pointer',fontWeight:700,flexShrink:0}}>✓</button>
+                        <button onClick={()=>setEditingItem(null)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:6,color:'rgba(255,255,255,.5)',padding:'5px 8px',cursor:'pointer',flexShrink:0}}>✕</button>
+                      </div>
+                    ):(
+                      <span onClick={()=>{if(!isOff){setEditingItem({wid:week.id,iid:it.id});setEditText(text);}}}
+                        style={{flex:1,fontSize:12,color:isOff?'rgba(255,255,255,.3)':it.optional?'rgba(255,255,255,.65)':'rgba(255,255,255,.9)',cursor:isOff?'default':'text',lineHeight:1.5,textDecoration:isOff?'line-through':'none'}}>
+                        {text}
+                        {it.optional&&!isOff&&<span style={{fontSize:10,color:'rgba(226,176,74,.6)',marginLeft:6}}>optional</span>}
+                        {edits[it.id]&&<span style={{fontSize:10,color:'#e2b04a',marginLeft:6}}>edited</span>}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Custom items */}
+              {custom.map((txt,idx)=>(
+                <div key={idx} style={{padding:'7px 14px',borderBottom:'1px solid rgba(255,255,255,.04)',display:'flex',alignItems:'flex-start',gap:10}}>
+                  <span style={{color:'#22c55e',fontSize:15,marginTop:1,flexShrink:0}}>●</span>
+                  <span style={{flex:1,fontSize:12,color:'rgba(255,255,255,.9)',lineHeight:1.5}}>{txt}<span style={{fontSize:10,color:'rgba(226,176,74,.5)',marginLeft:6}}>custom</span></span>
+                  <button onClick={()=>removeCustom(week.id,idx)} style={{background:'none',border:'none',color:'rgba(239,68,68,.5)',fontSize:13,cursor:'pointer',padding:'0',flexShrink:0}}>✕</button>
+                </div>
+              ))}
+              {/* Add item */}
+              {addingTo===week.id?(
+                <div style={{padding:'8px 14px',display:'flex',gap:6}}>
+                  <input autoFocus placeholder="Add item..." value={newItemText} onChange={e=>setNewItemText(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter')addCustom(week.id);if(e.key==='Escape'){setAddingTo(null);setNewItemText('');}}}
+                    style={{...inputStyle,padding:'6px 10px',fontSize:12,flex:1}}/>
+                  <button onClick={()=>addCustom(week.id)} style={{background:'#e2b04a',border:'none',borderRadius:6,color:'#1a1a2e',padding:'6px 12px',cursor:'pointer',fontWeight:700,flexShrink:0}}>Add</button>
+                  <button onClick={()=>{setAddingTo(null);setNewItemText('');}} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:6,color:'rgba(255,255,255,.5)',padding:'6px 10px',cursor:'pointer',flexShrink:0}}>✕</button>
+                </div>
+              ):(
+                <button onClick={()=>setAddingTo(week.id)} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:12,cursor:'pointer',padding:'8px 14px',width:'100%',textAlign:'left'}}>
+                  + Add item
+                </button>
+              )}
+            </div>
+            {/* Draw / city inspection */}
+            {week.inspection&&(
+              <div style={{padding:'8px 14px',background:'rgba(245,158,11,.08)',borderTop:'1px solid rgba(245,158,11,.2)'}}>
+                <span style={{fontSize:11,fontWeight:700,color:'#f59e0b'}}>⚠ City Inspection Required: Framing, Plumbing, and Electrical</span>
+              </div>
+            )}
+            {week.payLabel&&(
+              <div style={{padding:'10px 14px',borderTop:'1px solid rgba(255,255,255,.08)',background:'rgba(255,255,255,.03)',display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:11,color:'rgba(255,255,255,.5)',flex:1}}>{week.payLabel}</span>
+                <input type="text" placeholder="$0" value={wData.draw||''} onChange={e=>setWeekDraw(week.id,e.target.value)}
+                  style={{...inputStyle,width:90,textAlign:'right',padding:'6px 10px',fontWeight:700,color:'#e2b04a',borderColor:'rgba(226,176,74,.3)'}}/>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6,TAB_BUDGET=-7;
+  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6,TAB_BUDGET=-7,TAB_SCHEDULE=-8;
   const initStage=prop.stage||'walkthrough';
   const[activeTab,setActiveTab]=React.useState(TAB_TASKS);
   const[data,setData]=React.useState({});
@@ -6310,6 +6610,9 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_BUDGET?' active':''}`} onClick={()=>setActiveTab(TAB_BUDGET)}>
             💰 Budget
           </div>
+          <div className={`tab${activeTab===TAB_SCHEDULE?' active':''}`} onClick={()=>setActiveTab(TAB_SCHEDULE)}>
+            📋 Schedule
+          </div>
           <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
             👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
@@ -6366,6 +6669,7 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
       {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
       {activeTab===TAB_TIMELINE&&<ProjectSchedulePage propId={prop.id}/>}
       {activeTab===TAB_BUDGET&&<DetailedBudgetPage prop={prop} data={data}/>}
+      {activeTab===TAB_SCHEDULE&&<RenovationSchedulePage prop={prop}/>}
 
       {activeTab===TAB_TEAM&&(
         <div>
