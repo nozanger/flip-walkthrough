@@ -6212,6 +6212,21 @@ ${weeks}
 </div></body></html>`;
 }
 
+// Maps each schedule week → CATEGORIES items that belong in that week
+const SCHED_WEEK_MAP={
+  w1:[['interior','demo'],['interior','framing'],['interior','layout_change'],['interior','subfloor'],
+      ['below_grade','crawlspace_general'],['below_grade','foundation_general']],
+  w2:[['plumbing','plumbing_bathroom'],['plumbing','plumbing_kitchen'],['plumbing','laundry'],
+      ['electrical','wiring'],['mechanic','water_heater']],
+  w3:[['interior','drywall'],['bathroom','tub'],['bathroom','bathroom_floor']],
+  w4:[['interior','flooring'],['interior','paint'],['kitchen','cabinets'],['interior','interior_doors']],
+  w5:[['interior','trim_quarterround'],['interior','electric_trim'],['kitchen','countertop'],
+      ['kitchen','backsplash'],['kitchen','appliances'],['bathroom','vanity'],['bathroom','mirror'],
+      ['bathroom','toilet'],['bathroom','vents'],['exterior','exterior_doors'],['exterior','window_door_trim']],
+  w6:[['exterior','roof'],['exterior','siding'],['exterior','gutters'],['exterior','soffit_fascia'],
+      ['interior','garbage_removal']],
+};
+
 function RenovationSchedulePage({prop}){
   const propId=prop.id;
   const [sched,setSched]=React.useState({totalPrice:'',finalPayment:'',weeks:{}});
@@ -6264,6 +6279,30 @@ function RenovationSchedulePage({prop}){
     window.open(URL.createObjectURL(b),'_blank');
   }
 
+  async function transferToTimeline(){
+    if(!window.confirm('This will overwrite the current Timeline with the 6-week schedule. Continue?'))return;
+    const assignments={};
+    const payments={};
+    SCHED_WEEKS.forEach((week,idx)=>{
+      const weekNum=idx+1;
+      const catItems=SCHED_WEEK_MAP[week.id]||[];
+      const wData=sched.weeks?.[week.id]||{};
+      const drawStr=String(wData.draw||'').replace(/[^0-9.]/g,'');
+      const draw=parseFloat(drawStr)||0;
+      const perItem=catItems.length>0&&draw>0?Math.round(draw/catItems.length*100)/100:0;
+      catItems.forEach(([catId,itemId])=>{
+        if(!assignments[catId])assignments[catId]={};
+        assignments[catId][itemId]={[weekNum]:true};
+        if(perItem>0){
+          if(!payments[catId])payments[catId]={};
+          payments[catId][itemId]=perItem;
+        }
+      });
+    });
+    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:6,assignments,payments});
+    alert('Timeline updated! Open the 📅 Timeline tab to see it.');
+  }
+
   const inputStyle={background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,color:'white',fontSize:13,padding:'9px 12px',width:'100%',boxSizing:'border-box'};
   const chipStyle=(active)=>({background:active?'rgba(226,176,74,.15)':'rgba(255,255,255,.06)',border:'1px solid '+(active?'rgba(226,176,74,.4)':'rgba(255,255,255,.1)'),borderRadius:6,color:active?'#e2b04a':'rgba(255,255,255,.5)',fontSize:11,padding:'4px 9px',cursor:'pointer'});
 
@@ -6272,7 +6311,10 @@ function RenovationSchedulePage({prop}){
       {/* Top bar */}
       <div style={{padding:'14px 14px 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div style={{fontSize:13,fontWeight:700,color:'white'}}>Renovation Schedule</div>
-        <button onClick={openPrint} style={{background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>🖨 Print / PDF</button>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={transferToTimeline} style={{background:'rgba(255,255,255,.1)',color:'white',border:'1px solid rgba(255,255,255,.2)',borderRadius:8,padding:'9px 14px',fontWeight:700,fontSize:13,cursor:'pointer'}}>📅 → Timeline</button>
+          <button onClick={openPrint} style={{background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>🖨 Print / PDF</button>
+        </div>
       </div>
       {/* Contract info */}
       <div style={{padding:'12px 14px',display:'flex',gap:10}}>
