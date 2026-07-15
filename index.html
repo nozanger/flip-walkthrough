@@ -5038,7 +5038,7 @@ function ProjectSchedulePage({propId}){
 
   function itemsForWeekOrdered(n){
     const regular=itemsForWeek(n).map(it=>({...it,key:it.catId+'|'+it.itemId,label:itemLabels[it.catId+'|'+it.itemId]||it.label}));
-    const inspItems=Object.entries(tlInspections).filter(([,v])=>v.week===n)
+    const inspItems=Object.entries(tlInspections).filter(([id,v])=>v&&v.week===n)
       .map(([id,v])=>({key:'insp|'+id,isInsp:true,inspId:id,catId:'insp',itemId:id,label:v.label||'City Inspection'}));
     const all=[...regular,...inspItems];
     const order=itemOrder[n];
