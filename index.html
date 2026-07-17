@@ -5648,7 +5648,7 @@ const DETAIL_ITEMS=[
   {sku:'M0017',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ J-Channel',         unit:'LF',     cost:1.1,  waste:.10,qty:(i)=>i.perim},
   // ─ SIDING ─ (prices calibrated from 810 Morrison: 1700sf house + 600sf garage, Menards 7/16/26)
   {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:0.70, waste:.10,qty:(i,d)=>d.wallSf},
-  {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap',         unit:'SF',     cost:.16,  waste:.05,qty:(i,d)=>d.wallSf},
+  {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap (full re-wrap; reduce qty for re-side)',unit:'SF',cost:.16,waste:.05,qty:(i,d)=>d.wallSf},
   {sku:'M0020',sec:'Exterior',grp:'Siding',                                                    label:'↳ Starter Strip',      unit:'LF',     cost:.44,  waste:.05,qty:(i)=>i.perim},
   {sku:'M0021',sec:'Exterior',grp:'Siding',                                                    label:'↳ J-Channel/Corners',  unit:'LF',     cost:0.80, waste:.05,qty:(i)=>i.perim*i.stories*2},
   {sku:'M0022',sec:'Exterior',grp:'Siding',                                                    label:'↳ Siding Nails (2lb)', unit:'box',    cost:23,   waste:0,  qty:(i,d)=>Math.ceil(d.wallSf/600)},
