@@ -5647,11 +5647,14 @@ const DETAIL_ITEMS=[
   {sku:'M0016',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ Fascia/Trim Coil',  unit:'LF',     cost:1.92, waste:.10,qty:(i)=>i.perim*2},
   {sku:'M0017',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ J-Channel',         unit:'LF',     cost:1.1,  waste:.10,qty:(i)=>i.perim},
   // ─ SIDING ─ (prices calibrated from 810 Morrison: 1700sf house + 600sf garage, Menards 7/16/26)
-  {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:0.70, waste:.10,qty:(i,d)=>d.wallSf},
-  {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap (full re-wrap; reduce qty for re-side)',unit:'SF',cost:.16,waste:.05,qty:(i,d)=>d.wallSf},
+  // Panel cost $0.60 (not $0.67 actual) because wall SF formula over-counts by ~13% — nets out to correct total
+  // House wrap uses 30% of wallSf: re-side jobs only patch damaged sections, not full re-wrap
+  // Nails: 1 box per 3000 SF based on actual (1 box for whole job)
+  {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:0.60, waste:.10,qty:(i,d)=>d.wallSf},
+  {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap (re-side ~30%; new build use 100%)',unit:'SF',cost:.16,waste:.05,qty:(i,d)=>Math.round(d.wallSf*0.30)},
   {sku:'M0020',sec:'Exterior',grp:'Siding',                                                    label:'↳ Starter Strip',      unit:'LF',     cost:.44,  waste:.05,qty:(i)=>i.perim},
   {sku:'M0021',sec:'Exterior',grp:'Siding',                                                    label:'↳ J-Channel/Corners',  unit:'LF',     cost:0.80, waste:.05,qty:(i)=>i.perim*i.stories*2},
-  {sku:'M0022',sec:'Exterior',grp:'Siding',                                                    label:'↳ Siding Nails (2lb)', unit:'box',    cost:23,   waste:0,  qty:(i,d)=>Math.ceil(d.wallSf/600)},
+  {sku:'M0022',sec:'Exterior',grp:'Siding',                                                    label:'↳ Siding Nails (2lb)', unit:'box',    cost:23,   waste:0,  qty:(i,d)=>Math.max(1,Math.ceil(d.wallSf/3000))},
   // ─ WINDOW/DOOR TRIM ─
   {sku:'M0023',sec:'Exterior',grp:'Window / Door Trim',               scopeKey:'exterior.window_door_trim',label:'Trim (exterior)',unit:'LF',cost:3,waste:.10,qty:(i)=>(i.numWindows+i.numExtDoors)*14},
   {sku:'M0024',sec:'Exterior',grp:'Window / Door Trim',                                       label:'↳ Exterior Paint',     unit:'gallon', cost:45,   waste:0,  qty:(i)=>(i.numWindows+i.numExtDoors)*14/300},
@@ -5856,8 +5859,8 @@ const DETAIL_ITEMS=[
   {sku:'M0253',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Drip Edge',           unit:'LF',    cost:.78,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
   {sku:'M0254',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Ridge Cap',           unit:'bundle',cost:74,   waste:.05,qty:()=>1},
   {sku:'M0255',sec:'Garage',grp:'Garage Roofing',                               label:'↳ OSB Deck Repair',     unit:'sheet', cost:22,   waste:.10,qty:(i)=>Math.ceil((i.garageSqft||400)/100)},
-  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding (vinyl lap)',     unit:'SF',    cost:0.70, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
-  {sku:'M0261',sec:'Garage',grp:'Garage Siding',                               label:'↳ House Wrap',           unit:'SF',    cost:.16,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding (vinyl lap)',     unit:'SF',    cost:0.60, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0261',sec:'Garage',grp:'Garage Siding',                               label:'↳ House Wrap (re-side ~30%)',unit:'SF',cost:.16,  waste:.05,qty:(i)=>Math.round(Math.sqrt(i.garageSqft||400)*4*9*0.30)},
   {sku:'M0262',sec:'Garage',grp:'Garage Siding',                               label:'↳ Starter Strip',        unit:'LF',    cost:.44,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
   {sku:'M0263',sec:'Garage',grp:'Garage Siding',                               label:'↳ J-Channel / Corners',  unit:'LF',    cost:0.80, waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*2)},
   {sku:'M0264',sec:'Garage',grp:'Garage Siding',                               label:'↳ Exterior Caulk',       unit:'tube',  cost:6,    waste:0,  qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*2)},
