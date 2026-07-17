@@ -5646,12 +5646,12 @@ const DETAIL_ITEMS=[
   {sku:'M0015',sec:'Exterior',grp:'Soffit / Fascia',                  scopeKey:'exterior.soffit_fascia',label:'Soffit',       unit:'SF',     cost:1.67, waste:.10,qty:(i)=>i.perim*2},
   {sku:'M0016',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ Fascia/Trim Coil',  unit:'LF',     cost:1.92, waste:.10,qty:(i)=>i.perim*2},
   {sku:'M0017',sec:'Exterior',grp:'Soffit / Fascia',                                            label:'↳ J-Channel',         unit:'LF',     cost:1.1,  waste:.10,qty:(i)=>i.perim},
-  // ─ SIDING ─
-  {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:1.75, waste:.10,qty:(i,d)=>d.wallSf},
-  {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap',         unit:'SF',     cost:.15,  waste:.05,qty:(i,d)=>d.wallSf},
-  {sku:'M0020',sec:'Exterior',grp:'Siding',                                                    label:'↳ Starter Strip',      unit:'LF',     cost:.42,  waste:.05,qty:(i)=>i.perim},
-  {sku:'M0021',sec:'Exterior',grp:'Siding',                                                    label:'↳ J-Channel/Corners',  unit:'LF',     cost:1.10, waste:.05,qty:(i)=>i.perim*.15},
-  {sku:'M0022',sec:'Exterior',grp:'Siding',                                                    label:'↳ Siding Nails (2lb)', unit:'box',    cost:24,   waste:0,  qty:(i,d)=>Math.ceil(d.wallSf/700)},
+  // ─ SIDING ─ (prices calibrated from 810 Morrison: 1700sf house + 600sf garage, Menards 7/16/26)
+  {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:0.70, waste:.10,qty:(i,d)=>d.wallSf},
+  {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap',         unit:'SF',     cost:.16,  waste:.05,qty:(i,d)=>d.wallSf},
+  {sku:'M0020',sec:'Exterior',grp:'Siding',                                                    label:'↳ Starter Strip',      unit:'LF',     cost:.44,  waste:.05,qty:(i)=>i.perim},
+  {sku:'M0021',sec:'Exterior',grp:'Siding',                                                    label:'↳ J-Channel/Corners',  unit:'LF',     cost:0.80, waste:.05,qty:(i)=>i.perim*i.stories*2},
+  {sku:'M0022',sec:'Exterior',grp:'Siding',                                                    label:'↳ Siding Nails (2lb)', unit:'box',    cost:23,   waste:0,  qty:(i,d)=>Math.ceil(d.wallSf/600)},
   // ─ WINDOW/DOOR TRIM ─
   {sku:'M0023',sec:'Exterior',grp:'Window / Door Trim',               scopeKey:'exterior.window_door_trim',label:'Trim (exterior)',unit:'LF',cost:3,waste:.10,qty:(i)=>(i.numWindows+i.numExtDoors)*14},
   {sku:'M0024',sec:'Exterior',grp:'Window / Door Trim',                                       label:'↳ Exterior Paint',     unit:'gallon', cost:45,   waste:0,  qty:(i)=>(i.numWindows+i.numExtDoors)*14/300},
@@ -5856,10 +5856,10 @@ const DETAIL_ITEMS=[
   {sku:'M0253',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Drip Edge',           unit:'LF',    cost:.78,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
   {sku:'M0254',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Ridge Cap',           unit:'bundle',cost:74,   waste:.05,qty:()=>1},
   {sku:'M0255',sec:'Garage',grp:'Garage Roofing',                               label:'↳ OSB Deck Repair',     unit:'sheet', cost:22,   waste:.10,qty:(i)=>Math.ceil((i.garageSqft||400)/100)},
-  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding (vinyl lap)',     unit:'SF',    cost:1.75, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
-  {sku:'M0261',sec:'Garage',grp:'Garage Siding',                               label:'↳ House Wrap',           unit:'SF',    cost:.15,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
-  {sku:'M0262',sec:'Garage',grp:'Garage Siding',                               label:'↳ Starter Strip',        unit:'LF',    cost:.42,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
-  {sku:'M0263',sec:'Garage',grp:'Garage Siding',                               label:'↳ J-Channel / Corners',  unit:'LF',    cost:6,    waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*.15)},
+  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding (vinyl lap)',     unit:'SF',    cost:0.70, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0261',sec:'Garage',grp:'Garage Siding',                               label:'↳ House Wrap',           unit:'SF',    cost:.16,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0262',sec:'Garage',grp:'Garage Siding',                               label:'↳ Starter Strip',        unit:'LF',    cost:.44,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
+  {sku:'M0263',sec:'Garage',grp:'Garage Siding',                               label:'↳ J-Channel / Corners',  unit:'LF',    cost:0.80, waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*2)},
   {sku:'M0264',sec:'Garage',grp:'Garage Siding',                               label:'↳ Exterior Caulk',       unit:'tube',  cost:6,    waste:0,  qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*2)},
   // ─ DECKING ─ (default sized for a 6×8 = 48 sqft deck; adjust deckSqft in house inputs)
   {sku:'M0210',sec:'Decking',grp:'Deck Structure',label:'Deck Boards (5/4×6 PT)',      unit:'SF',    cost:2.50, waste:.12,qty:(i)=>i.deckSqft||48},
