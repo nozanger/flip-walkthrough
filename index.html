@@ -5045,7 +5045,8 @@ function PropEventsBar({propId}){
 }
 
 function ProjectSchedulePage({propId}){
-  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false,inspection:null});
+  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:6,payments:{},calendarDone:false,inspection:null});
+  const[weekTitles,setWeekTitles]=React.useState({});
   const[tlDragOver,setTlDragOver]=React.useState(null);
   const[tlDragOverIdx,setTlDragOverIdx]=React.useState(null); // {week,idx}
   const tlDragRef=React.useRef(null);
@@ -5061,6 +5062,7 @@ function ProjectSchedulePage({propId}){
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemOrder`,v=>setItemOrder(v||{})),[propId]);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/inspections`,v=>setTlInspections(v||{})),[propId]);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemLabels`,v=>setItemLabels(v||{})),[propId]);
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan/weekTitles`,v=>setWeekTitles(v||{})),[propId]);
 
   function itemsForWeekOrdered(n){
     const regular=itemsForWeek(n).map(it=>({...it,key:it.catId+'|'+it.itemId,label:itemLabels[it.catId+'|'+it.itemId]||it.label}));
@@ -5180,6 +5182,33 @@ function ProjectSchedulePage({propId}){
     await dbSet(`projects/${propId}/weekplan/numWeeks`,numWeeks+1);
     setActiveWeek(numWeeks+1);
   }
+  async function setNumWeeks(n){
+    if(n<1||n>24)return;
+    await dbSet(`projects/${propId}/weekplan/numWeeks`,n);
+  }
+  async function saveWeekTitle(n,title){
+    if(title.trim()){
+      await dbSet(`projects/${propId}/weekplan/weekTitles/${n}`,title.trim());
+    }else{
+      await dbRemove(`projects/${propId}/weekplan/weekTitles/${n}`);
+    }
+  }
+  function defaultTitle(n,total){
+    const banks={
+      4:['Demo & Rough-in','Drywall & Tile','Flooring & Paint','Finishes & Closeout'],
+      5:['Demo & Framing','Plumbing & Electrical','Drywall & Tile','Flooring, Cabinets & Paint','Finishes & Closeout'],
+      6:['Demo & Framing','Plumbing & Electrical','Drywall & Tile','Flooring & Paint','Cabinets & Finishes','Punch List & Closeout'],
+      8:['Demo & Framing','Rough Plumbing','Rough Electrical','Drywall','Tile & Paint','Flooring','Cabinets & Finishes','Punch List & Closeout'],
+      10:['Demo','Framing','Rough Plumbing','Rough Electrical','Drywall','Tile','Paint','Flooring','Cabinets & Finishes','Punch List & Closeout'],
+      12:['Demo','Framing','Rough Plumbing','Rough Electrical','Insulation & Inspection','Drywall','Tile','Paint','Flooring','Cabinets & Countertops','Finishes & Fixtures','Punch List & Closeout'],
+    };
+    const keys=Object.keys(banks).map(Number).sort((a,b)=>a-b);
+    const best=keys.reduce((p,c)=>Math.abs(c-total)<Math.abs(p-total)?c:p);
+    const arr=banks[best];
+    const idx=Math.min(Math.round((n-1)/(Math.max(total,2)-1)*(arr.length-1)),arr.length-1);
+    return arr[idx];
+  }
+  function getWeekTitle(n){return weekTitles[n]||defaultTitle(n,numWeeks)||`Week ${n}`;}
 
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -5277,17 +5306,25 @@ function ProjectSchedulePage({propId}){
   const planView=(
     <div style={{paddingBottom:100}}>
 
-      {/* Start date */}
-      <div style={{padding:'12px 12px 0'}}>
-        <div style={{background:'rgba(226,176,74,.08)',border:'1px solid rgba(226,176,74,.22)',borderRadius:12,padding:'12px 14px'}}>
-          <div style={{fontSize:11,fontWeight:700,color:'#e2b04a',marginBottom:8,textTransform:'uppercase',letterSpacing:'.5px'}}>Renovation Start Date</div>
+      {/* Start date + week count */}
+      <div style={{padding:'12px 12px 0',display:'flex',gap:10}}>
+        <div style={{flex:1,background:'rgba(226,176,74,.08)',border:'1px solid rgba(226,176,74,.22)',borderRadius:12,padding:'12px 14px'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#e2b04a',marginBottom:8,textTransform:'uppercase',letterSpacing:'.5px'}}>Start Date</div>
           <input type="date" value={dateInput}
             onChange={e=>setDateInput(e.target.value)}
             onBlur={e=>{if(e.target.value)setStartDate(e.target.value);}}
             style={{background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.18)',borderRadius:8,padding:'9px 12px',color:'#fff',fontSize:14,width:'100%',boxSizing:'border-box'}}/>
           {plan.startDate&&<div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:5}}>
-            Mon starts each week · Week 8 ends {fmtD(weekStartDate(numWeeks)&&new Date(weekStartDate(numWeeks).getTime()+6*864e5))}
+            Ends {fmtD(weekStartDate(numWeeks)&&new Date(weekStartDate(numWeeks).getTime()+6*864e5))}
           </div>}
+        </div>
+        <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.12)',borderRadius:12,padding:'12px 14px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,minWidth:80}}>
+          <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.5px'}}>Weeks</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <button onClick={()=>setNumWeeks(numWeeks-1)} disabled={numWeeks<=1} style={{width:28,height:28,borderRadius:'50%',border:'1px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.08)',color:'white',fontSize:18,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:numWeeks<=1?.3:1}}>−</button>
+            <span style={{fontSize:22,fontWeight:700,color:'white',minWidth:24,textAlign:'center'}}>{numWeeks}</span>
+            <button onClick={()=>setNumWeeks(numWeeks+1)} disabled={numWeeks>=24} style={{width:28,height:28,borderRadius:'50%',border:'1px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.08)',color:'white',fontSize:18,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:numWeeks>=24?.3:1}}>+</button>
+          </div>
         </div>
       </div>
 
@@ -5300,34 +5337,37 @@ function ProjectSchedulePage({propId}){
             const wsd=weekStartDate(n);
             const cnt=weekCount(n);
             return(
-              <div key={n} onClick={()=>setActiveWeek(n)} style={{flex:1,minWidth:64,background:active?'rgba(226,176,74,.18)':'rgba(255,255,255,.04)',border:active?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'9px 6px',cursor:'pointer',textAlign:'center'}}>
-                <div style={{fontSize:10,fontWeight:700,color:active?'#e2b04a':'rgba(255,255,255,.35)',textTransform:'uppercase'}}>Wk {n}</div>
-                {wsd&&<div style={{fontSize:9,color:'rgba(255,255,255,.25)',marginTop:1}}>{fmtD(wsd)}</div>}
-                <div style={{marginTop:5,minHeight:20,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  {cnt>0?(
-                    <div style={{background:active?'#e2b04a':'rgba(255,255,255,.12)',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:700,color:active?'#000':'rgba(255,255,255,.5)'}}>{cnt}</div>
-                  ):(
-                    <div style={{width:16,height:2,background:'rgba(255,255,255,.08)',borderRadius:1}}/>
-                  )}
+              <div key={n} onClick={()=>setActiveWeek(n)} style={{flex:1,minWidth:68,background:active?'rgba(226,176,74,.18)':'rgba(255,255,255,.04)',border:active?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'8px 5px',cursor:'pointer',textAlign:'center'}}>
+                <div style={{fontSize:9,fontWeight:700,color:active?'#e2b04a':'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.3px'}}>Wk {n}</div>
+                {wsd&&<div style={{fontSize:8,color:'rgba(255,255,255,.2)',marginTop:1}}>{fmtD(wsd)}</div>}
+                <div style={{fontSize:9,fontWeight:600,color:active?'#e2b04a':'rgba(255,255,255,.45)',marginTop:4,lineHeight:1.25,minHeight:22,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 2px'}}>
+                  {getWeekTitle(n).split(' ').slice(0,3).join(' ')}
                 </div>
-                {weekPaymentTotal(n)>0&&<div style={{marginTop:4,fontSize:9,fontWeight:700,color:active?'#e2b04a':'rgba(226,176,74,.5)'}}>{fmtMoney(weekPaymentTotal(n))}</div>}
+                {cnt>0&&<div style={{marginTop:4,background:active?'#e2b04a':'rgba(255,255,255,.1)',borderRadius:20,padding:'1px 6px',fontSize:10,fontWeight:700,color:active?'#000':'rgba(255,255,255,.4)',display:'inline-block'}}>{cnt}</div>}
+                {weekPaymentTotal(n)>0&&<div style={{marginTop:3,fontSize:8,fontWeight:700,color:active?'#e2b04a':'rgba(226,176,74,.45)'}}>{fmtMoney(weekPaymentTotal(n))}</div>}
               </div>
             );
           })}
-          <div onClick={addWeek} style={{minWidth:60,background:'rgba(255,255,255,.03)',border:'1px dashed rgba(255,255,255,.15)',borderRadius:10,padding:'9px 6px',cursor:'pointer',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
-            <div style={{fontSize:18,color:'rgba(255,255,255,.3)',lineHeight:1}}>+</div>
-            <div style={{fontSize:9,color:'rgba(255,255,255,.25)',textTransform:'uppercase',fontWeight:700}}>Week</div>
-          </div>
         </div>
       </div>
 
       {/* Active week header */}
-      <div style={{padding:'12px 12px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div>
-          <span style={{fontSize:15,fontWeight:700,color:'white'}}>Week {activeWeek}</span>
-          {ws&&<span style={{fontSize:12,color:'rgba(255,255,255,.4)',marginLeft:8}}>{fmtD(ws)} – {fmtD(we)}</span>}
+      <div style={{padding:'12px 12px 4px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+            <span style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:'.5px',flexShrink:0}}>Week {activeWeek}</span>
+            {ws&&<span style={{fontSize:11,color:'rgba(255,255,255,.25)'}}>{fmtD(ws)} – {fmtD(we)}</span>}
+          </div>
+          <input
+            key={activeWeek}
+            defaultValue={getWeekTitle(activeWeek)}
+            onBlur={e=>saveWeekTitle(activeWeek,e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}
+            placeholder="Week title…"
+            style={{width:'100%',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'7px 10px',color:'white',fontSize:14,fontWeight:600,outline:'none',boxSizing:'border-box'}}
+          />
         </div>
-        <div style={{display:'flex',gap:6}}>
+        <div style={{display:'flex',gap:6,flexShrink:0}}>
           <button onClick={()=>setActiveWeek(w=>Math.max(1,w-1))} disabled={activeWeek===1}
             style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:8,color:'white',padding:'6px 12px',cursor:'pointer',opacity:activeWeek===1?0.3:1,fontSize:14}}>‹</button>
           <button onClick={()=>setActiveWeek(w=>Math.min(numWeeks,w+1))} disabled={activeWeek===numWeeks}
@@ -5541,6 +5581,7 @@ function ProjectSchedulePage({propId}){
                   {/* Week label */}
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',paddingTop:6,gap:2}}>
                     <div style={{fontSize:9,fontWeight:800,color:'rgba(226,176,74,.7)',textTransform:'uppercase'}}>W{n}</div>
+                    <div style={{fontSize:8,fontWeight:600,color:'rgba(255,255,255,.35)',textAlign:'center',lineHeight:1.2,writingMode:'vertical-rl',transform:'rotate(180deg)',maxHeight:60,overflow:'hidden'}}>{getWeekTitle(n)}</div>
                     {weekPaymentTotal(n)>0&&<div style={{fontSize:8,fontWeight:700,color:'#e2b04a',textAlign:'center',lineHeight:1.2}}>{fmtMoney(weekPaymentTotal(n))}</div>}
                   </div>
                   {/* 7 day cells */}
