@@ -6427,6 +6427,9 @@ function RenovationSchedulePage({prop}){
   const dragOverRef=React.useRef(null);
   const dragOverIdxRef=React.useRef(null);
   const ghostRef=React.useRef(null);
+  const pdfInputRef=React.useRef(null);
+  const [pdfImporting,setPdfImporting]=React.useState(false);
+  const [pdfStatus,setPdfStatus]=React.useState('');
 
   function getDisplayItems(week,wData,showOpt){
     const off=wData.off||{},edits=wData.edits||{},custom=wData.custom||[],stored=wData.order;
@@ -6591,15 +6594,99 @@ function RenovationSchedulePage({prop}){
     alert('Timeline updated! Open the 📅 Timeline tab to see it.');
   }
 
+  async function importFromPDF(file){
+    if(!file)return;
+    setPdfImporting(true);setPdfStatus('Reading PDF…');
+    try{
+      const base64=await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=e=>res(e.target.result.split(',')[1]);
+        r.onerror=rej;
+        r.readAsDataURL(file);
+      });
+      setPdfStatus('AI is reading the document…');
+      const apiKey=await dbGet('config/geminiKey');
+      const prompt=`You are reading a contractor bid, scope of work, or renovation plan PDF.
+
+Extract every task or line item and assign it to one of these 6 renovation weeks:
+w1: Demo & Framing (demolition, structural, framing, subfloor)
+w2: Plumbing & Electrical (rough-in plumbing, electrical, HVAC rough)
+w3: Drywall & Tile (drywall, taping, cement board, tile, tub set)
+w4: Flooring, Cabinets & Paint (LVP, tile floors, cabinets, painting)
+w5: Finishes & Fixtures (trim, countertops, sinks, vanities, toilets, appliances, fixtures)
+w6: Exterior, Punch List & Closeout (roofing, siding, exterior, cleanup, final walkthrough)
+
+Also extract the total contract price and any per-phase payment amounts if present.
+
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "totalPrice": "",
+  "finalPayment": "",
+  "weeks": {
+    "w1": {"draw": "", "items": ["task…"]},
+    "w2": {"draw": "", "items": []},
+    "w3": {"draw": "", "items": []},
+    "w4": {"draw": "", "items": []},
+    "w5": {"draw": "", "items": []},
+    "w6": {"draw": "", "items": []}
+  }
+}`;
+      const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{parts:[
+            {inline_data:{mime_type:'application/pdf',data:base64}},
+            {text:prompt}
+          ]}],
+          generationConfig:{responseMimeType:'application/json'}
+        })
+      });
+      const data=await resp.json();
+      const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if(!text)throw new Error('No response from AI');
+      const parsed=JSON.parse(text);
+      setPdfStatus('Applying to schedule…');
+      const newWeeks={...(sched.weeks||{})};
+      if(parsed.weeks){
+        Object.entries(parsed.weeks).forEach(([wid,wData])=>{
+          const existing=newWeeks[wid]||{};
+          const items=(wData.items||[]).filter(t=>t&&t.trim());
+          newWeeks[wid]={
+            ...existing,
+            ...(wData.draw?{draw:wData.draw}:{}),
+            custom:[...(existing.custom||[]),...items]
+          };
+        });
+      }
+      const updated={
+        ...sched,
+        ...(parsed.totalPrice?{totalPrice:parsed.totalPrice}:{}),
+        ...(parsed.finalPayment?{finalPayment:parsed.finalPayment}:{}),
+        weeks:newWeeks
+      };
+      await save(updated);
+      setPdfStatus('');
+    }catch(e){
+      console.error(e);
+      setPdfStatus('Error: '+e.message);
+    }
+    setPdfImporting(false);
+  }
+
   const inputStyle={background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,color:'white',fontSize:13,padding:'9px 12px',width:'100%',boxSizing:'border-box'};
   const chipStyle=(active)=>({background:active?'rgba(226,176,74,.15)':'rgba(255,255,255,.06)',border:'1px solid '+(active?'rgba(226,176,74,.4)':'rgba(255,255,255,.1)'),borderRadius:6,color:active?'#e2b04a':'rgba(255,255,255,.5)',fontSize:11,padding:'4px 9px',cursor:'pointer'});
 
   return(
     <div style={{paddingBottom:100}}>
       {/* Top bar */}
-      <div style={{padding:'14px 14px 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div style={{padding:'14px 14px 0',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
         <div style={{fontSize:13,fontWeight:700,color:'white'}}>Renovation Schedule</div>
-        <div style={{display:'flex',gap:8}}>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <input ref={pdfInputRef} type="file" accept=".pdf" style={{display:'none'}} onChange={e=>{if(e.target.files[0])importFromPDF(e.target.files[0]);e.target.value='';}}/>
+          <button onClick={()=>pdfInputRef.current?.click()} disabled={pdfImporting} style={{background:'rgba(99,102,241,.2)',color:'#a5b4fc',border:'1px solid rgba(99,102,241,.4)',borderRadius:8,padding:'9px 14px',fontWeight:700,fontSize:13,cursor:pdfImporting?'default':'pointer',opacity:pdfImporting?.7:1}}>
+            {pdfImporting?(pdfStatus||'Importing…'):'📄 Import PDF'}
+          </button>
           <button onClick={transferToTimeline} style={{background:'rgba(255,255,255,.1)',color:'white',border:'1px solid rgba(255,255,255,.2)',borderRadius:8,padding:'9px 14px',fontWeight:700,fontSize:13,cursor:'pointer'}}>📅 → Timeline</button>
           <button onClick={openPrint} style={{background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>🖨 Print / PDF</button>
         </div>
