@@ -2339,27 +2339,22 @@ function PropBudgetBar({propId}){
 function PropScheduleBar({propId}){
   const[plan,setPlan]=React.useState(null);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,v=>setPlan(v||null)),[propId]);
-  if(!plan||!plan.startDate||!plan.numWeeks)return null;
+  if(!plan||!plan.numWeeks)return null;
   const numWeeks=plan.numWeeks||8;
-  const start=new Date(plan.startDate+'T00:00:00');
-  const today=new Date();
-  const daysDone=Math.floor((today-start)/(1000*60*60*24));
-  const weeksDone=Math.max(0,Math.floor(daysDone/7));
-  if(weeksDone<=0&&daysDone<0)return null; // hasn't started yet — don't show
-  const currentWeek=Math.min(weeksDone+1,numWeeks);
-  const pct=Math.min(100,Math.round((weeksDone/numWeeks)*100));
-  const done=weeksDone>=numWeeks;
-  const fillColor=done?'#4ade80':pct>60?'#e2b04a':'#60a5fa';
-  const startLabel=start.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const doneCount=Object.values(plan.weekDone||{}).filter(Boolean).length;
+  if(doneCount===0&&!plan.startDate)return null;
+  const pct=Math.min(100,Math.round((doneCount/numWeeks)*100));
+  const allDone=doneCount>=numWeeks;
+  const fillColor=allDone?'#4ade80':pct>60?'#e2b04a':'#60a5fa';
   return(
     <div className="prop-budget-bar">
       <div className="prop-budget-track">
         <div className="prop-budget-fill" style={{width:pct+'%',background:fillColor}}/>
       </div>
       <div className="prop-budget-nums">
-        <span>Started: <strong>{startLabel}</strong></span>
-        <span>{done?'All done':'Week '}<strong>{done?'':currentWeek+'/'+numWeeks}</strong></span>
-        <span style={{color:done?'#4ade80':'rgba(255,255,255,.55)'}}><strong>{pct}%</strong> through</span>
+        <span>Schedule: <strong>{numWeeks} weeks</strong></span>
+        <span><strong>{doneCount}/{numWeeks}</strong> weeks done</span>
+        <span style={{color:allDone?'#4ade80':'rgba(255,255,255,.55)'}}><strong>{pct}%</strong> complete</span>
       </div>
     </div>
   );
@@ -5088,7 +5083,9 @@ function ProjectSchedulePage({propId}){
   const[itemLabels,setItemLabels]=React.useState({}); // {catId|itemId: label}
   const[editLabelKey,setEditLabelKey]=React.useState(null); // key being edited
   const[editLabelText,setEditLabelText]=React.useState('');
+  const[weekDone,setWeekDone]=React.useState({});
 
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan/weekDone`,v=>setWeekDone(v||{})),[propId]);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemOrder`,v=>setItemOrder(v||{})),[propId]);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/inspections`,v=>setTlInspections(v||{})),[propId]);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan/itemLabels`,v=>setItemLabels(v||{})),[propId]);
@@ -5215,6 +5212,11 @@ function ProjectSchedulePage({propId}){
   async function setNumWeeks(n){
     if(n<1||n>24)return;
     await dbSet(`projects/${propId}/weekplan/numWeeks`,n);
+  }
+  async function toggleWeekDone(n){
+    const val=weekDone[n]?null:true;
+    if(val)await dbSet(`projects/${propId}/weekplan/weekDone/${n}`,true);
+    else await dbRemove(`projects/${propId}/weekplan/weekDone/${n}`);
   }
   async function saveWeekTitle(n,title){
     if(title.trim()){
@@ -5443,16 +5445,18 @@ function ProjectSchedulePage({propId}){
         <div style={{display:'flex',gap:5,minWidth:numWeeks*72+80}}>
           {Array.from({length:numWeeks},(_,i)=>i+1).map(n=>{
             const active=activeWeek===n;
+            const done=!!weekDone[n];
             const wsd=weekStartDate(n);
             const cnt=weekCount(n);
             return(
-              <div key={n} onClick={()=>setActiveWeek(n)} style={{flex:1,minWidth:68,background:active?'rgba(226,176,74,.18)':'rgba(255,255,255,.04)',border:active?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'8px 5px',cursor:'pointer',textAlign:'center'}}>
-                <div style={{fontSize:9,fontWeight:700,color:active?'#e2b04a':'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.3px'}}>Wk {n}</div>
+              <div key={n} onClick={()=>setActiveWeek(n)} style={{flex:1,minWidth:68,background:done?'rgba(74,222,128,.12)':active?'rgba(226,176,74,.18)':'rgba(255,255,255,.04)',border:done?'1.5px solid rgba(74,222,128,.5)':active?'1.5px solid #e2b04a':'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'8px 5px',cursor:'pointer',textAlign:'center',position:'relative'}}>
+                {done&&<div style={{position:'absolute',top:4,right:4,fontSize:9,color:'#4ade80'}}>✓</div>}
+                <div style={{fontSize:9,fontWeight:700,color:done?'#4ade80':active?'#e2b04a':'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.3px'}}>Wk {n}</div>
                 {wsd&&<div style={{fontSize:8,color:'rgba(255,255,255,.2)',marginTop:1}}>{fmtD(wsd)}</div>}
-                <div style={{fontSize:9,fontWeight:600,color:active?'#e2b04a':'rgba(255,255,255,.45)',marginTop:4,lineHeight:1.25,minHeight:22,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 2px'}}>
+                <div style={{fontSize:9,fontWeight:600,color:done?'#4ade80':active?'#e2b04a':'rgba(255,255,255,.45)',marginTop:4,lineHeight:1.25,minHeight:22,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 2px'}}>
                   {getWeekTitle(n).split(' ').slice(0,3).join(' ')}
                 </div>
-                {cnt>0&&<div style={{marginTop:4,background:active?'#e2b04a':'rgba(255,255,255,.1)',borderRadius:20,padding:'1px 6px',fontSize:10,fontWeight:700,color:active?'#000':'rgba(255,255,255,.4)',display:'inline-block'}}>{cnt}</div>}
+                {cnt>0&&<div style={{marginTop:4,background:done?'rgba(74,222,128,.2)':active?'#e2b04a':'rgba(255,255,255,.1)',borderRadius:20,padding:'1px 6px',fontSize:10,fontWeight:700,color:done?'#4ade80':active?'#000':'rgba(255,255,255,.4)',display:'inline-block'}}>{cnt}</div>}
                 {weekPaymentTotal(n)>0&&<div style={{marginTop:3,fontSize:8,fontWeight:700,color:active?'#e2b04a':'rgba(226,176,74,.45)'}}>{fmtMoney(weekPaymentTotal(n))}</div>}
               </div>
             );
@@ -5477,6 +5481,10 @@ function ProjectSchedulePage({propId}){
           />
         </div>
         <div style={{display:'flex',gap:6,flexShrink:0}}>
+          <button onClick={e=>{e.stopPropagation();toggleWeekDone(activeWeek);}}
+            style={{background:weekDone[activeWeek]?'rgba(74,222,128,.15)':'rgba(255,255,255,.08)',border:'1px solid '+(weekDone[activeWeek]?'rgba(74,222,128,.4)':'rgba(255,255,255,.15)'),borderRadius:8,color:weekDone[activeWeek]?'#4ade80':'rgba(255,255,255,.5)',padding:'6px 10px',cursor:'pointer',fontSize:12,fontWeight:700}}>
+            {weekDone[activeWeek]?'✓ Done':'Mark Done'}
+          </button>
           <button onClick={()=>setActiveWeek(w=>Math.max(1,w-1))} disabled={activeWeek===1}
             style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:8,color:'white',padding:'6px 12px',cursor:'pointer',opacity:activeWeek===1?0.3:1,fontSize:14}}>‹</button>
           <button onClick={()=>setActiveWeek(w=>Math.min(numWeeks,w+1))} disabled={activeWeek===numWeeks}
@@ -6535,17 +6543,27 @@ ${weeks}
 
 // Maps each schedule week → CATEGORIES items that belong in that week
 const SCHED_WEEK_MAP={
-  w1:[['interior','demo'],['interior','framing'],['interior','layout_change'],['interior','subfloor'],
-      ['below_grade','crawlspace_general'],['below_grade','foundation_general']],
+  w1:[['interior','demo'],['interior','framing'],['interior','layout_change'],['interior','wall_knocking'],['interior','subfloor'],
+      ['below_grade','crawlspace_general'],['below_grade','foundation_general'],['below_grade','basement_moisture'],
+      ['addition','addition_foundation'],['addition','addition_framing'],['addition','addition_sheathing']],
   w2:[['plumbing','plumbing_bathroom'],['plumbing','plumbing_kitchen'],['plumbing','laundry'],
-      ['electrical','wiring'],['mechanic','water_heater']],
-  w3:[['interior','drywall'],['bathroom','tub'],['bathroom','bathroom_floor']],
-  w4:[['interior','flooring'],['interior','paint'],['kitchen','cabinets'],['interior','interior_doors']],
-  w5:[['interior','trim_quarterround'],['interior','electric_trim'],['kitchen','countertop'],
-      ['kitchen','backsplash'],['kitchen','appliances'],['bathroom','vanity'],['bathroom','mirror'],
-      ['bathroom','toilet'],['bathroom','vents'],['exterior','exterior_doors'],['exterior','window_door_trim']],
-  w6:[['exterior','roof'],['exterior','siding'],['exterior','gutters'],['exterior','soffit_fascia'],
-      ['interior','garbage_removal']],
+      ['electrical','panel'],['electrical','wiring'],['electrical','addons'],
+      ['mechanic','hvac'],['mechanic','water_heater'],['mechanic','misc'],
+      ['addition','addition_insulation'],['addition','addition_electrical']],
+  w3:[['interior','drywall'],['interior','windows'],['bathroom','tub'],['bathroom','bathroom_floor'],
+      ['addition','addition_roofing'],['addition','addition_exterior'],['addition','addition_drywall']],
+  w4:[['interior','flooring'],['interior','paint'],['kitchen','cabinets'],['kitchen','island'],
+      ['interior','interior_doors'],
+      ['addition','addition_flooring'],['addition','addition_windows_doors'],['addition','addition_paint']],
+  w5:[['interior','trim_quarterround'],['interior','electric_trim'],['addition','addition_trim'],
+      ['kitchen','countertop'],['kitchen','backsplash'],['kitchen','appliances'],
+      ['bathroom','vanity'],['bathroom','mirror'],['bathroom','toilet'],['bathroom','vents']],
+  w6:[['exterior','exterior_doors'],['exterior','window_door_trim'],['exterior','front_porch'],['exterior','back_porch']],
+  w7:[['exterior','roof'],['exterior','siding'],['exterior','gutters'],['exterior','soffit_fascia'],
+      ['exterior','garage'],['exterior','driveway']],
+  w8:[['exterior','landscaping'],['interior','garbage_removal'],
+      ['below_grade','crawlspace_vapor'],['below_grade','crawlspace_insulation'],
+      ['below_grade','sump_pump'],['below_grade','foundation_waterproofing']],
 };
 
 function RenovationSchedulePage({prop}){
@@ -6725,11 +6743,16 @@ function RenovationSchedulePage({prop}){
   }
 
   async function transferToTimeline(){
-    if(!window.confirm('This will overwrite the current Timeline with the 6-week schedule. Continue?'))return;
+    if(!window.confirm('This will overwrite the current Timeline with your schedule. Continue?'))return;
+    const extraWeeks=Array.isArray(sched.extraWeeks)?sched.extraWeeks:Object.values(sched.extraWeeks||{});
+    const allWeeks=[...SCHED_WEEKS,...extraWeeks.map(ew=>({...ew,items:[],isExtra:true}))];
+    const totalWeeks=allWeeks.length;
     const assignments={};
     const payments={};
-    SCHED_WEEKS.forEach((week,idx)=>{
+    const weekTitles={};
+    allWeeks.forEach((week,idx)=>{
       const weekNum=idx+1;
+      weekTitles[weekNum]=week.title||`Week ${weekNum}`;
       const catItems=SCHED_WEEK_MAP[week.id]||[];
       const wData=sched.weeks?.[week.id]||{};
       const drawStr=String(wData.draw||'').replace(/[^0-9.]/g,'');
@@ -6744,8 +6767,8 @@ function RenovationSchedulePage({prop}){
         }
       });
     });
-    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:8,assignments,payments,inspection:2});
-    alert('Timeline updated! Open the 📅 Timeline tab to see it.');
+    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:totalWeeks,assignments,payments,weekTitles,weekDone:null});
+    alert(`Timeline updated with ${totalWeeks} weeks! Open the 📅 Timeline tab to see it.`);
   }
 
   async function importFromPDF(file){
