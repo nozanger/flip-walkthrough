@@ -593,7 +593,7 @@ async function setupPushNotifications(uid, userEmail) {
 
 // Gemini key stored in Firebase so all team members share one key
 const getGeminiKey = () => dbGet('config/geminiKey');
-const GEMINI_URL_FOR = key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+const GEMINI_URL_FOR = key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
 
 const GEMINI_PROMPT = `You are a real estate renovation expert reviewing a property walkthrough.
 Analyze these video frames and identify ALL renovation work needed.
