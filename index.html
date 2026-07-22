@@ -2341,7 +2341,15 @@ function PropScheduleBar({propId}){
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,v=>setPlan(v||null)),[propId]);
   if(!plan||!plan.numWeeks)return null;
   const numWeeks=plan.numWeeks||8;
-  const doneCount=Object.values(plan.weekDone||{}).filter(Boolean).length;
+  // Date-based: how many full weeks have elapsed since start
+  let dateWeeks=0;
+  if(plan.startDate){
+    const daysDone=Math.floor((Date.now()-new Date(plan.startDate+'T00:00:00'))/(1000*60*60*24));
+    dateWeeks=Math.max(0,Math.min(Math.floor(daysDone/7),numWeeks));
+  }
+  const markedDone=Object.values(plan.weekDone||{}).filter(Boolean).length;
+  // Use whichever is higher — marked weeks or date-elapsed weeks
+  const doneCount=Math.max(markedDone,dateWeeks);
   if(doneCount===0&&!plan.startDate)return null;
   const pct=Math.min(100,Math.round((doneCount/numWeeks)*100));
   const allDone=doneCount>=numWeeks;
