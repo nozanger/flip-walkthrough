@@ -4309,6 +4309,31 @@ function PropertyList({currentUser,onOpen}){
         <AllTasksPage currentUser={currentUser} properties={properties} onOpenProp={onOpen}/>
       )}
       {homeTab==='pricelist'&&<PriceListPage/>}
+      {homeTab==='tools'&&(
+        <div className="list-content" style={{paddingTop:20}}>
+          <div style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:'.8px',marginBottom:14,paddingLeft:2}}>Tools</div>
+          {[
+            {icon:'📋',label:'Price List',sub:'Material costs & quantity formulas',tab:'pricelist'},
+            {icon:'🗓',label:'Schedule Templates',sub:'Renovation milestone presets',tab:'schedule'},
+          ].map(item=>(
+            <div key={item.tab} onClick={()=>setHomeTab(item.tab)} style={{display:'flex',alignItems:'center',gap:14,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'14px 16px',marginBottom:10,cursor:'pointer'}}>
+              <span style={{fontSize:26,width:36,textAlign:'center'}}>{item.icon}</span>
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:'white'}}>{item.label}</div>
+                <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginTop:2}}>{item.sub}</div>
+              </div>
+              <span style={{marginLeft:'auto',color:'rgba(255,255,255,.25)',fontSize:18}}>›</span>
+            </div>
+          ))}
+          <div style={{display:'flex',alignItems:'center',gap:14,background:'rgba(255,255,255,.03)',border:'1px dashed rgba(255,255,255,.08)',borderRadius:14,padding:'14px 16px',marginBottom:10,opacity:.5}}>
+            <span style={{fontSize:26,width:36,textAlign:'center'}}>🧾</span>
+            <div>
+              <div style={{fontSize:14,fontWeight:600,color:'white'}}>Receipt Log</div>
+              <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginTop:2}}>Coming soon — auto-learn prices from receipts</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="bottom-nav">
         <button className={`bottom-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
@@ -4319,11 +4344,11 @@ function PropertyList({currentUser,onOpen}){
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           Tasks
         </button>
-        <button className={`bottom-nav-btn${homeTab==='pricelist'?' active':''}`} onClick={()=>setHomeTab('pricelist')}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          Price List
+        <button className={`bottom-nav-btn${homeTab==='tools'||homeTab==='pricelist'||homeTab==='schedule'?' active':''}`} onClick={()=>setHomeTab('tools')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          Tools
         </button>
-        <button className={`bottom-nav-btn${showMoreSheet||homeTab==='rentals'||homeTab==='owner'||homeTab==='schedule'?' active':''}`} onClick={()=>setShowMoreSheet(true)}>
+        <button className={`bottom-nav-btn${showMoreSheet||homeTab==='rentals'||homeTab==='owner'?' active':''}`} onClick={()=>setShowMoreSheet(true)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
           More
         </button>
@@ -4370,6 +4395,7 @@ function PropertyList({currentUser,onOpen}){
               {icon:'👥',label:'My Team',action:()=>{setShowTeam(true);setShowMoreSheet(false);}},
               {icon:'👤',label:'Profile',action:()=>{setShowProfile(true);setShowMoreSheet(false);}},
             ].map(item=>(
+
               <button key={item.label} onClick={item.action} style={{display:'flex',alignItems:'center',gap:14,width:'100%',padding:'16px 24px',background:'none',border:'none',color:'white',fontSize:16,cursor:'pointer',textAlign:'left',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
                 <span style={{fontSize:20,width:28}}>{item.icon}</span>
                 {item.label}
@@ -6711,9 +6737,11 @@ function RenovationSchedulePage({prop}){
 }
 
 function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
-  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6,TAB_BUDGET=-7,TAB_SCHEDULE=-8;
+  const TAB_TASKS=-1,TAB_SCOPE=-2,TAB_INFO=-3,TAB_TEAM=-4,TAB_PICS=-5,TAB_TIMELINE=-6,TAB_BUDGET=-7,TAB_SCHEDULE=-8,TAB_PLAN=-9;
   const initStage=prop.stage||'walkthrough';
   const[activeTab,setActiveTab]=React.useState(TAB_TASKS);
+  const[planView,setPlanView]=React.useState('timeline');
+  const[showPropMore,setShowPropMore]=React.useState(false);
   const[data,setData]=React.useState({});
   const[members,setMembers]=React.useState({});
   const[stage,setStage]=React.useState(prop.stage||'walkthrough');
@@ -6924,27 +6952,14 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_SCOPE||activeTab>=0?' active':''}`} onClick={()=>setActiveTab(TAB_SCOPE)}>
             📐 Scope
           </div>
-          <div className={`tab${activeTab===TAB_INFO?' active':''}`} onClick={()=>setActiveTab(TAB_INFO)}>
-            📋 Info{sumFilled&&<span className="tab-count">✓</span>}
+          <div className={`tab${activeTab===TAB_PLAN?' active':''}`} onClick={()=>setActiveTab(TAB_PLAN)}>
+            📅 Plan
           </div>
-          {(stage==='contract'||stage==='renovation')&&(
-            <div className={`tab${activeTab===TAB_PICS?' active':''}`} onClick={()=>setActiveTab(TAB_PICS)}>
-              🖼 AI Pictures
-            </div>
-          )}
-          {(stage==='contract'||stage==='renovation')&&(
-            <div className={`tab${activeTab===TAB_TIMELINE?' active':''}`} onClick={()=>setActiveTab(TAB_TIMELINE)}>
-              📅 Timeline
-            </div>
-          )}
           <div className={`tab${activeTab===TAB_BUDGET?' active':''}`} onClick={()=>setActiveTab(TAB_BUDGET)}>
             💰 Budget
           </div>
-          <div className={`tab${activeTab===TAB_SCHEDULE?' active':''}`} onClick={()=>setActiveTab(TAB_SCHEDULE)}>
-            📋 Schedule
-          </div>
-          <div className={`tab${activeTab===TAB_TEAM?' active':''}`} onClick={()=>setActiveTab(TAB_TEAM)}>
-            👥 Team{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
+          <div className={`tab${showPropMore||activeTab===TAB_INFO||activeTab===TAB_PICS||activeTab===TAB_TEAM?' active':''}`} onClick={()=>setShowPropMore(true)}>
+            ··· More{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
         </div>
       </div>
@@ -6997,9 +7012,18 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
         </div>
       )}
       {activeTab===TAB_PICS&&<AIPicturesPage propId={prop.id} currentUser={currentUser}/>}
-      {activeTab===TAB_TIMELINE&&<ProjectSchedulePage propId={prop.id}/>}
       {activeTab===TAB_BUDGET&&<DetailedBudgetPage prop={prop} data={data}/>}
-      {activeTab===TAB_SCHEDULE&&<RenovationSchedulePage prop={prop}/>}
+
+      {activeTab===TAB_PLAN&&(
+        <div>
+          <div style={{display:'flex',gap:8,padding:'12px 14px 0'}}>
+            <button onClick={()=>setPlanView('timeline')} style={{flex:1,padding:'7px 0',borderRadius:20,border:'none',fontWeight:600,fontSize:12,cursor:'pointer',background:planView==='timeline'?'#e2b04a':'rgba(255,255,255,.07)',color:planView==='timeline'?'#1a1a2e':'rgba(255,255,255,.5)'}}>📅 Timeline</button>
+            <button onClick={()=>setPlanView('schedule')} style={{flex:1,padding:'7px 0',borderRadius:20,border:'none',fontWeight:600,fontSize:12,cursor:'pointer',background:planView==='schedule'?'#e2b04a':'rgba(255,255,255,.07)',color:planView==='schedule'?'#1a1a2e':'rgba(255,255,255,.5)'}}>🗓 Schedule</button>
+          </div>
+          {planView==='timeline'&&<ProjectSchedulePage propId={prop.id}/>}
+          {planView==='schedule'&&<RenovationSchedulePage prop={prop}/>}
+        </div>
+      )}
 
       {activeTab===TAB_TEAM&&(
         <div>
@@ -7010,6 +7034,25 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
               <OwnerSection propId={prop.id} currentUser={currentUser} members={members}/>
             </div>
           )}
+        </div>
+      )}
+
+      {showPropMore&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:900,display:'flex',alignItems:'flex-end'}} onClick={()=>setShowPropMore(false)}>
+          <div style={{background:'#0d1829',borderRadius:'20px 20px 0 0',width:'100%',paddingBottom:'env(safe-area-inset-bottom,16px)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{width:36,height:4,borderRadius:2,background:'rgba(255,255,255,.2)',margin:'12px auto 20px'}}/>
+            {[
+              {icon:'📋',label:'Info',badge:sumFilled?'✓':null,tab:TAB_INFO},
+              {icon:'🖼',label:'AI Photos',tab:TAB_PICS},
+              {icon:'👥',label:'Team',badge:totalUnread>0?totalUnread:null,tab:TAB_TEAM},
+            ].map(item=>(
+              <button key={item.label} onClick={()=>{setActiveTab(item.tab);setShowPropMore(false);}} style={{display:'flex',alignItems:'center',gap:14,width:'100%',padding:'16px 24px',background:'none',border:'none',color:'white',fontSize:16,cursor:'pointer',textAlign:'left',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+                <span style={{fontSize:20,width:28}}>{item.icon}</span>
+                <span style={{flex:1}}>{item.label}</span>
+                {item.badge&&<span style={{background:'#e2b04a',color:'#1a1a2e',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:700}}>{item.badge}</span>}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
