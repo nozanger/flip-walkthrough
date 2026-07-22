@@ -6682,10 +6682,13 @@ The "weeks" array should have one entry per week/phase found in the document. Us
         })
       });
       const data=await resp.json();
+      if(data.error)throw new Error('Gemini: '+data.error.message);
       const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if(!text)throw new Error('No response from AI');
-      const parsed=JSON.parse(text);
-      setPdfStatus('Building schedule…');
+      if(!text)throw new Error('No AI response — check Gemini key in Firebase');
+      let parsed;
+      try{parsed=JSON.parse(text);}catch(pe){throw new Error('Bad JSON from AI: '+text.slice(0,120));}
+      if(!Array.isArray(parsed.weeks)||parsed.weeks.length===0)throw new Error('AI returned no weeks — try a clearer PDF');
+      setPdfStatus(`Building schedule (${parsed.weeks.length} weeks found)…`);
 
       // parsed.weeks is an array; first 6 map to SCHED_WEEKS (w1-w6), rest become extraWeeks
       const aiWeeks=parsed.weeks||[];
@@ -6722,10 +6725,11 @@ The "weeks" array should have one entry per week/phase found in the document. Us
         extraWeeks:[...(sched.extraWeeks||[]),...newExtra],
       };
       await save(updated);
-      setPdfStatus('');
+      setPdfStatus(`✓ Imported ${aiWeeks.length} weeks`);
+      setTimeout(()=>setPdfStatus(''),4000);
     }catch(e){
       console.error(e);
-      setPdfStatus('Error: '+e.message);
+      setPdfStatus('⚠ '+e.message);
     }
     setPdfImporting(false);
   }
@@ -6741,12 +6745,13 @@ The "weeks" array should have one entry per week/phase found in the document. Us
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <input ref={pdfInputRef} type="file" accept=".pdf" style={{display:'none'}} onChange={e=>{if(e.target.files[0])importFromPDF(e.target.files[0]);e.target.value='';}}/>
           <button onClick={()=>pdfInputRef.current?.click()} disabled={pdfImporting} style={{background:'rgba(99,102,241,.2)',color:'#a5b4fc',border:'1px solid rgba(99,102,241,.4)',borderRadius:8,padding:'9px 14px',fontWeight:700,fontSize:13,cursor:pdfImporting?'default':'pointer',opacity:pdfImporting?.7:1}}>
-            {pdfImporting?(pdfStatus||'Importing…'):'📄 Import PDF'}
+            {pdfImporting?'Importing…':'📄 Import PDF'}
           </button>
           <button onClick={transferToTimeline} style={{background:'rgba(255,255,255,.1)',color:'white',border:'1px solid rgba(255,255,255,.2)',borderRadius:8,padding:'9px 14px',fontWeight:700,fontSize:13,cursor:'pointer'}}>📅 → Timeline</button>
           <button onClick={openPrint} style={{background:'#e2b04a',color:'#1a1a2e',border:'none',borderRadius:8,padding:'9px 16px',fontWeight:700,fontSize:13,cursor:'pointer'}}>🖨 Print / PDF</button>
         </div>
       </div>
+      {pdfStatus&&<div style={{padding:'6px 14px',fontSize:12,color:pdfStatus.startsWith('⚠')?'#f87171':pdfStatus.startsWith('✓')?'#4ade80':'rgba(255,255,255,.6)'}}>{pdfStatus}</div>}
       {/* Contract info */}
       <div style={{padding:'12px 14px',display:'flex',gap:10}}>
         <div style={{flex:1}}>
