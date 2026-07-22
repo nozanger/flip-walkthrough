@@ -6955,10 +6955,13 @@ function WalkthroughView({prop,currentUser,onBack,onPropUpdate}){
           <div className={`tab${activeTab===TAB_PLAN?' active':''}`} onClick={()=>setActiveTab(TAB_PLAN)}>
             📅 Plan
           </div>
+          <div className={`tab${activeTab===TAB_PICS?' active':''}`} onClick={()=>setActiveTab(TAB_PICS)}>
+            🖼 Photos
+          </div>
           <div className={`tab${activeTab===TAB_BUDGET?' active':''}`} onClick={()=>setActiveTab(TAB_BUDGET)}>
             💰 Budget
           </div>
-          <div className={`tab${showPropMore||activeTab===TAB_INFO||activeTab===TAB_PICS||activeTab===TAB_TEAM?' active':''}`} onClick={()=>setShowPropMore(true)}>
+          <div className={`tab${showPropMore||activeTab===TAB_INFO||activeTab===TAB_TEAM?' active':''}`} onClick={()=>setShowPropMore(true)}>
             ··· More{totalUnread>0&&<span className="notif-badge">{totalUnread}</span>}
           </div>
         </div>
