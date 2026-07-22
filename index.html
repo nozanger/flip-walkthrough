@@ -2340,7 +2340,7 @@ function PropScheduleBar({propId}){
   const[plan,setPlan]=React.useState(null);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,v=>setPlan(v||null)),[propId]);
   if(!plan||!plan.startDate||!plan.numWeeks)return null;
-  const numWeeks=plan.numWeeks||6;
+  const numWeeks=plan.numWeeks||8;
   const start=new Date(plan.startDate+'T00:00:00');
   const today=new Date();
   const daysDone=Math.floor((today-start)/(1000*60*60*24));
@@ -5075,7 +5075,7 @@ function PropEventsBar({propId}){
 }
 
 function ProjectSchedulePage({propId}){
-  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:6,payments:{},calendarDone:false,inspection:null});
+  const[plan,setPlan]=React.useState({startDate:'',assignments:{},numWeeks:8,payments:{},calendarDone:false,inspection:null});
   const[weekTitles,setWeekTitles]=React.useState({});
   const[tlDragOver,setTlDragOver]=React.useState(null);
   const[tlDragOverIdx,setTlDragOverIdx]=React.useState(null); // {week,idx}
@@ -5310,7 +5310,7 @@ function ProjectSchedulePage({propId}){
     try{
       // Read scope data
       const scopeData=await dbGet(`projects/${propId}/data`)||{};
-      const total=numWeeks||6;
+      const total=numWeeks||8;
       const updates={};
       Object.entries(catMapping).forEach(([catId,items])=>{
         const catData=scopeData[catId]||{};
@@ -6744,7 +6744,7 @@ function RenovationSchedulePage({prop}){
         }
       });
     });
-    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:6,assignments,payments,inspection:2});
+    await dbUpdate(`projects/${prop.id}/weekplan`,{numWeeks:8,assignments,payments,inspection:2});
     alert('Timeline updated! Open the 📅 Timeline tab to see it.');
   }
 
