@@ -6651,31 +6651,25 @@ function RenovationSchedulePage({prop}){
       });
       setPdfStatus('AI is reading the document…');
       const apiKey=await dbGet('config/geminiKey');
-      const prompt=`You are reading a contractor bid, scope of work, or renovation plan PDF.
+      const prompt=`You are reading a contractor bid, scope of work, or renovation schedule PDF.
 
-Extract every task or line item and assign it to one of these 6 renovation weeks:
-w1: Demo & Framing (demolition, structural, framing, subfloor)
-w2: Plumbing & Electrical (rough-in plumbing, electrical, HVAC rough)
-w3: Drywall & Tile (drywall, taping, cement board, tile, tub set)
-w4: Flooring, Cabinets & Paint (LVP, tile floors, cabinets, painting)
-w5: Finishes & Fixtures (trim, countertops, sinks, vanities, toilets, appliances, fixtures)
-w6: Exterior, Punch List & Closeout (roofing, siding, exterior, cleanup, final walkthrough)
+Your job:
+1. Detect how many weeks or phases the document contains. Use the document's own structure — if it says 8 weeks, use 8. If it has phases (Phase 1, Phase 2…), treat each as a week.
+2. Extract every task/line item and put it in the correct week.
+3. Extract the total price and any per-phase/per-week payment amounts.
+4. Give each week a short title based on what work happens that week (e.g. "Demo & Framing", "Rough Plumbing", "Drywall & Tile").
 
-Also extract the total contract price and any per-phase payment amounts if present.
-
-Return ONLY valid JSON — no markdown, no explanation:
+Return ONLY valid JSON — no markdown, no explanation — in exactly this format:
 {
   "totalPrice": "",
   "finalPayment": "",
-  "weeks": {
-    "w1": {"draw": "", "items": ["task…"]},
-    "w2": {"draw": "", "items": []},
-    "w3": {"draw": "", "items": []},
-    "w4": {"draw": "", "items": []},
-    "w5": {"draw": "", "items": []},
-    "w6": {"draw": "", "items": []}
-  }
-}`;
+  "weeks": [
+    {"id": "w1", "title": "Demo & Framing", "payLabel": "Payment after demo complete", "draw": "$5,000", "items": ["task 1", "task 2"]},
+    {"id": "w2", "title": "Rough Plumbing & Electrical", "payLabel": "", "draw": "", "items": ["task 3"]}
+  ]
+}
+
+The "weeks" array should have one entry per week/phase found in the document. Use as many weeks as the document actually has. Keep items concise (one line each). Include payLabel only if a payment is tied to that phase.`;
       const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -6691,24 +6685,41 @@ Return ONLY valid JSON — no markdown, no explanation:
       const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
       if(!text)throw new Error('No response from AI');
       const parsed=JSON.parse(text);
-      setPdfStatus('Applying to schedule…');
+      setPdfStatus('Building schedule…');
+
+      // parsed.weeks is an array; first 6 map to SCHED_WEEKS (w1-w6), rest become extraWeeks
+      const aiWeeks=parsed.weeks||[];
+      const stdIds=['w1','w2','w3','w4','w5','w6'];
       const newWeeks={...(sched.weeks||{})};
-      if(parsed.weeks){
-        Object.entries(parsed.weeks).forEach(([wid,wData])=>{
-          const existing=newWeeks[wid]||{};
-          const items=(wData.items||[]).filter(t=>t&&t.trim());
+      const newExtra=[];
+
+      aiWeeks.forEach((aw,idx)=>{
+        const items=(aw.items||[]).filter(t=>t&&t.trim());
+        if(idx<stdIds.length){
+          // populate into standard week as custom items (replaces previous custom)
+          const wid=stdIds[idx];
           newWeeks[wid]={
-            ...existing,
-            ...(wData.draw?{draw:wData.draw}:{}),
-            custom:[...(existing.custom||[]),...items]
+            ...(newWeeks[wid]||{}),
+            ...(aw.draw?{draw:aw.draw}:{}),
+            custom:items,
           };
-        });
-      }
+        }else{
+          // create extra week
+          const wid='wpdf_'+(idx+1)+'_'+Date.now().toString(36);
+          newExtra.push({id:wid,title:aw.title||`Week ${idx+1}`,payLabel:aw.payLabel||''});
+          newWeeks[wid]={
+            ...(aw.draw?{draw:aw.draw}:{}),
+            custom:items,
+          };
+        }
+      });
+
       const updated={
         ...sched,
         ...(parsed.totalPrice?{totalPrice:parsed.totalPrice}:{}),
         ...(parsed.finalPayment?{finalPayment:parsed.finalPayment}:{}),
-        weeks:newWeeks
+        weeks:newWeeks,
+        extraWeeks:[...(sched.extraWeeks||[]),...newExtra],
       };
       await save(updated);
       setPdfStatus('');
