@@ -5261,6 +5261,78 @@ function ProjectSchedulePage({propId}){
   }
 
   // assignments[catId][itemId] = { 1: true, 3: true } — set of weeks
+  // Map each scope item to a suggested week (1-based, out of numWeeks)
+  const SCOPE_WEEK_MAP={
+    // Week 1 — Demo & Framing
+    interior:{demo:1,framing:1,layout_change:1,wall_knocking:1,subfloor:1,garbage_removal:1,windows:1},
+    below_grade:{basement_general:1,basement_walls:1,basement_floor:1,basement_moisture:1,basement_egress:1,
+      crawlspace_general:1,crawlspace_vapor:1,crawlspace_insulation:1,
+      foundation_general:1,foundation_cracks:1,foundation_waterproofing:1,sump_pump:1},
+    addition:{addition_foundation:1,addition_framing:1,addition_sheathing:1},
+    // Week 2 — Plumbing, Electrical, Mechanical
+    plumbing:{plumbing_bathroom:2,plumbing_kitchen:2,laundry:2},
+    electrical:{panel:2,wiring:2,addons:2},
+    mechanic:{hvac:2,water_heater:2,misc:2},
+    addition2:{addition_insulation:2,addition_electrical:2},
+    // Week 3 — Drywall & Tile
+    interior3:{drywall:3},
+    bathroom:{tub:3,bathroom_floor:3},
+    addition3:{addition_roofing:3,addition_exterior:3,addition_drywall:3},
+    // Week 4 — Flooring, Cabinets & Paint
+    interior4:{flooring:4,paint:4},
+    kitchen:{cabinets:4,island:4},
+    addition4:{addition_flooring:4,addition_windows_doors:4,addition_paint:4,addition_trim:4},
+    // Week 5 — Finishes & Fixtures
+    interior5:{trim_quarterround:5,interior_doors:5,electric_trim:5},
+    kitchen5:{countertop:5,backsplash:5,appliances:5},
+    bathroom5:{vanity:5,mirror:5,toilet:5,vents:5},
+    // Week 6 — Exterior & Closeout
+    exterior:{roof:6,gutters:6,soffit_fascia:6,window_door_trim:6,siding:6,exterior_doors:6,
+      front_porch:6,garage:6,driveway:6,back_porch:6,landscaping:6},
+  };
+  // Flatten to { catId: { itemId: relativeWeek } } where relativeWeek is 1-6 scale
+  const FLAT_MAP={};
+  const catMapping={
+    interior:{demo:1,framing:1,layout_change:1,wall_knocking:1,subfloor:1,garbage_removal:1,windows:1,drywall:3,flooring:4,paint:4,trim_quarterround:5,interior_doors:5,electric_trim:5},
+    below_grade:{basement_general:1,basement_walls:1,basement_floor:1,basement_moisture:1,basement_egress:1,crawlspace_general:1,crawlspace_vapor:1,crawlspace_insulation:1,foundation_general:1,foundation_cracks:1,foundation_waterproofing:1,sump_pump:1},
+    plumbing:{plumbing_bathroom:2,plumbing_kitchen:2,laundry:2},
+    electrical:{panel:2,wiring:2,addons:2},
+    mechanic:{hvac:2,water_heater:2,misc:2},
+    bathroom:{tub:3,bathroom_floor:3,vanity:5,mirror:5,toilet:5,vents:5},
+    kitchen:{cabinets:4,island:4,countertop:5,backsplash:5,appliances:5},
+    exterior:{roof:6,gutters:6,soffit_fascia:6,window_door_trim:6,siding:6,exterior_doors:6,front_porch:6,garage:6,driveway:6,back_porch:6,landscaping:6},
+    addition:{addition_foundation:1,addition_framing:1,addition_sheathing:1,addition_roofing:3,addition_exterior:3,addition_drywall:3,addition_insulation:2,addition_electrical:2,addition_flooring:4,addition_windows_doors:4,addition_paint:4,addition_trim:4},
+  };
+
+  const[suggesting,setSuggesting]=React.useState(false);
+  async function suggestTimeline(){
+    setSuggesting(true);
+    try{
+      // Read scope data
+      const scopeData=await dbGet(`projects/${propId}/data`)||{};
+      const total=numWeeks||6;
+      const updates={};
+      Object.entries(catMapping).forEach(([catId,items])=>{
+        const catData=scopeData[catId]||{};
+        Object.entries(items).forEach(([itemId,relWeek])=>{
+          const status=(catData[itemId]?.status)||null;
+          // Only assign items that need work (replace or partial)
+          if(status==='replace'||status==='partial'){
+            // Scale relWeek (1-6) to actual numWeeks
+            const scaled=Math.round(((relWeek-1)/(6-1))*(total-1))+1;
+            const week=Math.min(Math.max(scaled,1),total);
+            if(!updates[catId])updates[catId]={};
+            updates[catId][itemId]={[week]:true};
+          }
+        });
+      });
+      // Write all assignments at once
+      await dbSet(`projects/${propId}/weekplan/assignments`,updates);
+    }finally{
+      setSuggesting(false);
+    }
+  }
+
   function getWeeks(catId,itemId){
     const val=((plan.assignments||{})[catId]||{})[itemId];
     if(!val)return{};
@@ -5358,6 +5430,13 @@ function ProjectSchedulePage({propId}){
         </div>
       </div>
 
+
+      {/* Suggest from scope button */}
+      <div style={{padding:'8px 12px 0'}}>
+        <button onClick={suggestTimeline} disabled={suggesting} style={{width:'100%',background:'rgba(226,176,74,.1)',border:'1px solid rgba(226,176,74,.3)',borderRadius:10,padding:'10px 14px',color:'#e2b04a',fontWeight:700,fontSize:13,cursor:suggesting?'default':'pointer',opacity:suggesting?.6:1}}>
+          {suggesting?'Building timeline…':'✨ Suggest Timeline from Scope'}
+        </button>
+      </div>
 
       {/* 8-week Gantt grid */}
       <div style={{padding:'10px 12px 0',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
