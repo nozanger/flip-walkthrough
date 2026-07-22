@@ -2336,6 +2336,35 @@ function PropBudgetBar({propId}){
   );
 }
 
+function PropScheduleBar({propId}){
+  const[plan,setPlan]=React.useState(null);
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,v=>setPlan(v||null)),[propId]);
+  if(!plan||!plan.startDate||!plan.numWeeks)return null;
+  const numWeeks=plan.numWeeks||6;
+  const start=new Date(plan.startDate+'T00:00:00');
+  const today=new Date();
+  const daysDone=Math.floor((today-start)/(1000*60*60*24));
+  const weeksDone=Math.max(0,Math.floor(daysDone/7));
+  if(weeksDone<=0&&daysDone<0)return null; // hasn't started yet — don't show
+  const currentWeek=Math.min(weeksDone+1,numWeeks);
+  const pct=Math.min(100,Math.round((weeksDone/numWeeks)*100));
+  const done=weeksDone>=numWeeks;
+  const fillColor=done?'#4ade80':pct>60?'#e2b04a':'#60a5fa';
+  const startLabel=start.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return(
+    <div className="prop-budget-bar">
+      <div className="prop-budget-track">
+        <div className="prop-budget-fill" style={{width:pct+'%',background:fillColor}}/>
+      </div>
+      <div className="prop-budget-nums">
+        <span>Started: <strong>{startLabel}</strong></span>
+        <span>{done?'All done':'Week '}<strong>{done?'':currentWeek+'/'+numWeeks}</strong></span>
+        <span style={{color:done?'#4ade80':'rgba(255,255,255,.55)'}}><strong>{pct}%</strong> through</span>
+      </div>
+    </div>
+  );
+}
+
 function BudgetSection({propId}){
   const base=`projects/${propId}/budget`;
   const[totalBudget,setTotalBudget]=React.useState('');
@@ -4179,6 +4208,7 @@ function PropertyList({currentUser,onOpen}){
         </div>
 
         {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
+        {(stage==='contract'||stage==='renovation')&&<PropScheduleBar propId={prop.id}/>}
 
         {/* Upcoming events strip */}
         {upcomingEvents.length>0&&(
