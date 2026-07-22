@@ -6441,7 +6441,7 @@ const SCHED_WEEK_MAP={
 
 function RenovationSchedulePage({prop}){
   const propId=prop.id;
-  const [sched,setSched]=React.useState({totalPrice:'',finalPayment:'',weeks:{}});
+  const [sched,setSched]=React.useState({totalPrice:'',finalPayment:'',weeks:{},extraWeeks:[]});
   const [editingItem,setEditingItem]=React.useState(null); // {wid,iid}
   const [editText,setEditText]=React.useState('');
   const [addingTo,setAddingTo]=React.useState(null); // wid
@@ -6489,6 +6489,25 @@ function RenovationSchedulePage({prop}){
   }
   async function setField(field,val){await save({...sched,[field]:val});}
   async function setWeekDraw(wid,val){await save({...sched,weeks:{...sched.weeks,[wid]:{...sched.weeks?.[wid],draw:val}}});}
+  async function addExtraWeek(){
+    const existing=sched.extraWeeks||[];
+    const n=SCHED_WEEKS.length+existing.length+1;
+    const id='w'+n+'_'+Date.now().toString(36);
+    await save({...sched,extraWeeks:[...existing,{id,title:`Week ${n}`}]});
+  }
+  async function removeExtraWeek(wid){
+    const extra=(sched.extraWeeks||[]).filter(w=>w.id!==wid);
+    const newWeeks={...sched.weeks};delete newWeeks[wid];
+    await save({...sched,extraWeeks:extra,weeks:newWeeks});
+  }
+  async function setExtraWeekTitle(wid,title){
+    const extra=(sched.extraWeeks||[]).map(w=>w.id===wid?{...w,title}:w);
+    await save({...sched,extraWeeks:extra});
+  }
+  async function setExtraWeekPayLabel(wid,payLabel){
+    const extra=(sched.extraWeeks||[]).map(w=>w.id===wid?{...w,payLabel}:w);
+    await save({...sched,extraWeeks:extra});
+  }
   async function toggleItem(wid,iid,currentOff){
     const w=sched.weeks?.[wid]||{};
     const off={...w.off,[iid]:!currentOff};
@@ -6730,7 +6749,7 @@ Return ONLY valid JSON — no markdown, no explanation:
       </div>
 
       {/* Weeks */}
-      {SCHED_WEEKS.map(week=>{
+      {[...SCHED_WEEKS,...(sched.extraWeeks||[]).map(ew=>({...ew,items:[],isExtra:true}))].map(week=>{
         const wData=sched.weeks?.[week.id]||{};
         const off=wData.off||{};
         const edits=wData.edits||{};
@@ -6746,12 +6765,26 @@ Return ONLY valid JSON — no markdown, no explanation:
             onDrop={e=>{e.preventDefault();const idx=dragOverIdxRef.current?.wid===week.id?dragOverIdxRef.current.idx:999;dropOnItem(week.id,idx);}}
             style={{margin:'0 14px 16px',background:isDropTarget?'rgba(226,176,74,.08)':'rgba(255,255,255,.04)',border:'1px solid '+(isDropTarget?'#e2b04a':'rgba(255,255,255,.09)'),borderRadius:12,overflow:'hidden',transition:'border-color .15s,background .15s'}}>
             {/* Week header */}
-            <div style={{padding:'10px 14px',background:'rgba(255,255,255,.06)',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{fontSize:13,fontWeight:700,color:'white'}}>{week.title}</span>
-              {hasOptional&&(
-                <button onClick={()=>setShowOptional(p=>({...p,[week.id]:!p[week.id]}))} style={{...chipStyle(showOpt),fontSize:10}}>
-                  {showOpt?'Hide':'+ Optional'}
-                </button>
+            <div style={{padding:'10px 14px',background:'rgba(255,255,255,.06)',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:8}}>
+              {week.isExtra?(
+                <>
+                  <input
+                    defaultValue={week.title}
+                    onBlur={e=>setExtraWeekTitle(week.id,e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}
+                    style={{flex:1,background:'transparent',border:'none',outline:'none',fontSize:13,fontWeight:700,color:'white'}}
+                  />
+                  <button onClick={()=>removeExtraWeek(week.id)} style={{background:'rgba(239,68,68,.15)',border:'1px solid rgba(239,68,68,.3)',borderRadius:6,color:'#ef4444',fontSize:11,fontWeight:700,padding:'3px 8px',cursor:'pointer',flexShrink:0}}>✕ Remove</button>
+                </>
+              ):(
+                <>
+                  <span style={{flex:1,fontSize:13,fontWeight:700,color:'white'}}>{week.title}</span>
+                  {hasOptional&&(
+                    <button onClick={()=>setShowOptional(p=>({...p,[week.id]:!p[week.id]}))} style={{...chipStyle(showOpt),fontSize:10}}>
+                      {showOpt?'Hide':'+ Optional'}
+                    </button>
+                  )}
+                </>
               )}
             </div>
             {/* Items — unified ordered list */}
@@ -6835,9 +6868,19 @@ Return ONLY valid JSON — no markdown, no explanation:
                 <span style={{fontSize:11,fontWeight:700,color:'#f59e0b'}}>⚠ City Inspection Required: Framing, Plumbing, and Electrical</span>
               </div>
             )}
-            {week.payLabel&&(
+            {(week.payLabel||week.isExtra)&&(
               <div style={{padding:'10px 14px',borderTop:'1px solid rgba(255,255,255,.08)',background:'rgba(255,255,255,.03)',display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontSize:11,color:'rgba(255,255,255,.5)',flex:1}}>{week.payLabel}</span>
+                {week.isExtra?(
+                  <input
+                    defaultValue={week.payLabel||''}
+                    placeholder="Payment label (optional)…"
+                    onBlur={e=>setExtraWeekPayLabel(week.id,e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}
+                    style={{...inputStyle,flex:1,padding:'6px 10px',fontSize:11,color:'rgba(255,255,255,.5)'}}
+                  />
+                ):(
+                  <span style={{fontSize:11,color:'rgba(255,255,255,.5)',flex:1}}>{week.payLabel}</span>
+                )}
                 <input type="text" placeholder="$0" value={wData.draw||''} onChange={e=>setWeekDraw(week.id,e.target.value)}
                   style={{...inputStyle,width:90,textAlign:'right',padding:'6px 10px',fontWeight:700,color:'#e2b04a',borderColor:'rgba(226,176,74,.3)'}}/>
               </div>
@@ -6845,6 +6888,13 @@ Return ONLY valid JSON — no markdown, no explanation:
           </div>
         );
       })}
+
+      {/* Add Week */}
+      <div style={{margin:'0 14px 24px'}}>
+        <button onClick={addExtraWeek} style={{width:'100%',padding:'14px',background:'rgba(255,255,255,.04)',border:'1px dashed rgba(255,255,255,.18)',borderRadius:12,color:'rgba(255,255,255,.45)',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <span style={{fontSize:20,lineHeight:1,color:'rgba(255,255,255,.3)'}}>+</span> Add Week
+        </button>
+      </div>
     </div>
   );
 }
