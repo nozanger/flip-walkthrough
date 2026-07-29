@@ -2308,6 +2308,37 @@ function MigrationModal({currentUser,onDone}){
   );
 }
 
+function PropHealthChip({propId,stage}){
+  const[tasks,setTasks]=React.useState({});
+  const[plan,setPlan]=React.useState(null);
+  React.useEffect(()=>dbListen(`projects/${propId}/tasks`,v=>setTasks(v||{})),[propId]);
+  React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,v=>setPlan(v||null)),[propId]);
+  const today=new Date().toISOString().split('T')[0];
+  const taskList=Object.values(tasks);
+  const hasUrgent=taskList.some(t=>t.urgent&&t.status!=='done');
+  const hasOverdue=taskList.some(t=>t.dueDate&&t.dueDate<today&&t.status!=='done');
+  let scheduleBehind=false;
+  if(plan&&plan.startDate&&plan.numWeeks){
+    const elapsed=Math.max(0,Math.floor((Date.now()-new Date(plan.startDate+'T00:00:00'))/(1000*60*60*24*7)));
+    const done=Object.values(plan.weekDone||{}).filter(Boolean).length;
+    scheduleBehind=elapsed-done>=2;
+  }
+  const lastActivity=taskList.reduce((m,t)=>Math.max(m,t.updatedAt||t.createdAt||0),0);
+  const stalled=stage==='renovation'&&lastActivity>0&&(Date.now()-lastActivity)>7*24*60*60*1000&&taskList.length>0;
+  let label,color,bg;
+  if(hasUrgent||hasOverdue){label='⚠ Needs Attention';color='#f87171';bg='rgba(248,113,113,.12)';}
+  else if(scheduleBehind){label='Behind Schedule';color='#fbbf24';bg='rgba(251,191,36,.1)';}
+  else if(stalled){label='Stalled';color='rgba(255,255,255,.4)';bg='rgba(255,255,255,.06)';}
+  else{label='On Track';color='#4ade80';bg='rgba(74,222,128,.1)';}
+  return(
+    <div style={{padding:'0 14px 10px'}}>
+      <span style={{background:bg,color,border:'1px solid '+color+'44',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:700,letterSpacing:'.2px'}}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function PropBudgetBar({propId}){
   const[b,setB]=React.useState(null);
   React.useEffect(()=>dbListen(`projects/${propId}/budget`,v=>setB(v||null)),[propId]);
@@ -2983,6 +3014,133 @@ function TaskEditDrawer({task, propId, basePath: basePathProp, address, currentU
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CommandCenter({properties,onOpenProp,currentUser}){
+  const[allTasks,setAllTasks]=React.useState({});
+  const[allPlans,setAllPlans]=React.useState({});
+  const[drawerTask,setDrawerTask]=React.useState(null);
+  const[drawerProp,setDrawerProp]=React.useState(null);
+  const activeProps=properties.filter(p=>p.stage==='contract'||p.stage==='renovation');
+
+  React.useEffect(()=>{
+    if(!activeProps.length)return;
+    const unsubs=activeProps.flatMap(p=>[
+      dbListen(`projects/${p.id}/tasks`,v=>setAllTasks(prev=>({...prev,[p.id]:v||{}}))),
+      dbListen(`projects/${p.id}/weekplan`,v=>setAllPlans(prev=>({...prev,[p.id]:v||null}))),
+    ]);
+    return()=>unsubs.forEach(u=>u());
+  },[activeProps.map(p=>p.id).join(',')]);
+
+  const today=new Date().toISOString().split('T')[0];
+  const weekOut=new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0];
+
+  const urgent=[],overdue=[],thisWeek=[],behindProps=[];
+
+  activeProps.forEach(prop=>{
+    const tasks=Object.values(allTasks[prop.id]||{}).filter(t=>t.status!=='done');
+    tasks.forEach(t=>{
+      const item={...t,propId:prop.id,addr:prop.address};
+      if(t.urgent) urgent.push(item);
+      else if(t.dueDate&&t.dueDate<today) overdue.push(item);
+      else if(t.dueDate&&t.dueDate<=weekOut) thisWeek.push(item);
+    });
+    const plan=allPlans[prop.id];
+    if(plan&&plan.startDate&&plan.numWeeks){
+      const elapsed=Math.max(0,Math.floor((Date.now()-new Date(plan.startDate+'T00:00:00'))/(1000*60*60*24*7)));
+      const done=Object.values(plan.weekDone||{}).filter(Boolean).length;
+      const behind=elapsed-done;
+      if(behind>=2) behindProps.push({prop,elapsed:Math.min(elapsed,plan.numWeeks),done,numWeeks:plan.numWeeks,behind});
+    }
+  });
+
+  thisWeek.sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+
+  function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00');return dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
+
+  const Section=({title,color,items,renderItem,empty})=>{
+    if(!items.length&&!empty)return null;
+    return(
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:11,fontWeight:800,color,textTransform:'uppercase',letterSpacing:'.8px',padding:'0 16px',marginBottom:8}}>{title} {items.length>0&&<span style={{background:color+'22',color,borderRadius:10,padding:'1px 7px',fontSize:10}}>{items.length}</span>}</div>
+        {items.length===0?(
+          <div style={{padding:'12px 16px',color:'rgba(255,255,255,.3)',fontSize:13}}>{empty}</div>
+        ):items.map((item,i)=>renderItem(item,i))}
+      </div>
+    );
+  };
+
+  const TaskRow=({item})=>(
+    <div onClick={()=>{setDrawerTask(item);setDrawerProp(activeProps.find(p=>p.id===item.propId));}}
+      style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',borderBottom:'1px solid rgba(255,255,255,.05)',cursor:'pointer',background:item.urgent?'rgba(220,53,69,.07)':'transparent'}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:13,fontWeight:600,color:'white',marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
+        <div style={{fontSize:11,color:'rgba(255,255,255,.4)',display:'flex',gap:8}}>
+          <span>{item.addr}</span>
+          {item.assignedTo&&<span>· {item.assignedTo}</span>}
+          {item.dueDate&&<span style={{color:item.dueDate<today?'#f87171':'#fbbf24'}}>· {fmtDate(item.dueDate)}</span>}
+        </div>
+      </div>
+      {item.urgent&&<span style={{fontSize:10,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,.15)',borderRadius:10,padding:'2px 8px'}}>URGENT</span>}
+    </div>
+  );
+
+  const allClear=urgent.length===0&&overdue.length===0&&thisWeek.length===0&&behindProps.length===0;
+
+  return(
+    <div style={{paddingBottom:100}}>
+      <div style={{padding:'16px 16px 8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div>
+          <div style={{fontSize:20,fontWeight:800,color:'white'}}>Today</div>
+          <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginTop:2}}>{activeProps.length} active {activeProps.length===1?'project':'projects'}</div>
+        </div>
+        <div style={{fontSize:12,color:'rgba(255,255,255,.35)'}}>{new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
+      </div>
+
+      {allClear&&(
+        <div style={{textAlign:'center',padding:'48px 20px'}}>
+          <div style={{fontSize:40,marginBottom:12}}>✅</div>
+          <div style={{fontSize:16,fontWeight:700,color:'white',marginBottom:6}}>All clear</div>
+          <div style={{fontSize:13,color:'rgba(255,255,255,.35)'}}>No urgent tasks, nothing overdue, all projects on track.</div>
+        </div>
+      )}
+
+      <Section title="Needs Attention" color="#f87171" items={[...urgent,...overdue]} renderItem={(item,i)=><TaskRow key={i} item={item}/>}/>
+      <Section title="Due This Week" color="#fbbf24" items={thisWeek} renderItem={(item,i)=><TaskRow key={i} item={item}/>}/>
+
+      {behindProps.length>0&&(
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:11,fontWeight:800,color:'#fbbf24',textTransform:'uppercase',letterSpacing:'.8px',padding:'0 16px',marginBottom:8}}>BEHIND SCHEDULE <span style={{background:'rgba(251,191,36,.15)',color:'#fbbf24',borderRadius:10,padding:'1px 7px',fontSize:10}}>{behindProps.length}</span></div>
+          {behindProps.map(({prop,elapsed,done,numWeeks,behind},i)=>(
+            <div key={i} onClick={()=>onOpenProp(prop)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',borderBottom:'1px solid rgba(255,255,255,.05)',cursor:'pointer'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:'white',marginBottom:2}}>{prop.address}</div>
+                <div style={{fontSize:11,color:'rgba(255,255,255,.4)'}}>Week {elapsed}/{numWeeks} elapsed · {done} marked done · <span style={{color:'#fbbf24'}}>{behind}w behind</span></div>
+              </div>
+              <span style={{fontSize:12,color:'rgba(255,255,255,.3)'}}>›</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeProps.length===0&&(
+        <div style={{textAlign:'center',padding:'48px 20px'}}>
+          <div style={{fontSize:13,color:'rgba(255,255,255,.35)'}}>No active projects yet. Move a property to Contract or Renovation to see it here.</div>
+        </div>
+      )}
+
+      {drawerTask&&drawerProp&&(
+        <TaskDrawer
+          task={drawerTask==='new'?null:drawerTask}
+          propId={drawerProp.id}
+          address={drawerProp.address}
+          members={[]}
+          username={currentUser?.displayName||currentUser?.email||''}
+          onClose={()=>{setDrawerTask(null);setDrawerProp(null);}}
+        />
+      )}
     </div>
   );
 }
@@ -4062,7 +4220,7 @@ function PropertyList({currentUser,onOpen}){
   const[deleteId,setDeleteId]=React.useState(null);
   const[showMigration,setShowMigration]=React.useState(false);
   const[notifBanner,setNotifBanner]=React.useState(false);
-  const[homeTab,setHomeTab]=React.useState('properties'); // 'properties' | 'tasks' | 'owner'
+  const[homeTab,setHomeTab]=React.useState('today'); // 'today' | 'properties' | 'tasks' | 'owner'
   const[viewMode,setViewMode]=React.useState(()=>localStorage.getItem('zanco_view')||'list'); // 'list' | 'kanban'
   const[openTasksTotal,setOpenTasksTotal]=React.useState(null);
   const[portfolioBudget,setPortfolioBudget]=React.useState(0);
@@ -4218,6 +4376,7 @@ function PropertyList({currentUser,onOpen}){
           <button onClick={e=>{e.stopPropagation();toggleExpand(prop.id);}} style={{background:'none',border:'none',color:'rgba(255,255,255,.35)',fontSize:20,cursor:'pointer',padding:'4px 6px',flexShrink:0,lineHeight:1}}>⋯</button>
         </div>
 
+        {(stage==='contract'||stage==='renovation')&&<PropHealthChip propId={prop.id} stage={stage}/>}
         {(stage==='contract'||stage==='renovation')&&<PropBudgetBar propId={prop.id}/>}
         {(stage==='contract'||stage==='renovation')&&<PropScheduleBar propId={prop.id}/>}
 
@@ -4300,6 +4459,7 @@ function PropertyList({currentUser,onOpen}){
         </div>
       )}
 
+      {homeTab==='today'&&<CommandCenter properties={properties} onOpenProp={onOpen} currentUser={currentUser}/>}
       {homeTab==='owner'&&<GlobalOwnerPage currentUser={currentUser}/>}
       {homeTab==='rentals'&&<RentalsPage currentUser={currentUser}/>}
       {homeTab==='schedule'&&<SchedulePage currentUser={currentUser} properties={properties}/>}
@@ -4377,9 +4537,13 @@ function PropertyList({currentUser,onOpen}){
       )}
 
       <nav className="bottom-nav">
+        <button className={`bottom-nav-btn${homeTab==='today'?' active':''}`} onClick={()=>setHomeTab('today')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Today
+        </button>
         <button className={`bottom-nav-btn${homeTab==='properties'?' active':''}`} onClick={()=>setHomeTab('properties')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Properties
+          Projects
         </button>
         <button className={`bottom-nav-btn${homeTab==='tasks'?' active':''}`} onClick={()=>setHomeTab('tasks')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
