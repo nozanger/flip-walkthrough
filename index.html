@@ -2852,11 +2852,19 @@ function TaskEditDrawer({task, propId, basePath: basePathProp, address, currentU
         <div className="task-drawer-header">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
             <div className="task-drawer-prop">{isNew?'New Task':'📍 '+address}</div>
-            <button
-              onClick={()=>{const u=!t.urgent;setT(p=>({...p,urgent:u}));if(!isNew)save({urgent:u});}}
-              style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:'2px solid',borderColor:t.urgent?'#dc3545':'#dde',background:t.urgent?'#dc3545':'white',color:t.urgent?'white':'#aaa',fontWeight:700,fontSize:12,cursor:'pointer',transition:'all .15s'}}>
-              ! {t.urgent?'Urgent':'Mark Urgent'}
-            </button>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              {isNew&&(
+                <button onClick={create} disabled={saving||!t.title.trim()}
+                  style={{padding:'6px 16px',background:t.title.trim()?'#1d4ed8':'#ccc',color:'white',border:'none',borderRadius:20,fontSize:13,fontWeight:700,cursor:t.title.trim()?'pointer':'default',transition:'background .15s'}}>
+                  {saving?'Adding…':'Add Task'}
+                </button>
+              )}
+              <button
+                onClick={()=>{const u=!t.urgent;setT(p=>({...p,urgent:u}));if(!isNew)save({urgent:u});}}
+                style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:'2px solid',borderColor:t.urgent?'#dc3545':'#dde',background:t.urgent?'#dc3545':'white',color:t.urgent?'white':'#aaa',fontWeight:700,fontSize:12,cursor:'pointer',transition:'all .15s'}}>
+                ! {t.urgent?'Urgent':'Mark Urgent'}
+              </button>
+            </div>
           </div>
           <input
             className="task-title-input"
