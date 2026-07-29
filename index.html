@@ -5490,25 +5490,31 @@ function ProjectSchedulePage({propId}){
   async function suggestTimeline(){
     setSuggesting(true);
     try{
-      // Read scope data
       const scopeData=await dbGet(`projects/${propId}/data`)||{};
       const total=numWeeks||8;
       const updates={};
+      // Start with ALL standard items from SCHED_WEEK_MAP (weeks 1–8)
+      // Each entry is [catId, itemId] → week number 1-8
+      Object.entries(SCHED_WEEK_MAP).forEach(([wid,pairs])=>{
+        // wid is 'w1'..'w8', weekNum is 1..8
+        const weekNum=parseInt(wid.replace('w',''));
+        // Scale to total weeks (e.g. if total=6, week 7→6, week 8→6)
+        const scaled=Math.min(Math.round(((weekNum-1)/(8-1))*(total-1))+1,total);
+        pairs.forEach(([catId,itemId])=>{
+          if(!updates[catId])updates[catId]={};
+          updates[catId][itemId]={[scaled]:true};
+        });
+      });
+      // Override: if a scope item is marked 'keep', remove it from timeline
       Object.entries(catMapping).forEach(([catId,items])=>{
         const catData=scopeData[catId]||{};
-        Object.entries(items).forEach(([itemId,relWeek])=>{
-          const status=(catData[itemId]?.status)||null;
-          // Only assign items that need work (replace or partial)
-          if(status==='replace'||status==='partial'){
-            // Scale relWeek (1-6) to actual numWeeks
-            const scaled=Math.round(((relWeek-1)/(6-1))*(total-1))+1;
-            const week=Math.min(Math.max(scaled,1),total);
-            if(!updates[catId])updates[catId]={};
-            updates[catId][itemId]={[week]:true};
+        Object.entries(items).forEach(([itemId])=>{
+          const status=catData[itemId]?.status||null;
+          if(status==='keep'){
+            if(updates[catId])delete updates[catId][itemId];
           }
         });
       });
-      // Write all assignments at once
       await dbSet(`projects/${propId}/weekplan/assignments`,updates);
     }finally{
       setSuggesting(false);
