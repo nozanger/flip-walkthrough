@@ -5372,6 +5372,7 @@ function ProjectSchedulePage({propId}){
   const[editingItem,setEditingItem]=React.useState(null); // {catId,itemId,label}
   const[payInputs,setPayInputs]=React.useState({}); // {catId_itemId: string}
 
+  const autoPopulatedRef=React.useRef(false);
   React.useEffect(()=>dbListen(`projects/${propId}/weekplan`,d=>{
     const p=d&&d.assignments?d:{startDate:d&&d.startDate||'',assignments:{},numWeeks:d&&d.numWeeks||8,payments:d&&d.payments||{},calendarDone:d&&d.calendarDone||false,inspection:d&&d.inspection!=null?d.inspection:null};
     if(!p.numWeeks)p.numWeeks=8;
@@ -5379,8 +5380,22 @@ function ProjectSchedulePage({propId}){
     if(p.inspection===undefined)p.inspection=null;
     setPlan(p);
     setDateInput(prev=>prev===''?p.startDate||'':prev);
-    // restore calendar mode if user previously pressed Done
     setCalMode(!!p.calendarDone);
+    // Auto-populate from SCHED_WEEK_MAP if timeline has never been set up
+    if(!autoPopulatedRef.current&&(!p.assignments||!Object.keys(p.assignments).length)){
+      autoPopulatedRef.current=true;
+      const total=p.numWeeks||8;
+      const assignments={};
+      Object.entries(SCHED_WEEK_MAP).forEach(([wid,pairs])=>{
+        const weekNum=parseInt(wid.replace('w',''));
+        const scaled=Math.min(Math.round(((weekNum-1)/(8-1))*(total-1))+1,total);
+        pairs.forEach(([catId,itemId])=>{
+          if(!assignments[catId])assignments[catId]={};
+          assignments[catId][itemId]={[scaled]:true};
+        });
+      });
+      dbSet(`projects/${propId}/weekplan/assignments`,assignments);
+    }
   }),[propId]);
 
   const numWeeks=plan.numWeeks||8;
