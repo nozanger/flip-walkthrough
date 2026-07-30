@@ -6139,7 +6139,8 @@ const DETAIL_ITEMS=[
   {sku:'M0112',sec:'Bathroom',grp:'Bathroom Vents',                                             label:'↳ Vent Ducting',      unit:'LF',     cost:3,    waste:.10,qty:(i)=>i.numBath*8},
   // ─ PLUMBING ─
   {sku:'M0113',sec:'Plumbing',grp:'Bathroom Plumbing',               scopeKey:'plumbing.plumbing_bathroom',label:'PEX Pipe (bath rough-in)',unit:'LF',cost:.38,waste:.10,qty:(i)=>i.numBath*50},
-  {sku:'M0114',sec:'Plumbing',grp:'Bathroom Plumbing',                                         label:'↳ PEX Fittings/Manifold',unit:'kit',  cost:45,   waste:0,  qty:(i)=>i.numBath},
+  {sku:'M0114',sec:'Plumbing',grp:'Bathroom Plumbing',                                         label:'↳ PEX Supply Fittings Kit',unit:'kit',cost:115,  waste:0,  qty:(i)=>i.numBath},
+  {sku:'M0114B',sec:'Plumbing',grp:'Bathroom Plumbing',                                        label:'↳ DWV Materials (PVC pipe/fittings/cement/p-traps/flange)',unit:'kit',cost:170,waste:0,qty:(i)=>i.numBath},
   {sku:'M0115',sec:'Plumbing',grp:'Bathroom Plumbing',                                         label:'↳ Shutoff Valves',    unit:'each',   cost:9,    waste:0,  qty:(i)=>i.numBath*3},
   {sku:'M0116',sec:'Plumbing',grp:'Kitchen Plumbing',                scopeKey:'plumbing.plumbing_kitchen',label:'PEX Pipe (kitchen rough-in)',unit:'LF',cost:.38,waste:.10,qty:()=>30},
   {sku:'M0117',sec:'Plumbing',grp:'Kitchen Plumbing',                                          label:'↳ Shutoff Valves',    unit:'each',   cost:9,    waste:0,  qty:()=>2},
