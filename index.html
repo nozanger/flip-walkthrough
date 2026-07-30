@@ -6035,7 +6035,7 @@ const DETAIL_ITEMS=[
   // Panel cost $0.60 (not $0.67 actual) because wall SF formula over-counts by ~13% — nets out to correct total
   // House wrap uses 30% of wallSf: re-side jobs only patch damaged sections, not full re-wrap
   // Nails: 1 box per 3000 SF based on actual (1 box for whole job)
-  {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:0.60, waste:.10,qty:(i,d)=>d.wallSf},
+  {sku:'M0018',sec:'Exterior',grp:'Siding',                           scopeKey:'exterior.siding',label:'Siding (vinyl lap)',  unit:'SF',     cost:0.85, waste:.10,qty:(i,d)=>d.wallSf},
   {sku:'M0019',sec:'Exterior',grp:'Siding',                                                    label:'↳ House Wrap (re-side ~30%; new build use 100%)',unit:'SF',cost:.16,waste:.05,qty:(i,d)=>Math.round(d.wallSf*0.30)},
   {sku:'M0020',sec:'Exterior',grp:'Siding',                                                    label:'↳ Starter Strip',      unit:'LF',     cost:.44,  waste:.05,qty:(i)=>i.perim},
   {sku:'M0021',sec:'Exterior',grp:'Siding',                                                    label:'↳ J-Channel/Corners',  unit:'LF',     cost:0.80, waste:.05,qty:(i)=>i.perim*i.stories*2},
@@ -6197,7 +6197,7 @@ const DETAIL_ITEMS=[
   {sku:'M0334',sec:'Addition',grp:'Roofing',                                                   label:'↳ Ridge Cap',                unit:'bundle',cost:74,   waste:.05,qty:()=>1},
   // Exterior
   {sku:'M0340',sec:'Addition',grp:'Exterior',         scopeKey:'addition.addition_exterior',  label:'House Wrap',                  unit:'SF',    cost:.15,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9)},
-  {sku:'M0341',sec:'Addition',grp:'Exterior',                                                  label:'↳ Siding (vinyl lap)',       unit:'SF',    cost:1.75, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9)},
+  {sku:'M0341',sec:'Addition',grp:'Exterior',                                                  label:'↳ Siding (vinyl lap)',       unit:'SF',    cost:0.85, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9)},
   {sku:'M0342',sec:'Addition',grp:'Exterior',                                                  label:'↳ Exterior Caulk',          unit:'tube',  cost:6,    waste:0,  qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*0.5)},
   {sku:'M0343',sec:'Addition',grp:'Exterior',                                                  label:'↳ Exterior Paint / Stain',  unit:'gallon',cost:45,   waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.additionSqft||200)*4*9/350)},
   // Insulation
@@ -6246,7 +6246,7 @@ const DETAIL_ITEMS=[
   {sku:'M0253',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Drip Edge',           unit:'LF',    cost:.78,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
   {sku:'M0254',sec:'Garage',grp:'Garage Roofing',                               label:'↳ Ridge Cap',           unit:'bundle',cost:74,   waste:.05,qty:()=>1},
   {sku:'M0255',sec:'Garage',grp:'Garage Roofing',                               label:'↳ OSB Deck Repair',     unit:'sheet', cost:22,   waste:.10,qty:(i)=>Math.ceil((i.garageSqft||400)/100)},
-  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding (vinyl lap)',     unit:'SF',    cost:0.60, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
+  {sku:'M0260',sec:'Garage',grp:'Garage Siding',    scopeKey:'exterior.garage',label:'Siding (vinyl lap)',     unit:'SF',    cost:0.85, waste:.10,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*9)},
   {sku:'M0261',sec:'Garage',grp:'Garage Siding',                               label:'↳ House Wrap (re-side ~30%)',unit:'SF',cost:.16,  waste:.05,qty:(i)=>Math.round(Math.sqrt(i.garageSqft||400)*4*9*0.30)},
   {sku:'M0262',sec:'Garage',grp:'Garage Siding',                               label:'↳ Starter Strip',        unit:'LF',    cost:.44,  waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4)},
   {sku:'M0263',sec:'Garage',grp:'Garage Siding',                               label:'↳ J-Channel / Corners',  unit:'LF',    cost:0.80, waste:.05,qty:(i)=>Math.ceil(Math.sqrt(i.garageSqft||400)*4*2)},
