@@ -600,7 +600,7 @@ Analyze these video frames and identify ALL renovation work needed.
 Return ONLY a valid JSON object — no markdown, no explanation — with this exact structure:
 {
   "exterior":    {"roof":null,"gutters":null,"soffit_fascia":null,"window_door_trim":null,"siding":null,"exterior_doors":null,"front_porch":null,"garage":null,"driveway":null,"back_porch":null,"landscaping":null},
-  "interior":    {"demo":null,"framing":null,"layout_change":null,"wall_knocking":null,"drywall":null,"paint":null,"flooring":null,"subfloor":null,"trim_quarterround":null,"windows":null,"interior_doors":null,"electric_trim":null,"garbage_removal":null},
+  "interior":    {"demo":null,"framing":null,"layout_change":null,"wall_knocking":null,"drywall":null,"paint":null,"flooring":null,"subfloor":null,"trim_quarterround":null,"windows":null,"interior_doors":null,"electric_trim":null,"lighting":null,"garbage_removal":null},
   "kitchen":     {"cabinets":null,"island":null,"countertop":null,"backsplash":null,"appliances":null},
   "bathroom":    {"vanity":null,"mirror":null,"toilet":null,"tub":null,"bathroom_floor":null,"vents":null},
   "plumbing":    {"plumbing_bathroom":null,"plumbing_kitchen":null,"laundry":null},
@@ -687,6 +687,7 @@ const CATEGORIES = [
     {id:'flooring',label:'Flooring'},{id:'subfloor',label:'Subfloor'},
     {id:'trim_quarterround',label:'Trim & Quarter Round'},{id:'windows',label:'Windows'},
     {id:'interior_doors',label:'Doors'},{id:'electric_trim',label:'Electric Trim'},
+    {id:'lighting',label:'Lighting'},
     {id:'garbage_removal',label:'Garbage Removal & Cleaning'},
   ]},
   { id:'kitchen', label:'Kitchen', icon:'🍳', items:[
@@ -5480,7 +5481,7 @@ function ProjectSchedulePage({propId}){
     kitchen:{cabinets:4,island:4},
     addition4:{addition_flooring:4,addition_windows_doors:4,addition_paint:4,addition_trim:4},
     // Week 5 — Finishes & Fixtures
-    interior5:{trim_quarterround:5,interior_doors:5,electric_trim:5},
+    interior5:{trim_quarterround:5,interior_doors:5,electric_trim:5,lighting:5},
     kitchen5:{countertop:5,backsplash:5,appliances:5},
     bathroom5:{vanity:5,mirror:5,toilet:5,vents:5},
     // Week 6 — Exterior & Closeout
@@ -5490,7 +5491,7 @@ function ProjectSchedulePage({propId}){
   // Flatten to { catId: { itemId: relativeWeek } } where relativeWeek is 1-6 scale
   const FLAT_MAP={};
   const catMapping={
-    interior:{demo:1,framing:1,layout_change:1,wall_knocking:1,subfloor:1,garbage_removal:1,windows:1,drywall:3,flooring:4,paint:4,trim_quarterround:5,interior_doors:5,electric_trim:5},
+    interior:{demo:1,framing:1,layout_change:1,wall_knocking:1,subfloor:1,garbage_removal:1,windows:1,drywall:3,flooring:4,paint:4,trim_quarterround:5,interior_doors:5,electric_trim:5,lighting:5},
     below_grade:{basement_general:1,basement_walls:1,basement_floor:1,basement_moisture:1,basement_egress:1,crawlspace_general:1,crawlspace_vapor:1,crawlspace_insulation:1,foundation_general:1,foundation_cracks:1,foundation_waterproofing:1,sump_pump:1},
     plumbing:{plumbing_bathroom:2,plumbing_kitchen:2,laundry:2},
     electrical:{panel:2,wiring:2,addons:2},
@@ -6097,6 +6098,10 @@ const DETAIL_ITEMS=[
   {sku:'M0073',sec:'Interior',grp:'Electric Trim',                                             label:'↳ Cover Plates',      unit:'each',   cost:1.20, waste:0,  qty:(i)=>Math.round(i.sqft/45)+Math.round(i.sqft/150)},
   {sku:'M0074',sec:'Interior',grp:'Electric Trim',                                             label:'↳ Light Fixtures',    unit:'each',   cost:35,   waste:0,  qty:(i)=>Math.round(i.sqft/100)},
   {sku:'M0075',sec:'Interior',grp:'Electric Trim',                                             label:'↳ Wire Nuts/Misc',    unit:'kit',    cost:25,   waste:0,  qty:()=>1},
+  {sku:'M0075B',sec:'Interior',grp:'Lighting',              scopeKey:'interior.lighting',      label:'Recessed LED 6"',     unit:'each',   cost:12,   waste:0,  qty:(i)=>Math.round(i.sqft/50)},
+  {sku:'M0075C',sec:'Interior',grp:'Lighting',                                                 label:'↳ Ceiling Fans',      unit:'each',   cost:80,   waste:0,  qty:(i)=>i.numBed+1},
+  {sku:'M0075D',sec:'Interior',grp:'Lighting',                                                 label:'↳ Pendant / Dining Fixture',unit:'each',cost:65, waste:0,  qty:()=>1},
+  {sku:'M0075E',sec:'Interior',grp:'Lighting',                                                 label:'↳ Dimmer Switches',   unit:'each',   cost:12,   waste:0,  qty:(i)=>i.numBed+2},
   {sku:'M0076',sec:'Interior',grp:'Garbage Removal',                  scopeKey:'interior.garbage_removal',label:'Garbage & Cleaning',unit:'LS',cost:400,waste:0,qty:()=>1},
   // ─ KITCHEN ─
   {sku:'M0077',sec:'Kitchen', grp:'Cabinets',                         scopeKey:'kitchen.cabinets',label:'Cabinets',           unit:'LF',     cost:130,  waste:.05,qty:(i)=>i.cabinetLf},
@@ -6758,7 +6763,7 @@ const SCHED_WEEK_MAP={
   w4:[['interior','flooring'],['interior','paint'],['kitchen','cabinets'],['kitchen','island'],
       ['interior','interior_doors'],
       ['addition','addition_flooring'],['addition','addition_windows_doors'],['addition','addition_paint']],
-  w5:[['interior','trim_quarterround'],['interior','electric_trim'],['addition','addition_trim'],
+  w5:[['interior','trim_quarterround'],['interior','electric_trim'],['interior','lighting'],['addition','addition_trim'],
       ['kitchen','countertop'],['kitchen','backsplash'],['kitchen','appliances'],
       ['bathroom','vanity'],['bathroom','mirror'],['bathroom','toilet'],['bathroom','vents']],
   w6:[['exterior','exterior_doors'],['exterior','window_door_trim'],['exterior','front_porch'],['exterior','back_porch']],
