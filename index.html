@@ -2124,6 +2124,57 @@ function ProfileModal({currentUser,onClose}){
 }
 
 // ── Add Property Modal (2-step: details → assign team) ───────────────
+function EditPropertyModal({prop,onClose}){
+  const[address,setAddress]=React.useState(prop.address||'');
+  const[sqft,setSqft]=React.useState(prop.sqft||'');
+  const[date,setDate]=React.useState(prop.date||new Date().toISOString().split('T')[0]);
+  const[curBed,setCurBed]=React.useState(prop.curBed||'');
+  const[curBath,setCurBath]=React.useState(prop.curBath||'');
+  const[futBed,setFutBed]=React.useState(prop.futBed||'');
+  const[futBath,setFutBath]=React.useState(prop.futBath||'');
+  const[saving,setSaving]=React.useState(false);
+  const[err,setErr]=React.useState('');
+
+  async function save(){
+    if(!address.trim()){setErr('Address is required.');return;}
+    setSaving(true);setErr('');
+    try{
+      await dbUpdate(`projects/${prop.id}/meta`,{
+        address:address.trim(),sqft:sqft.trim(),date,
+        curBed,curBath,futBed,futBath,updatedAt:Date.now()
+      });
+      onClose();
+    }catch(e){setErr(e.message||'Save failed.');setSaving(false);}
+  }
+
+  return(
+    <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+      <h2>Edit Property</h2>
+      <p style={{fontSize:13,color:'#888',marginBottom:14}}>Update details for <strong>{prop.address}</strong></p>
+      <div className="modal-field"><label>Property Address *</label><input autoFocus value={address} onChange={e=>setAddress(e.target.value)} placeholder="123 Main St"/></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div className="modal-field"><label>Total Sq Ft</label><input value={sqft} onChange={e=>setSqft(e.target.value)} placeholder="e.g. 1,800"/></div>
+        <div className="modal-field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',margin:'8px 0 4px'}}>Current Layout</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div className="modal-field"><label>Bedrooms</label><input type="number" min="0" value={curBed} onChange={e=>setCurBed(e.target.value)}/></div>
+        <div className="modal-field"><label>Bathrooms</label><input type="number" min="0" value={curBath} onChange={e=>setCurBath(e.target.value)}/></div>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',margin:'8px 0 4px'}}>Future Layout</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div className="modal-field"><label>Bedrooms</label><input type="number" min="0" value={futBed} onChange={e=>setFutBed(e.target.value)}/></div>
+        <div className="modal-field"><label>Bathrooms</label><input type="number" min="0" value={futBath} onChange={e=>setFutBath(e.target.value)}/></div>
+      </div>
+      {err&&<div style={{color:'#dc3545',fontSize:13,marginTop:8,padding:'8px 12px',background:'#fff5f5',borderRadius:8,border:'1px solid #fcc'}}>{err}</div>}
+      <div className="modal-btns">
+        <button className="btn-primary" onClick={save} disabled={saving}>{saving?'Saving…':'Save Changes'}</button>
+        <button className="btn-secondary" onClick={onClose}>Cancel</button>
+      </div>
+    </div></div>
+  );
+}
+
 function AddPropertyModal({onAdd,currentUser,onClose}){
   const[step,setStep]=React.useState(1);
   const[address,setAddress]=React.useState('');
@@ -4224,6 +4275,7 @@ function PropertyList({currentUser,onOpen}){
   const[showTeam,setShowTeam]=React.useState(false);
   const[showProfile,setShowProfile]=React.useState(false);
   const[deleteId,setDeleteId]=React.useState(null);
+  const[editingProp,setEditingProp]=React.useState(null);
   const[showMigration,setShowMigration]=React.useState(false);
   const[notifBanner,setNotifBanner]=React.useState(false);
   const[homeTab,setHomeTab]=React.useState('today'); // 'today' | 'properties' | 'tasks' | 'owner'
@@ -4407,7 +4459,9 @@ function PropertyList({currentUser,onOpen}){
         {/* Expanded actions */}
         {expanded&&(
           <div className="prop-actions">
-            <button className="prop-action-btn" onClick={()=>onOpen(prop)} title="Edit">✏️ Edit</button>
+            <button className="prop-action-btn" onClick={e=>{e.stopPropagation();setEditingProp(prop);toggleExpand(prop.id);}} title="Edit">✏️ Rename / Edit</button>
+            <div className="prop-action-sep"/>
+            <button className="prop-action-btn" onClick={()=>onOpen(prop)} title="Open">📂 Open</button>
             {prop.ownerId===currentUser.uid&&<><div className="prop-action-sep"/><button className="prop-action-btn danger" onClick={e=>{e.stopPropagation();setDeleteId(prop.id);}} title="Delete">🗑 Delete</button></>}
           </div>
         )}
@@ -4601,6 +4655,7 @@ function PropertyList({currentUser,onOpen}){
       )}
 
       {showAdd&&<AddPropertyModal onAdd={addProperty} currentUser={currentUser} onClose={()=>setShowAdd(false)}/>}
+      {editingProp&&<EditPropertyModal prop={editingProp} onClose={()=>setEditingProp(null)}/>}
       {showTeam&&<TeamModal currentUser={currentUser} onClose={()=>setShowTeam(false)}/>}
       {showProfile&&<ProfileModal currentUser={currentUser} onClose={()=>setShowProfile(false)}/>}
 
